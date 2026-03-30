@@ -1,0 +1,155 @@
+plugins {
+    id 'com.diffplug.spotless' version '7.0.2'
+    id 'org.springframework.boot' version '4.0.5' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+spotless {
+    lineEndings = com.diffplug.spotless.LineEnding.UNIX
+
+    format 'gradleFiles', {
+        target '*.gradle', 'settings.gradle'
+        trimTrailingWhitespace()
+        leadingTabsToSpaces(4)
+        endWithNewline()
+    }
+
+    format 'misc', {
+        target '.gitattributes', '.gitignore', '**/*.md'
+        targetExclude '**/build/**', '**/.gradle/**'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
+    apply plugin: 'com.diffplug.spotless'
+    apply plugin: 'io.spring.dependency-management'
+
+    dependencyManagement {
+        imports {
+            mavenBom 'org.springframework.boot:spring-boot-dependencies:4.0.5'
+        }
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    checkstyle {
+        toolVersion = '10.17.0'
+        configDirectory = rootProject.file('config/checkstyle')
+        ignoreFailures = false
+    }
+
+    jacoco {
+        toolVersion = '0.8.12'
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok:1.18.42'
+        annotationProcessor 'org.projectlombok:lombok:1.18.42'
+        testImplementation platform('org.junit:junit-bom:5.13.4')
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    spotless {
+        lineEndings = com.diffplug.spotless.LineEnding.UNIX
+
+        java {
+            target 'src/*/java/**/*.java'
+            googleJavaFormat('1.24.0')
+            formatAnnotations()
+            removeUnusedImports()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+
+        format 'gradleFiles', {
+            target '*.gradle'
+            trimTrailingWhitespace()
+            leadingTabsToSpaces(4)
+            endWithNewline()
+        }
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+        finalizedBy tasks.named('jacocoTestReport')
+    }
+
+    tasks.named('check') {
+        dependsOn tasks.named('spotlessCheck')
+    }
+
+    tasks.named('jacocoTestReport') {
+        dependsOn tasks.named('test')
+        reports {
+            xml.required = true
+            csv.required = false
+            html.required = true
+        }
+    }
+
+    tasks.withType(org.gradle.api.plugins.quality.Checkstyle).configureEach {
+        reports {
+            xml.required = false
+            html.required = true
+        }
+    }
+}
+
+tasks.register('qualityGate') {
+    group = 'verification'
+    description = 'Runs formatting checks, tests, coverage, and static analysis for all modules.'
+    dependsOn tasks.named('spotlessCheck')
+    dependsOn subprojects.collect { "${it.path}:spotlessCheck" }
+    dependsOn subprojects.collect { "${it.path}:check" }
+}
+
+tasks.register('formatCode') {
+    group = 'formatting'
+    description = 'Formats root and subproject sources.'
+    dependsOn tasks.named('spotlessApply')
+    dependsOn subprojects.collect { "${it.path}:spotlessApply" }
+}
+
+tasks.register('installGitHooks') {
+    group = 'build setup'
+    description = 'Installs the shared pre-push hook into .git/hooks.'
+
+    doLast {
+        def gitHooksDir = rootProject.file('.git/hooks')
+        if (!gitHooksDir.exists()) {
+            logger.lifecycle('No .git/hooks directory found. Skipping hook installation.')
+            return
+        }
+
+        copy {
+            from(rootProject.file('.githooks/pre-push'))
+            into(gitHooksDir)
+            rename { 'pre-push' }
+        }
+
+        def hookFile = rootProject.file('.git/hooks/pre-push')
+        hookFile.setExecutable(true)
+        logger.lifecycle("Installed pre-push hook to ${hookFile}")
+    }
+}
