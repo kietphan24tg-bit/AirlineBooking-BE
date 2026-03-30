@@ -21,6 +21,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
     implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.1'
 
     runtimeOnly 'org.postgresql:postgresql:42.7.7'
     testRuntimeOnly 'com.h2database:h2'

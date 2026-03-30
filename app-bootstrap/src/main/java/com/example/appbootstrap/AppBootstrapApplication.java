@@ -4,6 +4,7 @@ import com.example.appbootstrap.config.BookingProperties;
 import com.example.appbootstrap.config.JwtProperties;
 import com.example.appbootstrap.config.MailProperties;
 import com.example.appbootstrap.config.PaymentProperties;
+import com.example.appbootstrap.config.LoggingProperties;
 import com.example.appbootstrap.config.SwaggerProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,6 +18,7 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
   BookingProperties.class,
   PaymentProperties.class,
   MailProperties.class,
+  LoggingProperties.class,
   SwaggerProperties.class
 })
 public class AppBootstrapApplication {

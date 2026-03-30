@@ -27,3 +27,17 @@ spring:
           auth: ${SPRING_MAIL_SMTP_AUTH:false}
           starttls:
             enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
+
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.example: ${LOGGING_LEVEL_APP:DEBUG}
+    org.springframework.web: ${LOGGING_LEVEL_SPRING_WEB:INFO}
+    org.springframework.security: ${LOGGING_LEVEL_SPRING_SECURITY:INFO}
+    org.hibernate.SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:WARN}
+    org.hibernate.orm.jdbc.bind: ${LOGGING_LEVEL_HIBERNATE_BIND:WARN}
+    org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
+
+app:
+  logging:
+    json-enabled: ${APP_LOG_JSON_ENABLED:false}

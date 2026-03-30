@@ -45,6 +45,9 @@ app:
     cancel-url: ${APP_PAYMENT_CANCEL_URL:http://localhost:3000/payment/cancel}
   mail:
     from: ${APP_MAIL_FROM:noreply@airline-booking.local}
+  logging:
+    request-id-header: ${APP_REQUEST_ID_HEADER:X-Request-Id}
+    json-enabled: ${APP_LOG_JSON_ENABLED:false}
   swagger:
     title: ${APP_SWAGGER_TITLE:Airline Booking API}
     description: ${APP_SWAGGER_DESCRIPTION:Modular monolith backend for airline booking, payment, notification, and check-in workflows.}

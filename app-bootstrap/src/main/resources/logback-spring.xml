@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="application"/>
+    <springProperty scope="context" name="rootLevel" source="logging.level.root" defaultValue="INFO"/>
+    <springProperty scope="context" name="appLevel" source="logging.level.com.example" defaultValue="INFO"/>
+    <springProperty scope="context" name="springWebLevel" source="logging.level.org.springframework.web" defaultValue="INFO"/>
+    <springProperty scope="context" name="springSecurityLevel" source="logging.level.org.springframework.security" defaultValue="WARN"/>
+    <springProperty scope="context" name="hibernateSqlLevel" source="logging.level.org.hibernate.SQL" defaultValue="WARN"/>
+    <springProperty scope="context" name="hibernateBindLevel" source="logging.level.org.hibernate.orm.jdbc.bind" defaultValue="WARN"/>
+    <springProperty scope="context" name="flywayLevel" source="logging.level.org.flywaydb" defaultValue="INFO"/>
+    <springProperty scope="context" name="jsonLoggingEnabled" source="app.logging.json-enabled" defaultValue="false"/>
+
+    <springProfile name="local">
+        <property name="CONSOLE_PATTERN"
+                  value="%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%-5level) [%thread] %clr(${appName}){cyan} %clr(%logger{36}){yellow} traceId=%X{traceId:-} requestId=%X{requestId:-} - %msg%n%wEx"/>
+    </springProfile>
+
+    <springProfile name="!local">
+        <property name="CONSOLE_PATTERN"
+                  value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] ${appName} %logger{36} traceId=%X{traceId:-} requestId=%X{requestId:-} - %msg%n%wEx"/>
+    </springProfile>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${appName}","jsonLoggingEnabled":"${jsonLoggingEnabled}"}</customFields>
+            <includeMdc>true</includeMdc>
+        </encoder>
+    </appender>
+
+    <logger name="com.example" level="${appLevel}"/>
+    <logger name="org.springframework.web" level="${springWebLevel}"/>
+    <logger name="org.springframework.security" level="${springSecurityLevel}"/>
+    <logger name="org.hibernate.SQL" level="${hibernateSqlLevel}"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="${hibernateBindLevel}"/>
+    <logger name="org.flywaydb" level="${flywayLevel}"/>
+
+    <springProfile name="prod">
+        <root level="${rootLevel}">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!prod">
+        <root level="${rootLevel}">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
