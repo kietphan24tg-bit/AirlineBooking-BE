@@ -202,6 +202,334 @@ postgres.<project-ref>
 
 ## Quick Start
 
+## API Response Convention
+
+Toan bo web layer dang dung response format thong nhat tai `app-bootstrap`.
+
+### Success Response
+
+Controller tra object binh thuong se duoc auto-wrap thanh:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "Operation successful"
+}
+```
+
+Neu muon custom message thanh cong, dung annotation:
+
+- `@ApiSuccessMessage("Booking created successfully")`
+
+Files lien quan:
+
+- [ApiSuccessMessage.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/api/ApiSuccessMessage.java)
+- [ApiSuccessResponse.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/api/ApiSuccessResponse.java)
+- [ApiSuccessResponseBodyAdvice.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/api/ApiSuccessResponseBodyAdvice.java)
+
+### Error Response
+
+Loi duoc tra ve theo format:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": {
+      "field": "message"
+    }
+  },
+  "statusCode": 400,
+  "timestamp": "2026-03-30T12:00:00Z",
+  "path": "/api/bookings",
+  "requestId": "..."
+}
+```
+
+### Global Exception Handling
+
+`GlobalExceptionHandler` nam trong `app-bootstrap` va ap dung chung cho toan bo application web.
+
+No dang xu ly 3 nhom loi chinh:
+
+- business exception
+  - `AppException`
+- request / validation / HTTP exception
+  - `MethodArgumentNotValidException`
+  - `ConstraintViolationException`
+  - `HttpMessageNotReadableException`
+  - `MissingServletRequestParameterException`
+  - `HttpRequestMethodNotSupportedException`
+  - `NoResourceFoundException`
+  - `AccessDeniedException`
+- system exception
+  - `Exception`
+
+Files lien quan:
+
+- [AppException.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/AppException.java)
+- [ApiError.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/ApiError.java)
+- [ApiErrorResponse.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/ApiErrorResponse.java)
+- [GlobalExceptionHandler.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/GlobalExceptionHandler.java)
+
+### Request ID
+
+Moi HTTP request deu duoc `RequestIdFilter` gan `requestId` vao MDC.
+
+Dieu nay co nghia la:
+
+- log se tu dong co `requestId`
+- error response se tra ve `requestId`
+- response header se co `X-Request-Id` mac dinh
+
+File lien quan:
+
+- [RequestIdFilter.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/config/RequestIdFilter.java)
+
+---
+
+## Database Schema
+
+### Entity Relationship Diagram
+
+Database schema cua du an duoc quan ly bang Flyway va duoc chia theo cac nhom nghiep vu:
+
+- identity
+- flights and inventory
+- bookings and passengers
+- payments
+- services and promotions
+- tickets and boarding passes
+
+Migration SQL hien tai duoc dat tai:
+
+- [app-bootstrap/src/main/resources/db/migration](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/db/migration)
+
+```mermaid
+erDiagram
+    USERS {
+        bigint id PK
+        varchar email UK
+        varchar first_name
+        varchar last_name
+        varchar phone
+        timestamptz dob
+        varchar password_hash
+        boolean is_verify
+        varchar nationality
+        varchar identify_number
+    }
+
+    AIRPORTS {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar city
+        varchar country
+        varchar time_zone
+    }
+
+    AIRLINES {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar logo_url
+    }
+
+    AIRCRAFT {
+        bigint id PK
+        varchar model
+        varchar manufacturer
+        int total_seats
+    }
+
+    SEATS {
+        bigint id PK
+        bigint aircraft_id FK
+        varchar seat_number
+        varchar seat_class
+    }
+
+    FARE_CLASSES {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar cabin_class
+    }
+
+    TAX_FEES {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar amount_type
+        numeric value
+        varchar apply_to
+    }
+
+    PROMOTIONS {
+        bigint id PK
+        varchar code UK
+        varchar discount_type
+        numeric discount_value
+        boolean is_active
+    }
+
+    FLIGHTS {
+        bigint id PK
+        bigint airline_id FK
+        varchar flight_number
+        date flight_date
+        bigint aircraft_id FK
+        bigint departure_airport_id FK
+        bigint arrival_airport_id FK
+        timestamptz departure_time
+        timestamptz arrival_time
+        varchar status
+    }
+
+    FLIGHT_FARES {
+        bigint id PK
+        bigint flight_id FK
+        bigint fare_class_id FK
+        numeric base_price
+        jsonb tax_breakdown
+        numeric total_tax_amount
+        numeric total_price
+        int available_seats
+        varchar status
+    }
+
+    BOOKINGS {
+        bigint id PK
+        bigint user_id FK
+        varchar pnr_code UK
+        varchar contact_email
+        varchar contact_phone
+        numeric total_amount
+        varchar currency
+        varchar status
+        bigint promotion_id FK
+    }
+
+    PASSENGERS {
+        bigint id PK
+        bigint booking_id FK
+        varchar first_name
+        varchar last_name
+        date date_of_birth
+        varchar passenger_type
+        varchar identify_type
+        varchar identify_number
+    }
+
+    FLIGHT_SEATS {
+        bigint id PK
+        bigint flight_id FK
+        bigint seat_id FK
+        varchar status
+        numeric price
+        bigint fare_class_id FK
+        bigint passenger_id FK
+        bigint booking_id FK
+    }
+
+    PAYMENTS {
+        bigint id PK
+        bigint booking_id FK
+        numeric amount
+        varchar payment_method
+        varchar payment_status
+        varchar transaction_id UK
+    }
+
+    SERVICES {
+        bigint id PK
+        varchar name
+        varchar type
+        boolean is_active
+    }
+
+    SERVICE_OPTIONS {
+        bigint id PK
+        bigint service_id FK
+        varchar name
+        numeric price
+        boolean is_active
+    }
+
+    BOOKING_SERVICES {
+        bigint id PK
+        bigint booking_id FK
+        bigint passenger_id FK
+        bigint service_id FK
+        int quantity
+        numeric price
+    }
+
+    TICKETS {
+        bigint id PK
+        bigint booking_id FK
+        bigint flight_fare_id FK
+        bigint passenger_id FK
+        bigint flight_id FK
+        bigint flight_seat_id FK
+        bigint fare_class_id FK
+        varchar ticket_number UK
+        varchar status
+    }
+
+    BOARDING_PASSES {
+        bigint id PK
+        bigint ticket_id FK
+        varchar gate
+        timestamptz boarding_time
+        boolean is_boarded
+    }
+
+    AIRCRAFT ||--o{ SEATS : has
+    AIRLINES ||--o{ FLIGHTS : operates
+    AIRPORTS ||--o{ FLIGHTS : departure
+    AIRPORTS ||--o{ FLIGHTS : arrival
+    AIRCRAFT ||--o{ FLIGHTS : assigned_to
+    FLIGHTS ||--o{ FLIGHT_FARES : has
+    FARE_CLASSES ||--o{ FLIGHT_FARES : prices
+    USERS ||--o{ BOOKINGS : creates
+    PROMOTIONS ||--o{ BOOKINGS : applies_to
+    BOOKINGS ||--o{ PASSENGERS : contains
+    FLIGHTS ||--o{ FLIGHT_SEATS : opens
+    SEATS ||--o{ FLIGHT_SEATS : maps
+    FARE_CLASSES ||--o{ FLIGHT_SEATS : classifies
+    PASSENGERS ||--o{ FLIGHT_SEATS : reserves
+    BOOKINGS ||--o{ FLIGHT_SEATS : holds
+    BOOKINGS ||--o{ PAYMENTS : pays
+    SERVICES ||--o{ SERVICE_OPTIONS : has
+    BOOKINGS ||--o{ BOOKING_SERVICES : adds
+    PASSENGERS ||--o{ BOOKING_SERVICES : uses
+    SERVICES ||--o{ BOOKING_SERVICES : provides
+    BOOKINGS ||--o{ TICKETS : issues
+    PASSENGERS ||--o{ TICKETS : owns
+    FLIGHTS ||--o{ TICKETS : belongs_to
+    FLIGHT_FARES ||--o{ TICKETS : prices
+    FLIGHT_SEATS ||--o{ TICKETS : assigns
+    FARE_CLASSES ||--o{ TICKETS : classifies
+    TICKETS ||--|| BOARDING_PASSES : generates
+```
+
+### Source Of Truth
+
+Quy uoc hien tai:
+
+- Flyway la nguon chinh de tao va thay doi schema
+- JPA entity map theo schema migration
+- production / integration mode nen uu tien:
+  - `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`
+  - `SPRING_FLYWAY_ENABLED=true`
+
+---
+
 ### Prerequisites
 
 - JDK 21
@@ -447,7 +775,7 @@ Dieu nay giup `contextLoads()` va test bootstrap chay on dinh hon.
 
 Co the bo sung tiep:
 
-- migration SQL trong module `database`
-- `@ConfigurationProperties` classes cho `app.jwt`, `app.booking`, `app.payment`
 - CI/CD workflow document
 - deployment guide cho Railway
+- Spring Data repositories theo tung module
+- controller va service implementation cho cac module nghiep vu
