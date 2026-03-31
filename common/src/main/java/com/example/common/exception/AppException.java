@@ -12,8 +12,7 @@ public class AppException extends RuntimeException {
     this(code, message, statusCode, Map.of());
   }
 
-  public AppException(
-      String code, String message, int statusCode, Map<String, Object> details) {
+  public AppException(String code, String message, int statusCode, Map<String, Object> details) {
     super(message);
     this.code = code;
     this.statusCode = statusCode;

@@ -1,7 +1,6 @@
 package com.example.modulepayment.entity;
 
 import com.example.modulebooking.entity.BookingEntity;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

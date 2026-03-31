@@ -35,10 +35,9 @@ public class GlobalExceptionHandler {
   ResponseEntity<ApiErrorResponse> handleAppException(
       AppException exception, HttpServletRequest request) {
     log.warn(
-        "Business exception: code={}, path={}, requestId={}, message={}",
+        "Business exception: code={}, path={}, message={}",
         exception.getCode(),
         request.getRequestURI(),
-        currentRequestId(),
         exception.getMessage());
     return buildErrorResponse(
         HttpStatusCode.valueOf(exception.getStatusCode()),
@@ -56,17 +55,9 @@ public class GlobalExceptionHandler {
       details.put(fieldError.getField(), fieldError.getDefaultMessage());
     }
 
-    log.warn(
-        "Validation failed: path={}, requestId={}, details={}",
-        request.getRequestURI(),
-        currentRequestId(),
-        details);
+    log.warn("Validation failed: path={}, details={}", request.getRequestURI(), details);
     return buildErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        "VALIDATION_ERROR",
-        "Validation failed",
-        details,
-        request);
+        HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", details, request);
   }
 
   @ExceptionHandler(HandlerMethodValidationException.class)
@@ -85,17 +76,9 @@ public class GlobalExceptionHandler {
                     (left, right) -> right,
                     LinkedHashMap::new));
 
-    log.warn(
-        "Method validation failed: path={}, requestId={}, details={}",
-        request.getRequestURI(),
-        currentRequestId(),
-        details);
+    log.warn("Method validation failed: path={}, details={}", request.getRequestURI(), details);
     return buildErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        "VALIDATION_ERROR",
-        "Validation failed",
-        details,
-        request);
+        HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", details, request);
   }
 
   @ExceptionHandler(ConstraintViolationException.class)
@@ -106,17 +89,9 @@ public class GlobalExceptionHandler {
       details.put(violation.getPropertyPath().toString(), violation.getMessage());
     }
 
-    log.warn(
-        "Constraint violation: path={}, requestId={}, details={}",
-        request.getRequestURI(),
-        currentRequestId(),
-        details);
+    log.warn("Constraint violation: path={}, details={}", request.getRequestURI(), details);
     return buildErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        "VALIDATION_ERROR",
-        "Validation failed",
-        details,
-        request);
+        HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", details, request);
   }
 
   @ExceptionHandler({
@@ -132,10 +107,7 @@ public class GlobalExceptionHandler {
             : HttpStatus.BAD_REQUEST;
 
     log.warn(
-        "HTTP request error: path={}, requestId={}, message={}",
-        request.getRequestURI(),
-        currentRequestId(),
-        exception.getMessage());
+        "HTTP request error: path={}, message={}", request.getRequestURI(), exception.getMessage());
     return buildErrorResponse(
         status, "BAD_REQUEST", "Request could not be processed", Map.of(), request);
   }
@@ -143,10 +115,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoResourceFoundException.class)
   ResponseEntity<ApiErrorResponse> handleNoResourceFound(
       NoResourceFoundException exception, HttpServletRequest request) {
-    log.warn(
-        "Resource not found: path={}, requestId={}",
-        request.getRequestURI(),
-        currentRequestId());
+    log.warn("Resource not found: path={}", request.getRequestURI());
     return buildErrorResponse(
         HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Resource not found", Map.of(), request);
   }
@@ -154,10 +123,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AccessDeniedException.class)
   ResponseEntity<ApiErrorResponse> handleAccessDenied(
       AccessDeniedException exception, HttpServletRequest request) {
-    log.warn(
-        "Access denied: path={}, requestId={}",
-        request.getRequestURI(),
-        currentRequestId());
+    log.warn("Access denied: path={}", request.getRequestURI());
     return buildErrorResponse(
         HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied", Map.of(), request);
   }
@@ -165,11 +131,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   ResponseEntity<ApiErrorResponse> handleUnhandledException(
       Exception exception, HttpServletRequest request) {
-    log.error(
-        "Unhandled system error: path={}, requestId={}",
-        request.getRequestURI(),
-        currentRequestId(),
-        exception);
+    log.error("Unhandled system error: path={}", request.getRequestURI(), exception);
     return buildErrorResponse(
         HttpStatus.INTERNAL_SERVER_ERROR,
         "INTERNAL_SERVER_ERROR",

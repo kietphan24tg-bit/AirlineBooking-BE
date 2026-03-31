@@ -1,8 +1,6 @@
 package com.example.appbootstrap.api;
 
 import com.example.appbootstrap.exception.ApiErrorResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpStatus;
@@ -16,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+import tools.jackson.databind.ObjectMapper;
 
 @ControllerAdvice(annotations = {RestController.class, Controller.class})
 public class ApiSuccessResponseBodyAdvice implements ResponseBodyAdvice<Object> {
@@ -45,13 +44,10 @@ public class ApiSuccessResponseBodyAdvice implements ResponseBodyAdvice<Object> 
       return body;
     }
 
-    ApiSuccessResponse<Object> wrappedBody = ApiSuccessResponse.of(body, resolveMessage(returnType));
+    ApiSuccessResponse<Object> wrappedBody =
+        ApiSuccessResponse.of(body, resolveMessage(returnType));
     if (StringHttpMessageConverter.class.isAssignableFrom(selectedConverterType)) {
-      try {
-        return objectMapper.writeValueAsString(wrappedBody);
-      } catch (JsonProcessingException exception) {
-        throw new IllegalStateException("Failed to serialize success response", exception);
-      }
+      return objectMapper.writeValueAsString(wrappedBody);
     }
     return wrappedBody;
   }

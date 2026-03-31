@@ -1,7 +1,5 @@
 package com.example.modulebooking.entity;
 
-import com.example.modulebooking.entity.ServiceEntity;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

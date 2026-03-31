@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="application"/>
     <springProperty scope="context" name="rootLevel" source="logging.level.root" defaultValue="INFO"/>
@@ -12,12 +11,12 @@
 
     <springProfile name="local">
         <property name="CONSOLE_PATTERN"
-                  value="%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%-5level) [%thread] %clr(${appName}){cyan} %clr(%logger{36}){yellow} traceId=%X{traceId:-} requestId=%X{requestId:-} - %msg%n%wEx"/>
+                  value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] ${appName} %logger{36} traceId=%X{traceId:-} requestId=%X{requestId:-} - %msg%n%ex"/>
     </springProfile>
 
     <springProfile name="!local">
         <property name="CONSOLE_PATTERN"
-                  value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] ${appName} %logger{36} traceId=%X{traceId:-} requestId=%X{requestId:-} - %msg%n%wEx"/>
+                  value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] ${appName} %logger{36} traceId=%X{traceId:-} requestId=%X{requestId:-} - %msg%n%ex"/>
     </springProfile>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

@@ -39,7 +39,8 @@ public class OpenApiConfig {
         .addTagsItem(new Tag().name("Flights").description("Flight search, schedules, and fares"))
         .addTagsItem(new Tag().name("Bookings").description("Booking, passenger, and ticket flows"))
         .addTagsItem(new Tag().name("Payments").description("Payment and transaction endpoints"))
-        .addTagsItem(new Tag().name("Check-in").description("Check-in and boarding pass endpoints"));
+        .addTagsItem(
+            new Tag().name("Check-in").description("Check-in and boarding pass endpoints"));
   }
 
   @Bean
@@ -68,10 +69,7 @@ public class OpenApiConfig {
 
   @Bean
   GroupedOpenApi paymentsApi() {
-    return GroupedOpenApi.builder()
-        .group("payments")
-        .pathsToMatch("/api/payments/**")
-        .build();
+    return GroupedOpenApi.builder().group("payments").pathsToMatch("/api/payments/**").build();
   }
 
   @Bean

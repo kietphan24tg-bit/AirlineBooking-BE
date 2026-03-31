@@ -3,7 +3,6 @@ package com.example.modulebooking.entity;
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.SeatEntity;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
