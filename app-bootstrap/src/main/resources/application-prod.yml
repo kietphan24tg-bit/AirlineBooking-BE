@@ -1,15 +1,4 @@
 spring:
-  autoconfigure:
-    exclude:
-      - org.springdoc.core.configuration.SpringDocConfiguration
-      - org.springdoc.core.configuration.SpringDocSecurityConfiguration
-      - org.springdoc.core.configuration.SpringDocPageableConfiguration
-      - org.springdoc.core.configuration.SpringDocSortConfiguration
-      - org.springdoc.core.configuration.SpringDocWebServerConfiguration.EmbeddedWebServerConfiguration
-      - org.springdoc.core.configuration.SpringDocWebServerConfiguration.DeployedWebServerConfiguration
-      - org.springdoc.webmvc.core.configuration.SpringDocWebMvcConfiguration
-      - org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfiguration
-      - org.springdoc.webmvc.ui.SwaggerConfig
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
