@@ -18,7 +18,8 @@ public class SecurityConfig {
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults()) // Kích hoạt CORS
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
@@ -27,13 +28,13 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/actuator/health",
                         "/error",
-                        "/api/auth/**",        // Mở khóa các Endpoint đăng nhập/đăng ký
-                        "/api/identity/**",    // Mở khóa các Endpoint liên quan identity
-                        "/api/flights/**")     // Xem chuyến bay thường là public endpoint
+                        "/api/auth/**", // Mở khóa các Endpoint đăng nhập/đăng ký
+                        "/api/identity/**", // Mở khóa các Endpoint liên quan identity
+                        "/api/flights/**") // Xem chuyến bay thường là public endpoint
                     .permitAll()
                     .anyRequest()
                     .authenticated());
-    
+
     // Đã xóa .httpBasic(Customizer.withDefaults()) để tránh trình duyệt hiện popup đăng nhập
 
     return http.build();
@@ -42,9 +43,10 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    // Cho phép gọi API từ mọi Frontend (localhost, domain ngoài) 
+    // Cho phép gọi API từ mọi Frontend (localhost, domain ngoài)
     configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedMethods(
+        Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(Arrays.asList("*"));
     configuration.setAllowCredentials(true);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
