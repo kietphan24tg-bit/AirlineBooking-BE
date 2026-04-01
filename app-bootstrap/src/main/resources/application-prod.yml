@@ -27,6 +27,13 @@ spring:
           auth: ${SPRING_MAIL_SMTP_AUTH:true}
           starttls:
             enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:true}
+  autoconfigure:
+    exclude:
+      - org.springdoc.webmvc.ui.SwaggerUiHome
+      - org.springdoc.webmvc.core.configuration.SpringDocWebMvcActuatorConfiguration
+      - org.springdoc.core.configuration.SpringDocSecurityConfiguration
+      - org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfiguration
+      - org.springdoc.webmvc.core.configuration.SpringDocWebMvcConfiguration
 
 logging:
   level:
@@ -44,6 +51,7 @@ app:
 
 springdoc:
   api-docs:
-    enabled: ${APP_SWAGGER_ENABLED:false}
+    enabled: false
   swagger-ui:
-    enabled: ${APP_SWAGGER_ENABLED:false}
+    enabled: false
+
