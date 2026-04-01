@@ -29,11 +29,30 @@ spring:
             enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:true}
   autoconfigure:
     exclude:
-      - org.springdoc.webmvc.ui.SwaggerUiHome
-      - org.springdoc.webmvc.core.configuration.SpringDocWebMvcActuatorConfiguration
-      - org.springdoc.core.configuration.SpringDocSecurityConfiguration
-      - org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfiguration
+      # springdoc-openapi-starter-webmvc-ui auto-configs
+      - org.springdoc.webmvc.ui.SwaggerConfig
+      - org.springdoc.core.properties.SwaggerUiConfigProperties
+      - org.springdoc.core.properties.SwaggerUiOAuthProperties
+      # springdoc-openapi-starter-webmvc-api auto-configs
       - org.springdoc.webmvc.core.configuration.SpringDocWebMvcConfiguration
+      - org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfiguration
+      # springdoc-openapi-starter-common auto-configs
+      - org.springdoc.core.configuration.SpringDocConfiguration
+      - org.springdoc.core.properties.SpringDocConfigProperties
+      - org.springdoc.core.configuration.SpringDocJavadocConfiguration
+      - org.springdoc.core.configuration.SpringDocGroovyConfiguration
+      - org.springdoc.core.configuration.SpringDocSecurityConfiguration
+      - org.springdoc.core.configuration.SpringDocFunctionCatalogConfiguration
+      - org.springdoc.core.configuration.SpringDocHateoasConfiguration
+      - org.springdoc.core.configuration.SpringDocPageableConfiguration
+      - org.springdoc.core.configuration.SpringDocSortConfiguration
+      - org.springdoc.core.configuration.SpringDocSpecPropertiesConfiguration
+      - org.springdoc.core.configuration.SpringDocDataRestConfiguration
+      - org.springdoc.core.configuration.SpringDocKotlinConfiguration
+      - org.springdoc.core.configuration.SpringDocKotlinxConfiguration
+      - org.springdoc.core.configuration.SpringDocJacksonKotlinModuleConfiguration
+      - org.springdoc.core.configuration.SpringDocWebServerConfiguration.EmbeddedWebServerConfiguration
+      - org.springdoc.core.configuration.SpringDocWebServerConfiguration.DeployedWebServerConfiguration
 
 logging:
   level:
@@ -54,4 +73,4 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
-
+  show-actuator: false
