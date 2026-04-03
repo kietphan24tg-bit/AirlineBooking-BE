@@ -334,6 +334,17 @@ erDiagram
         boolean is_verify
         varchar nationality
         varchar identify_number
+        varchar role
+    }
+
+    REFRESH_TOKEN_SESSIONS {
+        bigint id PK
+        bigint user_id FK
+        text refresh_token UK
+        boolean revoked
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     AIRPORTS {
@@ -509,6 +520,7 @@ erDiagram
     AIRCRAFT ||--o{ FLIGHTS : assigned_to
     FLIGHTS ||--o{ FLIGHT_FARES : has
     FARE_CLASSES ||--o{ FLIGHT_FARES : prices
+    USERS ||--o{ REFRESH_TOKEN_SESSIONS : has
     USERS ||--o{ BOOKINGS : creates
     PROMOTIONS ||--o{ BOOKINGS : applies_to
     BOOKINGS ||--o{ PASSENGERS : contains
