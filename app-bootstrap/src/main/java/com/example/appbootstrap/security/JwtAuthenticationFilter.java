@@ -50,8 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       String email = jwtService.extractEmail(token);
 
       // Chỉ xác thực nếu chưa có authentication trong context
-      if (email != null
-          && SecurityContextHolder.getContext().getAuthentication() == null) {
+      if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
         // Chỉ chấp nhận access token, không cho dùng refresh token để gọi API
         if (!jwtService.isAccessToken(token)) {
@@ -63,14 +62,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
         if (jwtService.isTokenValid(token, userDetails.getUsername())) {
-          //authentication object: mark user as authenticated
+          // authentication object: mark user as authenticated
           UsernamePasswordAuthenticationToken authToken =
               new UsernamePasswordAuthenticationToken(
                   userDetails, null, userDetails.getAuthorities());
-          //set details: ip address, session id, etc.
-          authToken.setDetails(
-              new WebAuthenticationDetailsSource().buildDetails(request));
-          //set authentication in security context: spring security know this request authenticated 
+          // set details: ip address, session id, etc.
+          authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+          // set authentication in security context: spring security know this request authenticated
           SecurityContextHolder.getContext().setAuthentication(authToken);
         }
       }
@@ -78,7 +76,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       log.warn("Invalid JWT: {}", e.getMessage());
       // Không throw exception — để filter chain tiếp tục, SecurityConfig sẽ trả 401
     }
-//cho req đi tiếp 
+    // cho req đi tiếp
     filterChain.doFilter(request, response);
   }
 

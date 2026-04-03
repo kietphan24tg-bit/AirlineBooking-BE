@@ -26,7 +26,8 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
       HttpServletResponse response,
       AuthenticationException authException)
       throws IOException, ServletException {
-    // Chuyển exception về cho HandlerExceptionResolver để ControllerAdvice (GlobalExceptionHandler) xử lý
+    // Chuyển exception về cho HandlerExceptionResolver để ControllerAdvice (GlobalExceptionHandler)
+    // xử lý
     resolver.resolveException(request, response, null, authException);
   }
 }

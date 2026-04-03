@@ -40,21 +40,20 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
-       
         .cors(Customizer.withDefaults())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(
             exceptions ->
 
-              //catch exception overrided 
+                // catch exception overrided
                 exceptions
                     .authenticationEntryPoint(customAuthenticationEntryPoint)
                     .accessDeniedHandler(customAccessDeniedHandler))
         .authorizeHttpRequests(
             auth ->
 
-            //public api 
+                // public api
                 auth.requestMatchers(
                         "/swagger-ui.html",
                         "/swagger-ui/**",
@@ -64,16 +63,15 @@ public class SecurityConfig {
                         "/api/auth/**",
                         "/api/flights/**")
                     .permitAll()
-                    //admin api
+                    // admin api
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
-                    //manager api
+                    // manager api
                     .requestMatchers("/api/management/**")
                     .hasAnyRole("MANAGER", "ADMIN")
-                     //all other api require authentication
+                    // all other api require authentication
                     .anyRequest()
                     .authenticated())
-                   
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
@@ -95,7 +93,8 @@ public class SecurityConfig {
     CorsConfiguration configuration = new CorsConfiguration();
     configuration.setAllowedOriginPatterns(
         Arrays.asList("http://localhost:3000", "http://localhost:5173", "https://*.railway.app"));
-    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedMethods(
+        Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(
         Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
     configuration.setAllowCredentials(true);

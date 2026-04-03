@@ -109,7 +109,10 @@ class WebInfrastructureIntegrationTest {
 
   @Test
   void shouldExposeHealthEndpointWithoutAuthentication() throws Exception {
-    mockMvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));
+    mockMvc
+        .perform(get("/actuator/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
   }
 
   @Test
@@ -117,7 +120,9 @@ class WebInfrastructureIntegrationTest {
     mockMvc
         .perform(
             get("/test/admin-only")
-                .with(user(new AppUserPrincipal(100L, "user@example.com", "secret", true, Role.USER))))
+                .with(
+                    user(
+                        new AppUserPrincipal(100L, "user@example.com", "secret", true, Role.USER))))
         .andExpect(status().isForbidden())
         .andExpect(header().exists("X-Request-Id"))
         .andExpect(jsonPath("$.success").value(false))
@@ -130,7 +135,9 @@ class WebInfrastructureIntegrationTest {
     mockMvc
         .perform(
             get("/test/admin-only")
-                .with(user(new AppUserPrincipal(1L, "admin@example.com", "secret", true, Role.ADMIN))))
+                .with(
+                    user(
+                        new AppUserPrincipal(1L, "admin@example.com", "secret", true, Role.ADMIN))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.value").value("admin"));
   }
@@ -140,7 +147,9 @@ class WebInfrastructureIntegrationTest {
     mockMvc
         .perform(
             get("/test/users/42")
-                .with(user(new AppUserPrincipal(42L, "owner@example.com", "secret", true, Role.USER))))
+                .with(
+                    user(
+                        new AppUserPrincipal(42L, "owner@example.com", "secret", true, Role.USER))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.userId").value(42));
   }
@@ -150,7 +159,8 @@ class WebInfrastructureIntegrationTest {
     mockMvc
         .perform(
             get("/test/users/42")
-                .with(user(new AppUserPrincipal(7L, "other@example.com", "secret", true, Role.USER))))
+                .with(
+                    user(new AppUserPrincipal(7L, "other@example.com", "secret", true, Role.USER))))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
   }
