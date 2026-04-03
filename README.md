@@ -94,6 +94,7 @@ Config runtime chinh duoc dat tai `app-bootstrap/src/main/resources`:
 
 - [application.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application.yml)
 - [application-local.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application-local.yml)
+- [application-staging.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application-staging.yml)
 - [application-prod.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application-prod.yml)
 
 Template env dat tai:
@@ -139,6 +140,18 @@ Chua config production:
 - Flyway production settings
 - mail production settings
 - logging level production
+- Swagger tat o production
+
+#### `application-staging.yml`
+
+Chua config staging:
+
+- PostgreSQL / Supabase datasource
+- JPA staging settings
+- Flyway staging settings
+- mail staging settings
+- logging level staging
+- Swagger bat o staging
 
 ### Environment Variables
 
@@ -184,12 +197,12 @@ Nhom bien quan trong:
 
 ### Supabase Notes
 
-Production database du kien dung Supabase PostgreSQL.
+Staging va production deu co the dung Supabase PostgreSQL.
 
 JDBC URL mau:
 
 ```text
-jdbc:postgresql://aws-1-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+jdbc:postgresql://aws-1-<region>.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
 Username mau:
@@ -678,9 +691,9 @@ Tren Railway, set env vars trong service settings.
 ### Minimum Production Variables
 
 ```text
-SPRING_PROFILES_ACTIVE=prod
+SPRING_PROFILES_ACTIVE=staging
 SERVER_PORT=8080
-SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-<region>.pooler.supabase.com:6543/postgres?sslmode=require
 SPRING_DATASOURCE_USERNAME=postgres.<project-ref>
 SPRING_DATASOURCE_PASSWORD=<supabase-db-password>
 SPRING_JPA_HIBERNATE_DDL_AUTO=validate
@@ -707,10 +720,11 @@ SPRING_MAIL_SMTP_STARTTLS_ENABLE=true
 APP_MAIL_FROM=noreply@airline-booking.com
 ```
 
-### Production Rule
+### Profile Rule
 
 - local dung `SPRING_PROFILES_ACTIVE=local`
-- Railway dung `SPRING_PROFILES_ACTIVE=prod`
+- Railway staging dung `SPRING_PROFILES_ACTIVE=staging`
+- Railway production dung `SPRING_PROFILES_ACTIVE=prod`
 - khong hardcode secret trong `application*.yml`
 
 ---

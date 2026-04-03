@@ -128,6 +128,14 @@ public class GlobalExceptionHandler {
         HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied", Map.of(), request);
   }
 
+  @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+  ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+      org.springframework.security.core.AuthenticationException exception, HttpServletRequest request) {
+    log.warn("Authentication failed: path={}", request.getRequestURI());
+    return buildErrorResponse(
+        HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication failed", Map.of(), request);
+  }
+
   @ExceptionHandler(Exception.class)
   ResponseEntity<ApiErrorResponse> handleUnhandledException(
       Exception exception, HttpServletRequest request) {

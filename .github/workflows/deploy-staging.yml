@@ -63,15 +63,23 @@ jobs:
         with:
           context: .
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_REPOSITORY }}:staging
-            ${{ secrets.DOCKERHUB_REPOSITORY }}:sha-${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_REPOSITORY }}:staging
+
+      - name: Trigger Railway redeploy (staging)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -e
+          test -n "$RAILWAY_TOKEN"
+          test -n "${{ secrets.RAILWAY_SERVICE_ID }}"
+          npm i -g @railway/cli
+          railway redeploy --service "${{ secrets.RAILWAY_SERVICE_ID }}" --yes
 
       - name: Explain Railway staging behavior
         run: |
           echo "Staging image pushed to Docker Hub."
-          echo "Configure Railway staging service source to watch the ':staging' tag."
-          echo "Railway image auto updates must be enabled on that service for automatic redeploys."
+          echo "Redeploy was triggered via Railway CLI (recommended)."
+          echo "Optional: also enable image auto-updates on the Railway service if you want a fallback."
 
       - name: Upload reports on failure
         if: failure()

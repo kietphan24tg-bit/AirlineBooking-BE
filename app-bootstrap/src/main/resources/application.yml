@@ -1,54 +1,54 @@
 spring:
-  application:
-    name: airline-booking
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    application:
+        name: airline-booking
+    profiles:
+        active: ${SPRING_PROFILES_ACTIVE:local}
 
 server:
-  port: ${SERVER_PORT:8080}
-  forward-headers-strategy: framework
+    port: ${SERVER_PORT:8080}
+    forward-headers-strategy: framework
 
 springdoc:
-  api-docs:
-    enabled: ${APP_SWAGGER_ENABLED:true}
-    path: /v3/api-docs
-  swagger-ui:
-    enabled: ${APP_SWAGGER_ENABLED:true}
-    path: /swagger-ui.html
-    operations-sorter: method
-    tags-sorter: alpha
-    display-request-duration: true
-    doc-expansion: none
-  default-consumes-media-type: application/json
-  default-produces-media-type: application/json
+    api-docs:
+        enabled: ${APP_SWAGGER_ENABLED:true}
+        path: /v3/api-docs
+    swagger-ui:
+        enabled: ${APP_SWAGGER_ENABLED:true}
+        path: /swagger-ui.html
+        operations-sorter: method
+        tags-sorter: alpha
+        display-request-duration: true
+        doc-expansion: none
+    default-consumes-media-type: application/json
+    default-produces-media-type: application/json
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+    endpoints:
+        web:
+            exposure:
+                include: health,info
 
 app:
-  jwt:
-    secret: ${APP_JWT_SECRET:change-me-in-local}
-    access-token-expiration-minutes: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:15}
-    refresh-token-expiration-days: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_DAYS:7}
-  booking:
-    pnr-expiration-minutes: ${APP_BOOKING_PNR_EXPIRATION_MINUTES:15}
-    checkin-open-hours: ${APP_BOOKING_CHECKIN_OPEN_HOURS:24}
-    domestic-checkin-close-minutes: ${APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES:40}
-    international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
-  payment:
-    provider: ${APP_PAYMENT_PROVIDER:mock}
-    webhook-secret: ${APP_PAYMENT_WEBHOOK_SECRET:change-me}
-    return-url: ${APP_PAYMENT_RETURN_URL:http://localhost:3000/payment/success}
-    cancel-url: ${APP_PAYMENT_CANCEL_URL:http://localhost:3000/payment/cancel}
-  mail:
-    from: ${APP_MAIL_FROM:noreply@airline-booking.local}
-  logging:
-    request-id-header: ${APP_REQUEST_ID_HEADER:X-Request-Id}
-    json-enabled: ${APP_LOG_JSON_ENABLED:false}
-  swagger:
-    title: ${APP_SWAGGER_TITLE:Airline Booking API}
-    description: ${APP_SWAGGER_DESCRIPTION:Modular monolith backend for airline booking, payment, notification, and check-in workflows.}
-    version: ${APP_SWAGGER_VERSION:v1}
+    jwt:
+        secret: ${APP_JWT_SECRET:Y2hhbmdlLW1lLWluLWxvY2FsLWRldmVsb3BtZW50LWp3dC1zZWNyZXQta2V5LTMyLWNoYXJzLXVwZGF0ZWQ=}
+        access-token-expiration-minutes: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:15}
+        refresh-token-expiration-days: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_DAYS:7}
+    booking:
+        pnr-expiration-minutes: ${APP_BOOKING_PNR_EXPIRATION_MINUTES:15}
+        checkin-open-hours: ${APP_BOOKING_CHECKIN_OPEN_HOURS:24}
+        domestic-checkin-close-minutes: ${APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES:40}
+        international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
+    payment:
+        provider: ${APP_PAYMENT_PROVIDER:mock}
+        webhook-secret: ${APP_PAYMENT_WEBHOOK_SECRET:change-me}
+        return-url: ${APP_PAYMENT_RETURN_URL:http://localhost:3000/payment/success}
+        cancel-url: ${APP_PAYMENT_CANCEL_URL:http://localhost:3000/payment/cancel}
+    mail:
+        from: ${APP_MAIL_FROM:noreply@airline-booking.local}
+    logging:
+        request-id-header: ${APP_REQUEST_ID_HEADER:X-Request-Id}
+        json-enabled: ${APP_LOG_JSON_ENABLED:false}
+    swagger:
+        title: ${APP_SWAGGER_TITLE:Airline Booking API}
+        description: ${APP_SWAGGER_DESCRIPTION:Modular monolith backend for airline booking, payment, notification, and check-in workflows.}
+        version: ${APP_SWAGGER_VERSION:v1}

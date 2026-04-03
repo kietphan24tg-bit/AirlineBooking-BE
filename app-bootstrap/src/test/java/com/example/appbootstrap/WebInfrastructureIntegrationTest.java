@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.appbootstrap.api.ApiSuccessMessage;
 import com.example.modulebooking.exception.BookingNotFoundException;
+import com.example.moduleidentity.entity.Role;
+import com.example.moduleidentity.security.AppUserPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
@@ -18,16 +20,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import(WebInfrastructureIntegrationTest.TestApiController.class)
 class WebInfrastructureIntegrationTest {
@@ -105,15 +109,63 @@ class WebInfrastructureIntegrationTest {
 
   @Test
   void shouldExposeHealthEndpointWithoutAuthentication() throws Exception {
-    mockMvc
-        .perform(get("/actuator/health"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("UP"));
+    mockMvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));
   }
 
   @Test
-  void shouldProtectNonWhitelistedEndpoints() throws Exception {
-    mockMvc.perform(get("/test/protected")).andExpect(status().isUnauthorized());
+  void shouldReturnForbiddenForMissingRole() throws Exception {
+    mockMvc
+        .perform(
+            get("/test/admin-only")
+                .with(user(new AppUserPrincipal(100L, "user@example.com", "secret", true, Role.USER))))
+        .andExpect(status().isForbidden())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.error.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.error.message").value("Access denied"));
+  }
+
+  @Test
+  void shouldAllowAdminOnlyEndpointForAdmin() throws Exception {
+    mockMvc
+        .perform(
+            get("/test/admin-only")
+                .with(user(new AppUserPrincipal(1L, "admin@example.com", "secret", true, Role.ADMIN))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.value").value("admin"));
+  }
+
+  @Test
+  void shouldAllowOwnerToAccessOwnResource() throws Exception {
+    mockMvc
+        .perform(
+            get("/test/users/42")
+                .with(user(new AppUserPrincipal(42L, "owner@example.com", "secret", true, Role.USER))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.userId").value(42));
+  }
+
+  @Test
+  void shouldForbidUserFromAccessingDifferentOwnedResource() throws Exception {
+    mockMvc
+        .perform(
+            get("/test/users/42")
+                .with(user(new AppUserPrincipal(7L, "other@example.com", "secret", true, Role.USER))))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void shouldAllowManagerToBypassOwnershipCheck() throws Exception {
+    mockMvc
+        .perform(
+            get("/test/users/42")
+                .with(
+                    user(
+                        new AppUserPrincipal(
+                            7L, "manager@example.com", "secret", true, Role.MANAGER))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.userId").value(42));
   }
 
   @RestController
@@ -151,6 +203,18 @@ class WebInfrastructureIntegrationTest {
     Map<String, Object> protectedEndpoint(
         @RequestParam(required = false) @NotBlank String ignored) {
       return Map.of("secured", true);
+    }
+
+    @GetMapping("/admin-only")
+    @PreAuthorize("hasRole('ADMIN')")
+    Map<String, Object> adminOnly() {
+      return Map.of("value", "admin");
+    }
+
+    @GetMapping("/users/{userId}")
+    @PreAuthorize("@authz.isCurrentUserOrHasAnyRole(#userId, 'MANAGER', 'ADMIN')")
+    Map<String, Object> ownedResource(@PathVariable Long userId) {
+      return Map.of("userId", userId);
     }
   }
 

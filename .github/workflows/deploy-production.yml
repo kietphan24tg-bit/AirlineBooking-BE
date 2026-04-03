@@ -74,15 +74,23 @@ jobs:
         with:
           context: .
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_REPOSITORY }}:${{ inputs.image_tag }}
-            ${{ secrets.DOCKERHUB_REPOSITORY }}:sha-${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_REPOSITORY }}:${{ inputs.image_tag }}
+
+      - name: Trigger Railway redeploy (production)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -e
+          test -n "$RAILWAY_TOKEN"
+          test -n "${{ secrets.RAILWAY_SERVICE_ID }}"
+          npm i -g @railway/cli
+          railway redeploy --service "${{ secrets.RAILWAY_SERVICE_ID }}" --yes
 
       - name: Explain Railway production behavior
         run: |
           echo "Production image pushed to Docker Hub."
-          echo "Configure Railway production service source to watch the ':${{ inputs.image_tag }}' tag."
-          echo "Railway image auto updates or a manual Railway redeploy is required to move production to the new image."
+          echo "Redeploy was triggered via Railway CLI (recommended)."
+          echo "Optional: also enable image auto-updates on the Railway service if you want a fallback."
 
       - name: Upload reports on failure
         if: failure()

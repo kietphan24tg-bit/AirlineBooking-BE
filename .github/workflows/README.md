@@ -100,9 +100,11 @@ You need to configure separate Railway deployment targets.
 Recommended setup:
 - Railway staging service or staging environment watches:
   - `docker.io/<repository>:staging`
+  - `SPRING_PROFILES_ACTIVE=staging`
 - Railway production service or production environment watches:
   - `docker.io/<repository>:production`
   - or another explicit release tag such as `v1.0.0`
+  - `SPRING_PROFILES_ACTIVE=prod`
 
 Practical note:
 - Railway must be configured to use a Docker image source instead of source-code deployment.

@@ -39,6 +39,10 @@ out/
 ### VS Code ###
 .vscode/
 
+### Logs & temp ###
+*.log
+tmp/
+
 ### Env files ###
 .env
 .env.*

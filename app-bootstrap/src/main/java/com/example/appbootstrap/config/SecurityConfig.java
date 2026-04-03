@@ -1,59 +1,106 @@
 package com.example.appbootstrap.config;
 
+import com.example.appbootstrap.security.CustomAccessDeniedHandler;
+import com.example.appbootstrap.security.CustomAuthenticationEntryPoint;
+import com.example.appbootstrap.security.JwtAuthenticationFilter;
 import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
+
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+  private final CustomAccessDeniedHandler customAccessDeniedHandler;
+
+  public SecurityConfig(
+      JwtAuthenticationFilter jwtAuthenticationFilter,
+      CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
+      CustomAccessDeniedHandler customAccessDeniedHandler) {
+    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
+    this.customAccessDeniedHandler = customAccessDeniedHandler;
+  }
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
-        .cors(Customizer.withDefaults()) // Kích hoạt CORS
+       
+        .cors(Customizer.withDefaults())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(
             exceptions ->
-                exceptions.authenticationEntryPoint(
-                    new org.springframework.security.web.authentication.HttpStatusEntryPoint(
-                        org.springframework.http.HttpStatus.UNAUTHORIZED)))
+
+              //catch exception overrided 
+                exceptions
+                    .authenticationEntryPoint(customAuthenticationEntryPoint)
+                    .accessDeniedHandler(customAccessDeniedHandler))
         .authorizeHttpRequests(
             auth ->
+
+            //public api 
                 auth.requestMatchers(
                         "/swagger-ui.html",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/actuator/health",
                         "/error",
-                        "/api/auth/**", // Mở khóa các Endpoint đăng nhập/đăng ký
-                        "/api/identity/**", // Mở khóa các Endpoint liên quan identity
-                        "/api/flights/**") // Xem chuyến bay thường là public endpoint
+                        "/api/auth/**",
+                        "/api/flights/**")
                     .permitAll()
+                    //admin api
+                    .requestMatchers("/api/admin/**")
+                    .hasRole("ADMIN")
+                    //manager api
+                    .requestMatchers("/api/management/**")
+                    .hasAnyRole("MANAGER", "ADMIN")
+                     //all other api require authentication
                     .anyRequest()
-                    .authenticated());
-
-    // Đã xóa .httpBasic(Customizer.withDefaults()) để tránh trình duyệt hiện popup đăng nhập
+                    .authenticated())
+                   
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
 
   @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+      throws Exception {
+    return config.getAuthenticationManager();
+  }
+
+  @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    // Cho phép gọi API từ mọi Frontend (localhost, domain ngoài)
-    configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-    configuration.setAllowedMethods(
-        Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    configuration.setAllowedHeaders(Arrays.asList("*"));
+    configuration.setAllowedOriginPatterns(
+        Arrays.asList("http://localhost:3000", "http://localhost:5173", "https://*.railway.app"));
+    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(
+        Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
     configuration.setAllowCredentials(true);
+
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;

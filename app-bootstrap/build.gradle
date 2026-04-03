@@ -2,6 +2,8 @@ plugins {
     id 'org.springframework.boot'
 }
 
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 dependencies {
     implementation project(':common')
     implementation project(':database')
@@ -23,9 +25,42 @@ dependencies {
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.1'
 
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
     runtimeOnly 'org.postgresql:postgresql:42.7.7'
     testRuntimeOnly 'com.h2database:h2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.named('bootRun', BootRun) {
+    def envFile = rootProject.file('.env')
+
+    if (envFile.exists()) {
+        envFile.eachLine('UTF-8') { rawLine ->
+            def line = rawLine?.trim()
+            if (!line || line.startsWith('#')) {
+                return
+            }
+
+            def separatorIndex = line.indexOf('=')
+            if (separatorIndex <= 0) {
+                return
+            }
+
+            def key = line.substring(0, separatorIndex).trim()
+            def value = line.substring(separatorIndex + 1).trim()
+
+            if (value.length() >= 2 && value.startsWith('"') && value.endsWith('"')) {
+                value = value.substring(1, value.length() - 1)
+            }
+
+            environment key, value
+        }
+    } else {
+        logger.lifecycle('No .env file found at {}. bootRun will use the current shell environment.', envFile)
+    }
 }
