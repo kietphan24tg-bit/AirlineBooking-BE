@@ -1,23 +1,23 @@
 package com.example.appbootstrap.security;
 
-import jakarta.servlet.ServletException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import org.springframework.beans.factory.annotation.Qualifier;
+import java.time.OffsetDateTime;
+import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
 @Component
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-  private final HandlerExceptionResolver resolver;
+  private final ObjectMapper objectMapper;
 
-  public CustomAuthenticationEntryPoint(
-      @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) {
-    this.resolver = resolver;
+  public CustomAuthenticationEntryPoint(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -25,9 +25,21 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
       HttpServletRequest request,
       HttpServletResponse response,
       AuthenticationException authException)
-      throws IOException, ServletException {
-    // Chuyển exception về cho HandlerExceptionResolver để ControllerAdvice (GlobalExceptionHandler)
-    // xử lý
-    resolver.resolveException(request, response, null, authException);
+      throws IOException {
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+    Map<String, Object> body =
+        Map.of(
+            "success", false,
+            "status", 401,
+            "error",
+                Map.of(
+                    "code", "UNAUTHORIZED",
+                    "message", "Authentication required"),
+            "path", request.getRequestURI(),
+            "timestamp", OffsetDateTime.now().toString());
+
+    objectMapper.writeValue(response.getOutputStream(), body);
   }
 }
