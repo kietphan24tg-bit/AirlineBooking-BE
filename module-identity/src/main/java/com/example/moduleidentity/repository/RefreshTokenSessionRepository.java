@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RefreshTokenSessionRepository extends JpaRepository<RefreshTokenSessionEntity, Long> {
+public interface RefreshTokenSessionRepository
+    extends JpaRepository<RefreshTokenSessionEntity, Long> {
 
   Optional<RefreshTokenSessionEntity> findByRefreshToken(String refreshToken);
 

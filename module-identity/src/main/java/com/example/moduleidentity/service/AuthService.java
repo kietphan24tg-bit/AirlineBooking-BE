@@ -20,8 +20,7 @@ public class AuthService {
   }
 
   @Transactional
-  public UserEntity register(
-      String email, String password, String firstName, String lastName) {
+  public UserEntity register(String email, String password, String firstName, String lastName) {
     if (userRepository.existsByEmail(email)) {
       throw new AppException("EMAIL_ALREADY_EXISTS", "Email is already registered", 409);
     }
@@ -43,9 +42,7 @@ public class AuthService {
     return userRepository
         .findByEmail(email)
         .orElseThrow(
-            () ->
-                new AppException(
-                    "USER_NOT_FOUND", "User not found with email: " + email, 404));
+            () -> new AppException("USER_NOT_FOUND", "User not found with email: " + email, 404));
   }
 
   @Transactional(readOnly = true)
