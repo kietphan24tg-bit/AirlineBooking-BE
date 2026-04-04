@@ -1,4 +1,4 @@
-package com.example.moduleidentity.security;
+package com.example.moduleidentity.application.security;
 
 import com.example.moduleidentity.entity.Role;
 import java.util.Collection;
@@ -12,17 +12,21 @@ public class AppUserPrincipal implements UserDetails {
   private final Long userId;
   private final String email;
   private final String passwordHash;
-  private final boolean enabled;
   private final Role role;
+  private final java.time.OffsetDateTime tokenInvalidBefore;
   private final List<GrantedAuthority> authorities;
 
   public AppUserPrincipal(
-      Long userId, String email, String passwordHash, boolean enabled, Role role) {
+      Long userId,
+      String email,
+      String passwordHash,
+      Role role,
+      java.time.OffsetDateTime tokenInvalidBefore) {
     this.userId = userId;
     this.email = email;
     this.passwordHash = passwordHash;
-    this.enabled = enabled;
     this.role = role;
+    this.tokenInvalidBefore = tokenInvalidBefore;
     this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
   }
 
@@ -36,6 +40,10 @@ public class AppUserPrincipal implements UserDetails {
 
   public Role getRole() {
     return role;
+  }
+
+  public java.time.OffsetDateTime getTokenInvalidBefore() {
+    return tokenInvalidBefore;
   }
 
   @Override
@@ -70,6 +78,6 @@ public class AppUserPrincipal implements UserDetails {
 
   @Override
   public boolean isEnabled() {
-    return enabled;
+    return true;
   }
 }

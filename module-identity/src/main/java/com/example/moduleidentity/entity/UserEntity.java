@@ -33,7 +33,7 @@ public class UserEntity {
   @Column(name = "last_name", nullable = false, length = 100)
   private String lastName;
 
-  @Column(length = 30)
+  @Column(length = 30, unique = true)
   private String phone;
 
   @Column(name = "dob")
@@ -41,9 +41,6 @@ public class UserEntity {
 
   @Column(name = "password_hash", nullable = false, length = 255)
   private String passwordHash;
-
-  @Column(name = "is_verify", nullable = false)
-  private boolean isVerify;
 
   @Column(length = 100)
   private String nationality;
@@ -55,9 +52,15 @@ public class UserEntity {
   @Column(nullable = false, length = 20)
   private Role role = Role.USER;
 
+  @Column(name = "accept_terms", nullable = false)
+  private boolean acceptTerms;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
+
+  @Column(name = "token_invalid_before")
+  private OffsetDateTime tokenInvalidBefore;
 }

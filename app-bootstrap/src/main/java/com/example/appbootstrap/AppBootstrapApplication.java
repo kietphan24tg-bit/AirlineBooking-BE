@@ -6,6 +6,7 @@ import com.example.appbootstrap.config.LoggingProperties;
 import com.example.appbootstrap.config.MailProperties;
 import com.example.appbootstrap.config.PaymentProperties;
 import com.example.appbootstrap.config.SwaggerProperties;
+import com.example.moduleidentity.config.RateLimitProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -21,7 +22,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
   PaymentProperties.class,
   MailProperties.class,
   LoggingProperties.class,
-  SwaggerProperties.class
+  SwaggerProperties.class,
+  RateLimitProperties.class
 })
 public class AppBootstrapApplication {
 

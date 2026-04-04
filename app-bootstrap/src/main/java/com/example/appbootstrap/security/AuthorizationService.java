@@ -1,6 +1,6 @@
 package com.example.appbootstrap.security;
 
-import com.example.moduleidentity.security.AppUserPrincipal;
+import com.example.moduleidentity.application.security.AppUserPrincipal;
 import java.util.Arrays;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

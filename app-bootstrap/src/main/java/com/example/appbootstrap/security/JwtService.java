@@ -10,9 +10,11 @@ import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Service;
@@ -61,6 +63,10 @@ public class JwtService {
     return "access".equals(extractClaim(token, c -> c.get("type", String.class)));
   }
 
+  public boolean isRefreshToken(String token) {
+    return "refresh".equals(extractClaim(token, c -> c.get("type", String.class)));
+  }
+
   // ── Claim Extraction ──────────────────────────────────────────────
 
   public String extractEmail(String token) {
@@ -71,6 +77,10 @@ public class JwtService {
     return extractClaim(token, c -> c.get("userId", Long.class));
   }
 
+  public OffsetDateTime extractIssuedAt(String token) {
+    return extractClaim(token, Claims::getIssuedAt).toInstant().atOffset(java.time.ZoneOffset.UTC);
+  }
+
   public <T> T extractClaim(String token, Function<Claims, T> resolver) {
     return resolver.apply(extractAllClaims(token));
   }
@@ -78,10 +88,12 @@ public class JwtService {
   // ── Private Helpers ───────────────────────────────────────────────
 
   private String buildToken(Map<String, Object> extraClaims, String subject, Instant expiry) {
+    Instant issuedAt = Instant.now();
     return Jwts.builder()
         .claims(extraClaims)
         .subject(subject)
-        .issuedAt(Date.from(Instant.now()))
+        .id(UUID.randomUUID().toString())
+        .issuedAt(Date.from(issuedAt))
         .expiration(Date.from(expiry))
         .signWith(signingKey)
         .compact();

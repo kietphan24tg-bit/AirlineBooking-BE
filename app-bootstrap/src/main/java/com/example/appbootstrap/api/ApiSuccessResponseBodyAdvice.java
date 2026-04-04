@@ -64,7 +64,7 @@ public class ApiSuccessResponseBodyAdvice implements ResponseBodyAdvice<Object> 
         || body instanceof ApiErrorResponse
         || body instanceof byte[]
         || body instanceof String) {
-      return false;
+      return true;
     }
 
     String path = request.getURI().getPath();

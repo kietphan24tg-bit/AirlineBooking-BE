@@ -1,8 +1,7 @@
-package com.example.moduleidentity.service;
+package com.example.moduleidentity.application.security;
 
 import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.UserRepository;
-import com.example.moduleidentity.security.AppUserPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -26,6 +25,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 () -> new UsernameNotFoundException("User not found with email: " + email));
 
     return new AppUserPrincipal(
-        user.getId(), user.getEmail(), user.getPasswordHash(), user.isVerify(), user.getRole());
+        user.getId(),
+        user.getEmail(),
+        user.getPasswordHash(),
+        user.getRole(),
+        user.getTokenInvalidBefore());
   }
 }

@@ -1,10 +1,12 @@
 package com.example.appbootstrap.security;
 
+import com.example.moduleidentity.application.security.AppUserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
@@ -61,6 +63,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
+        if (isTokenInvalidated(userDetails, token)) {
+          log.warn("Rejected invalidated access token for: {}", email);
+          filterChain.doFilter(request, response);
+          return;
+        }
+
         if (jwtService.isTokenValid(token, userDetails.getUsername())) {
           // authentication object: mark user as authenticated
           UsernamePasswordAuthenticationToken authToken =
@@ -86,5 +94,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       return header.substring(BEARER_PREFIX.length());
     }
     return null;
+  }
+
+  private boolean isTokenInvalidated(UserDetails userDetails, String token) {
+    if (!(userDetails instanceof AppUserPrincipal principal)) {
+      return false;
+    }
+
+    OffsetDateTime tokenInvalidBefore = principal.getTokenInvalidBefore();
+    if (tokenInvalidBefore == null) {
+      return false;
+    }
+
+    OffsetDateTime issuedAt = jwtService.extractIssuedAt(token);
+    return issuedAt.isBefore(tokenInvalidBefore);
   }
 }
