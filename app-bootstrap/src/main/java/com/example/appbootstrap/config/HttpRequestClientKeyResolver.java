@@ -18,7 +18,7 @@ public class HttpRequestClientKeyResolver implements ClientKeyResolver {
     }
 
     HttpServletRequest request = servletAttributes.getRequest();
-    //lấy ip khi đi qua các proxy như nginx
+    // lấy ip khi đi qua các proxy như nginx
     String forwardedFor = request.getHeader("X-Forwarded-For");
     if (StringUtils.hasText(forwardedFor)) {
       String first = forwardedFor.split(",")[0].trim();
@@ -27,12 +27,12 @@ public class HttpRequestClientKeyResolver implements ClientKeyResolver {
       }
     }
 
-    //lấy ip khi đi qua proxy apache hoặc nginx
+    // lấy ip khi đi qua proxy apache hoặc nginx
     String realIp = request.getHeader("X-Real-IP");
     if (StringUtils.hasText(realIp)) {
       return realIp.trim();
     }
-    //nếu không có header nào thì lấy ip trực tiếp
+    // nếu không có header nào thì lấy ip trực tiếp
     return request.getRemoteAddr();
   }
 }

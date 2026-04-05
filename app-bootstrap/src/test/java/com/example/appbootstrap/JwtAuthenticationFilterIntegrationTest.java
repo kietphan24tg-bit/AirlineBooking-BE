@@ -5,12 +5,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.appbootstrap.security.JwtService;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import com.example.moduleidentity.entity.Role;
 import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.UserRepository;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -99,11 +99,14 @@ class JwtAuthenticationFilterIntegrationTest {
             .id(java.util.UUID.randomUUID().toString())
             .issuedAt(java.util.Date.from(Instant.now()))
             .expiration(java.util.Date.from(Instant.now().plusSeconds(3600)))
-            .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode("b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy0xMjM0NTY3ODkw")))
+            .signWith(
+                Keys.hmacShaKeyFor(
+                    Decoders.BASE64.decode("b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy0xMjM0NTY3ODkw")))
             .compact();
 
     mockMvc
-        .perform(get("/jwt-test/protected").header("Authorization", "Bearer " + invalidSignatureToken))
+        .perform(
+            get("/jwt-test/protected").header("Authorization", "Bearer " + invalidSignatureToken))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
   }
@@ -118,7 +121,9 @@ class JwtAuthenticationFilterIntegrationTest {
             .id(java.util.UUID.randomUUID().toString())
             .issuedAt(java.util.Date.from(Instant.now()))
             .expiration(java.util.Date.from(Instant.now().plusSeconds(3600)))
-            .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
+            .signWith(
+                Keys.hmacShaKeyFor(
+                    Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
             .compact();
 
     mockMvc
@@ -137,7 +142,9 @@ class JwtAuthenticationFilterIntegrationTest {
             .id(java.util.UUID.randomUUID().toString())
             .issuedAt(java.util.Date.from(Instant.now()))
             .expiration(java.util.Date.from(Instant.now().plusSeconds(3600)))
-            .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
+            .signWith(
+                Keys.hmacShaKeyFor(
+                    Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
             .compact();
 
     mockMvc

@@ -1,8 +1,8 @@
 package com.example.appbootstrap;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -121,17 +121,17 @@ class AuthControllerIntegrationTest {
                           "password":"secret123"
                         }
                         """))
-        .andExpect(status().isOk())
-        .andExpect(header().exists("X-Request-Id"))
-        .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
-        .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
-        .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
-        .andExpect(jsonPath("$.data.expiresAt").isNotEmpty())
-        .andExpect(jsonPath("$.message").value("Operation successful"))
-        .andReturn()
-        .getResponse()
-        .getContentAsString();
+            .andExpect(status().isOk())
+            .andExpect(header().exists("X-Request-Id"))
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+            .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+            .andExpect(jsonPath("$.data.expiresAt").isNotEmpty())
+            .andExpect(jsonPath("$.message").value("Operation successful"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
     String refreshToken = extractJsonValue(loginResponse, "refreshToken");
 
@@ -303,8 +303,7 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data").doesNotExist())
         .andExpect(
-            jsonPath("$.message")
-                .value("If the email exists, a password reset link will be sent"));
+            jsonPath("$.message").value("If the email exists, a password reset link will be sent"));
   }
 
   @Test
@@ -401,8 +400,10 @@ class AuthControllerIntegrationTest {
   @Test
   void shouldRevokeAllActiveSessionsWhenPasswordResetSucceeds() throws Exception {
     UserEntity user = saveUser("reset-revoke@example.com", "secret123");
-    createRefreshSession(user, jwtService.generateRefreshToken(user.getEmail(), user.getId()), false);
-    createRefreshSession(user, jwtService.generateRefreshToken(user.getEmail(), user.getId()), false);
+    createRefreshSession(
+        user, jwtService.generateRefreshToken(user.getEmail(), user.getId()), false);
+    createRefreshSession(
+        user, jwtService.generateRefreshToken(user.getEmail(), user.getId()), false);
 
     PasswordResetTokenEntity token = passwordResetToken(user, "reset-revoke-token");
     passwordResetTokenRepository.save(token);
@@ -706,7 +707,9 @@ class AuthControllerIntegrationTest {
             .id(java.util.UUID.randomUUID().toString())
             .issuedAt(java.util.Date.from(Instant.now()))
             .expiration(java.util.Date.from(Instant.now().plusSeconds(3600)))
-            .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode("b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy0xMjM0NTY3ODkw")))
+            .signWith(
+                Keys.hmacShaKeyFor(
+                    Decoders.BASE64.decode("b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy0xMjM0NTY3ODkw")))
             .compact();
     createRefreshSession(user, wrongSignatureToken, OffsetDateTime.now().plusDays(1), false);
 
@@ -729,7 +732,9 @@ class AuthControllerIntegrationTest {
             .id(java.util.UUID.randomUUID().toString())
             .issuedAt(java.util.Date.from(Instant.now()))
             .expiration(java.util.Date.from(Instant.now().plusSeconds(3600)))
-            .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
+            .signWith(
+                Keys.hmacShaKeyFor(
+                    Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
             .compact();
     createRefreshSession(user, missingTypeToken, OffsetDateTime.now().plusDays(1), false);
 
@@ -829,11 +834,15 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.components.schemas.RegisterRequest.properties.email").exists())
         .andExpect(jsonPath("$.components.schemas.RegisterRequest.properties.password").exists())
         .andExpect(jsonPath("$.components.schemas.RegisterRequest.properties.acceptTerms").exists())
-        .andExpect(jsonPath("$.components.schemas.AuthTokenResponse.properties.accessToken").exists())
-        .andExpect(jsonPath("$.components.schemas.AuthTokenResponse.properties.refreshToken").exists())
+        .andExpect(
+            jsonPath("$.components.schemas.AuthTokenResponse.properties.accessToken").exists())
+        .andExpect(
+            jsonPath("$.components.schemas.AuthTokenResponse.properties.refreshToken").exists())
         .andExpect(jsonPath("$.components.schemas.AuthTokenResponse.properties.expiresAt").exists())
-        .andExpect(jsonPath("$.components.schemas.AuthenticatedUserSummary.properties.email").exists())
-        .andExpect(jsonPath("$.components.schemas.AuthenticatedUserSummary.properties.role").exists())
+        .andExpect(
+            jsonPath("$.components.schemas.AuthenticatedUserSummary.properties.email").exists())
+        .andExpect(
+            jsonPath("$.components.schemas.AuthenticatedUserSummary.properties.role").exists())
         .andExpect(
             jsonPath("$.components.schemas.RegisterRequest.properties.email.example")
                 .value("user@example.com"))
@@ -885,8 +894,7 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data").doesNotExist())
         .andExpect(
-            jsonPath("$.message")
-                .value("If the email exists, a password reset link will be sent"));
+            jsonPath("$.message").value("If the email exists, a password reset link will be sent"));
   }
 
   @Test
@@ -979,7 +987,8 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.message").value("Profile updated successfully"));
 
     UserEntity updatedUser = userRepository.findById(user.getId()).orElseThrow();
-    org.assertj.core.api.Assertions.assertThat(updatedUser.getEmail()).isEqualTo("patch@example.com");
+    org.assertj.core.api.Assertions.assertThat(updatedUser.getEmail())
+        .isEqualTo("patch@example.com");
     org.assertj.core.api.Assertions.assertThat(updatedUser.getPhone()).isEqualTo("+84901234567");
     org.assertj.core.api.Assertions.assertThat(updatedUser.getFirstName()).isEqualTo("Alice");
     org.assertj.core.api.Assertions.assertThat(updatedUser.getLastName()).isEqualTo("Tran");
@@ -1139,7 +1148,9 @@ class AuthControllerIntegrationTest {
         .id(java.util.UUID.randomUUID().toString())
         .issuedAt(java.util.Date.from(issuedAt))
         .expiration(java.util.Date.from(expiration))
-        .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
+        .signWith(
+            Keys.hmacShaKeyFor(
+                Decoders.BASE64.decode("dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHk=")))
         .compact();
   }
 

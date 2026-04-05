@@ -4,7 +4,9 @@ import com.example.moduleidentity.entity.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
-@Schema(name = "AuthenticatedUserSummary", description = "Basic user information returned by auth endpoints")
+@Schema(
+    name = "AuthenticatedUserSummary",
+    description = "Basic user information returned by auth endpoints")
 public record AuthenticatedUserSummary(
     @Schema(example = "1") Long id,
     @Schema(example = "user@example.com") String email,

@@ -37,7 +37,9 @@ public class UsersController {
   }
 
   @GetMapping("/me")
-  @Operation(summary = "Get current user", description = "Returns the profile of the authenticated user")
+  @Operation(
+      summary = "Get current user",
+      description = "Returns the profile of the authenticated user")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -51,7 +53,9 @@ public class UsersController {
 
   @PatchMapping("/me")
   @ApiSuccessMessage("Profile updated successfully")
-  @Operation(summary = "Update current user", description = "Partially updates profile fields of the authenticated user")
+  @Operation(
+      summary = "Update current user",
+      description = "Partially updates profile fields of the authenticated user")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -82,7 +86,10 @@ public class UsersController {
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Password changed successfully"),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(responseCode = "401", description = "Authentication required or current password incorrect", content = @Content)
+    @ApiResponse(
+        responseCode = "401",
+        description = "Authentication required or current password incorrect",
+        content = @Content)
   })
   Void changePassword(
       @AuthenticationPrincipal AppUserPrincipal principal,
@@ -99,7 +106,9 @@ public class UsersController {
         user.getFirstName(),
         user.getLastName(),
         user.getPhone(),
-        user.getDob() == null ? null : user.getDob().atZoneSameInstant(ZoneOffset.UTC).toLocalDate(),
+        user.getDob() == null
+            ? null
+            : user.getDob().atZoneSameInstant(ZoneOffset.UTC).toLocalDate(),
         user.getNationality(),
         user.getIdentifyNumber(),
         user.getRole(),

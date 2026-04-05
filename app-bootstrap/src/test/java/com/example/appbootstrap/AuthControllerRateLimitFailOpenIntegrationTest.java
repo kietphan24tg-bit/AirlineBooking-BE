@@ -71,8 +71,7 @@ class AuthControllerRateLimitFailOpenIntegrationTest {
                 .content("{\"email\":\"fail-open-reset@example.com\"}"))
         .andExpect(status().isOk())
         .andExpect(
-            jsonPath("$.message")
-                .value("If the email exists, a password reset link will be sent"));
+            jsonPath("$.message").value("If the email exists, a password reset link will be sent"));
   }
 
   private UserEntity saveUser(String email, String password) {

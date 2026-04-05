@@ -47,7 +47,10 @@ public class JwtAuthTokenService implements AuthTokenService {
 
   @Override
   public OffsetDateTime extractExpiration(String token) {
-    return jwtService.extractClaim(token, Claims::getExpiration).toInstant().atOffset(ZoneOffset.UTC);
+    return jwtService
+        .extractClaim(token, Claims::getExpiration)
+        .toInstant()
+        .atOffset(ZoneOffset.UTC);
   }
 
   @Override
