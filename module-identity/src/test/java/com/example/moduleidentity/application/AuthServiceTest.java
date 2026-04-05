@@ -22,9 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,15 +66,14 @@ class AuthServiceTest {
             new InputNormalizer());
     when(clientKeyResolver.resolveClientKey()).thenReturn("ip-1");
     when(rateLimitStore.getCount(org.mockito.ArgumentMatchers.anyString()))
-        .thenAnswer(
-            invocation -> counts.getOrDefault(invocation.getArgument(0, String.class), 0L));
-    when(
-            rateLimitStore.increment(
-                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+        .thenAnswer(invocation -> counts.getOrDefault(invocation.getArgument(0, String.class), 0L));
+    when(rateLimitStore.increment(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
         .thenAnswer(
             invocation -> {
               String key = invocation.getArgument(0, String.class);
-              Long current = counts.compute(key, (ignored, value) -> value == null ? 1L : value + 1L);
+              Long current =
+                  counts.compute(key, (ignored, value) -> value == null ? 1L : value + 1L);
               return current;
             });
     org.mockito.Mockito.doAnswer(
@@ -123,7 +122,8 @@ class AuthServiceTest {
 
     AppException exception =
         assertThrows(
-            AppException.class, () -> authService.login("user@example.com", "bad-password", "ip-1"));
+            AppException.class,
+            () -> authService.login("user@example.com", "bad-password", "ip-1"));
 
     org.junit.jupiter.api.Assertions.assertEquals("TOO_MANY_LOGIN_ATTEMPTS", exception.getCode());
   }
@@ -143,12 +143,14 @@ class AuthServiceTest {
     when(authTokenService.extractIssuedAt("refresh-token"))
         .thenReturn(OffsetDateTime.parse("2026-04-03T10:00:01Z"));
     when(authTokenService.generateAccessToken(user.getEmail(), user.getId())).thenReturn("access");
-    when(authTokenService.generateRefreshToken(user.getEmail(), user.getId())).thenReturn("refresh");
+    when(authTokenService.generateRefreshToken(user.getEmail(), user.getId()))
+        .thenReturn("refresh");
     when(authTokenService.extractExpiration("access"))
         .thenReturn(OffsetDateTime.parse("2026-04-03T10:15:01Z"));
     when(authTokenService.extractExpiration("refresh"))
         .thenReturn(OffsetDateTime.parse("2026-04-04T10:00:01Z"));
-    when(userSecurityStateService.isTokenIssuedBeforeInvalidation(user, OffsetDateTime.parse("2026-04-03T10:00:01Z")))
+    when(userSecurityStateService.isTokenIssuedBeforeInvalidation(
+            user, OffsetDateTime.parse("2026-04-03T10:00:01Z")))
         .thenReturn(false);
 
     authService.refresh("refresh-token", "ip-1");
@@ -207,7 +209,8 @@ class AuthServiceTest {
         assertThrows(
             AppException.class, () -> authService.changePassword(1L, "wrong-secret", "new-secret"));
 
-    org.junit.jupiter.api.Assertions.assertEquals("CURRENT_PASSWORD_INCORRECT", exception.getCode());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        "CURRENT_PASSWORD_INCORRECT", exception.getCode());
   }
 
   private static UserEntity user() {

@@ -1,7 +1,7 @@
 package com.example.moduleidentity.domain.security;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.example.common.exception.AppException;
@@ -85,15 +85,13 @@ class AuthRateLimiterTest {
               }
             });
 
-    assertDoesNotThrow(() -> throttleService.consumePasswordResetAttempt("user@example.com", "ip-1"));
+    assertDoesNotThrow(
+        () -> throttleService.consumePasswordResetAttempt("user@example.com", "ip-1"));
   }
 
   private static AuthRateLimiter throttleService(RateLimitStore store) {
     return new AuthRateLimiter(
-        store,
-        new RateLimitProperties(),
-        new TokenHashingService(),
-        new SimpleMeterRegistry());
+        store, new RateLimitProperties(), new TokenHashingService(), new SimpleMeterRegistry());
   }
 
   private static final class InMemoryRateLimitStore implements RateLimitStore {

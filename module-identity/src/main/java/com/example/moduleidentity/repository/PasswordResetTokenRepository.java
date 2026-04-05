@@ -16,4 +16,3 @@ public interface PasswordResetTokenRepository
 
   long deleteByExpiresAtBefore(OffsetDateTime cutoff);
 }
-

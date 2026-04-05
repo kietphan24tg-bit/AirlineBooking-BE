@@ -29,5 +29,6 @@ public interface RefreshTokenSessionRepository
        where session.id = :sessionId
          and session.revoked = false
       """)
-  int revokeIfActive(@Param("sessionId") Long sessionId, @Param("updatedAt") OffsetDateTime updatedAt);
+  int revokeIfActive(
+      @Param("sessionId") Long sessionId, @Param("updatedAt") OffsetDateTime updatedAt);
 }

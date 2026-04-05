@@ -136,5 +136,4 @@ public class PasswordResetService {
     }
     return normalizedEmail;
   }
-
 }

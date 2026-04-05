@@ -20,9 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,15 +62,14 @@ class PasswordResetServiceTest {
             clientKeyResolver);
     when(clientKeyResolver.resolveClientKey()).thenReturn("ip-1");
     when(rateLimitStore.getCount(org.mockito.ArgumentMatchers.anyString()))
-        .thenAnswer(
-            invocation -> counts.getOrDefault(invocation.getArgument(0, String.class), 0L));
-    when(
-            rateLimitStore.increment(
-                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+        .thenAnswer(invocation -> counts.getOrDefault(invocation.getArgument(0, String.class), 0L));
+    when(rateLimitStore.increment(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
         .thenAnswer(
             invocation -> {
               String key = invocation.getArgument(0, String.class);
-              Long current = counts.compute(key, (ignored, value) -> value == null ? 1L : value + 1L);
+              Long current =
+                  counts.compute(key, (ignored, value) -> value == null ? 1L : value + 1L);
               return current;
             });
   }

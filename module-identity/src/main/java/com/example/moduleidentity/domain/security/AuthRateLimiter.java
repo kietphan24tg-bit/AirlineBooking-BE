@@ -80,8 +80,7 @@ public class AuthRateLimiter {
     consume(
         "password-reset",
         List.of(
-            candidate(
-                "password-reset", "email", email, rule.getWindow(), rule.getEmailLimit()),
+            candidate("password-reset", "email", email, rule.getWindow(), rule.getEmailLimit()),
             candidate(
                 "password-reset", "client", clientKey, rule.getWindow(), rule.getClientLimit()),
             candidate(

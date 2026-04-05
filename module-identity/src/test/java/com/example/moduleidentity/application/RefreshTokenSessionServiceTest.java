@@ -41,7 +41,8 @@ class RefreshTokenSessionServiceTest {
   void shouldReturnActiveSessionByRawRefreshToken() {
     RefreshTokenSessionEntity session = session(false, OffsetDateTime.now().plusMinutes(5));
     String rawToken = "active-refresh-token";
-    when(refreshTokenSessionRepository.findByRefreshTokenHash(tokenHashingService.hashToken(rawToken)))
+    when(refreshTokenSessionRepository.findByRefreshTokenHash(
+            tokenHashingService.hashToken(rawToken)))
         .thenReturn(Optional.of(session));
 
     RefreshTokenSessionEntity result = refreshTokenSessionService.requireActiveSession(rawToken);
@@ -53,7 +54,8 @@ class RefreshTokenSessionServiceTest {
   void shouldRejectRevokedSession() {
     RefreshTokenSessionEntity session = session(true, OffsetDateTime.now().plusMinutes(5));
     String rawToken = "revoked-refresh-token";
-    when(refreshTokenSessionRepository.findByRefreshTokenHash(tokenHashingService.hashToken(rawToken)))
+    when(refreshTokenSessionRepository.findByRefreshTokenHash(
+            tokenHashingService.hashToken(rawToken)))
         .thenReturn(Optional.of(session));
 
     AppException exception =
@@ -67,7 +69,8 @@ class RefreshTokenSessionServiceTest {
   void shouldRejectExpiredSession() {
     RefreshTokenSessionEntity session = session(false, OffsetDateTime.now().minusMinutes(1));
     String rawToken = "expired-refresh-token";
-    when(refreshTokenSessionRepository.findByRefreshTokenHash(tokenHashingService.hashToken(rawToken)))
+    when(refreshTokenSessionRepository.findByRefreshTokenHash(
+            tokenHashingService.hashToken(rawToken)))
         .thenReturn(Optional.of(session));
 
     AppException exception =
@@ -82,7 +85,8 @@ class RefreshTokenSessionServiceTest {
     RefreshTokenSessionEntity session = session(false, OffsetDateTime.now().plusMinutes(5));
     session.setRefreshTokenHash("legacy-raw-token");
 
-    when(refreshTokenSessionRepository.findByRefreshTokenHash(tokenHashingService.hashToken("legacy-raw-token")))
+    when(refreshTokenSessionRepository.findByRefreshTokenHash(
+            tokenHashingService.hashToken("legacy-raw-token")))
         .thenReturn(Optional.empty());
     when(refreshTokenSessionRepository.findByRefreshTokenHash("legacy-raw-token"))
         .thenReturn(Optional.of(session));
@@ -101,7 +105,8 @@ class RefreshTokenSessionServiceTest {
   void shouldRevokeSessionByRefreshTokenWhenActive() {
     RefreshTokenSessionEntity session = session(false, OffsetDateTime.now().plusMinutes(5));
     String rawToken = "logout-refresh-token";
-    when(refreshTokenSessionRepository.findByRefreshTokenHash(tokenHashingService.hashToken(rawToken)))
+    when(refreshTokenSessionRepository.findByRefreshTokenHash(
+            tokenHashingService.hashToken(rawToken)))
         .thenReturn(Optional.of(session));
     when(refreshTokenSessionRepository.save(session)).thenReturn(session);
 
@@ -114,7 +119,8 @@ class RefreshTokenSessionServiceTest {
 
   @Test
   void shouldDelegateAtomicRevokeIfActiveToRepository() {
-    when(refreshTokenSessionRepository.revokeIfActive(eq(11L), any(OffsetDateTime.class))).thenReturn(1);
+    when(refreshTokenSessionRepository.revokeIfActive(eq(11L), any(OffsetDateTime.class)))
+        .thenReturn(1);
 
     boolean result = refreshTokenSessionService.revokeIfActive(11L);
 
@@ -123,7 +129,8 @@ class RefreshTokenSessionServiceTest {
 
   @Test
   void shouldDeleteExpiredSessionsUsingCurrentCutoff() {
-    when(refreshTokenSessionRepository.deleteByExpiresAtBefore(any(OffsetDateTime.class))).thenReturn(3L);
+    when(refreshTokenSessionRepository.deleteByExpiresAtBefore(any(OffsetDateTime.class)))
+        .thenReturn(3L);
 
     long deleted = refreshTokenSessionService.deleteExpiredSessions();
 

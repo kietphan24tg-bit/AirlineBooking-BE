@@ -90,7 +90,8 @@ public class RefreshTokenSessionService {
     return findSessionByRawToken(rawRefreshToken)
         .orElseThrow(
             () ->
-                new AppException("REFRESH_TOKEN_NOT_FOUND", "Refresh token session not found", 401));
+                new AppException(
+                    "REFRESH_TOKEN_NOT_FOUND", "Refresh token session not found", 401));
   }
 
   private java.util.Optional<RefreshTokenSessionEntity> findSessionByRawToken(

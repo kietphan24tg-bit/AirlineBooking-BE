@@ -59,8 +59,7 @@ public class AuthService {
       String phone,
       String nationality) {
     if (!acceptTerms) {
-      throw new AppException(
-          "TERMS_NOT_ACCEPTED", "You must accept the terms and conditions", 400);
+      throw new AppException("TERMS_NOT_ACCEPTED", "You must accept the terms and conditions", 400);
     }
     String normalizedEmail =
         inputNormalizer.trimRequired(email, "EMAIL_REQUIRED", "Email is required");
@@ -107,8 +106,7 @@ public class AuthService {
     UserEntity user =
         userRepository
             .findByEmail(normalizedEmail)
-            .orElseThrow(
-                () -> invalidCredentials(normalizedEmail, normalizedClientKey));
+            .orElseThrow(() -> invalidCredentials(normalizedEmail, normalizedClientKey));
 
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
       throw invalidCredentials(normalizedEmail, normalizedClientKey);
@@ -237,8 +235,7 @@ public class AuthService {
   public void changePassword(Long userId, String currentPassword, String newPassword) {
     UserEntity user = findById(userId);
     if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-      throw new AppException(
-          "CURRENT_PASSWORD_INCORRECT", "Current password is incorrect", 401);
+      throw new AppException("CURRENT_PASSWORD_INCORRECT", "Current password is incorrect", 401);
     }
 
     user.setPasswordHash(passwordEncoder.encode(newPassword));

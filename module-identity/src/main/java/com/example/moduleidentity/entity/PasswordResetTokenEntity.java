@@ -44,4 +44,3 @@ public class PasswordResetTokenEntity {
   @Column(name = "used_at")
   private OffsetDateTime usedAt;
 }
-
