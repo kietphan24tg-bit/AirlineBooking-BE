@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.common.exception.AppException;
 import com.example.moduleidentity.domain.security.AuthRateLimiter;
+import com.example.moduleidentity.domain.security.InputNormalizer;
 import com.example.moduleidentity.domain.security.TokenHashingService;
 import com.example.moduleidentity.domain.security.UserSecurityStateService;
 import com.example.moduleidentity.entity.RefreshTokenSessionEntity;
@@ -15,6 +16,7 @@ import com.example.moduleidentity.port.ClientKeyResolver;
 import com.example.moduleidentity.port.RateLimitStore;
 import com.example.moduleidentity.repository.UserRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,7 +62,8 @@ class AuthServiceTest {
             refreshTokenSessionService,
             userSecurityStateService,
             authRateLimiter,
-            clientKeyResolver);
+            clientKeyResolver,
+            new InputNormalizer());
     when(clientKeyResolver.resolveClientKey()).thenReturn("ip-1");
     when(rateLimitStore.getCount(org.mockito.ArgumentMatchers.anyString()))
         .thenAnswer(
@@ -155,6 +158,56 @@ class AuthServiceTest {
         assertThrows(AppException.class, () -> authService.refresh("refresh-token", "ip-1"));
 
     org.junit.jupiter.api.Assertions.assertEquals("TOO_MANY_REFRESH_ATTEMPTS", exception.getCode());
+  }
+
+  @Test
+  void shouldUpdateCurrentUserProfileWithoutChangingEmailOrPhone() {
+    UserEntity user = user();
+    user.setPhone("+84901234567");
+    user.setDob(OffsetDateTime.parse("2000-01-01T00:00:00Z"));
+    when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+    when(userRepository.save(user)).thenReturn(user);
+
+    UserEntity updated =
+        authService.updateCurrentUserProfile(
+            1L, "  Alice  ", "  Nguyen  ", LocalDate.parse("1999-02-03"), "vn", "  ID-123  ");
+
+    org.junit.jupiter.api.Assertions.assertEquals("Alice", updated.getFirstName());
+    org.junit.jupiter.api.Assertions.assertEquals("Nguyen", updated.getLastName());
+    org.junit.jupiter.api.Assertions.assertEquals("VN", updated.getNationality());
+    org.junit.jupiter.api.Assertions.assertEquals("ID-123", updated.getIdentifyNumber());
+    org.junit.jupiter.api.Assertions.assertEquals("user@example.com", updated.getEmail());
+    org.junit.jupiter.api.Assertions.assertEquals("+84901234567", updated.getPhone());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        LocalDate.parse("1999-02-03"), updated.getDob().toLocalDate());
+  }
+
+  @Test
+  void shouldChangePasswordAndInvalidateExistingTokens() {
+    UserEntity user = user();
+    when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+    when(passwordEncoder.matches("old-secret", user.getPasswordHash())).thenReturn(true);
+    when(passwordEncoder.encode("new-secret")).thenReturn("new-encoded");
+    when(userRepository.save(user)).thenReturn(user);
+
+    authService.changePassword(1L, "old-secret", "new-secret");
+
+    org.junit.jupiter.api.Assertions.assertEquals("new-encoded", user.getPasswordHash());
+    org.mockito.Mockito.verify(userSecurityStateService).invalidateTokens(user);
+    org.mockito.Mockito.verify(refreshTokenSessionService).revokeAllActiveByUserId(1L);
+  }
+
+  @Test
+  void shouldRejectPasswordChangeWhenCurrentPasswordIsIncorrect() {
+    UserEntity user = user();
+    when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+    when(passwordEncoder.matches("wrong-secret", user.getPasswordHash())).thenReturn(false);
+
+    AppException exception =
+        assertThrows(
+            AppException.class, () -> authService.changePassword(1L, "wrong-secret", "new-secret"));
+
+    org.junit.jupiter.api.Assertions.assertEquals("CURRENT_PASSWORD_INCORRECT", exception.getCode());
   }
 
   private static UserEntity user() {

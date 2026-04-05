@@ -2,6 +2,7 @@ package com.example.moduleidentity.application;
 
 import com.example.common.exception.AppException;
 import com.example.moduleidentity.domain.security.AuthRateLimiter;
+import com.example.moduleidentity.domain.security.InputNormalizer;
 import com.example.moduleidentity.domain.security.UserSecurityStateService;
 import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.port.AuthTokenService;
@@ -9,8 +10,9 @@ import com.example.moduleidentity.port.ClientKeyResolver;
 import com.example.moduleidentity.repository.UserRepository;
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.Locale;
+import java.time.ZoneOffset;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class AuthService {
   private final UserSecurityStateService userSecurityStateService;
   private final AuthRateLimiter authRateLimiter;
   private final ClientKeyResolver clientKeyResolver;
+  private final InputNormalizer inputNormalizer;
 
   public AuthService(
       UserRepository userRepository,
@@ -34,7 +37,8 @@ public class AuthService {
       RefreshTokenSessionService refreshTokenSessionService,
       UserSecurityStateService userSecurityStateService,
       AuthRateLimiter authRateLimiter,
-      ClientKeyResolver clientKeyResolver) {
+      ClientKeyResolver clientKeyResolver,
+      InputNormalizer inputNormalizer) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.authTokenService = authTokenService;
@@ -42,6 +46,7 @@ public class AuthService {
     this.userSecurityStateService = userSecurityStateService;
     this.authRateLimiter = authRateLimiter;
     this.clientKeyResolver = clientKeyResolver;
+    this.inputNormalizer = inputNormalizer;
   }
 
   @Transactional
@@ -57,11 +62,18 @@ public class AuthService {
       throw new AppException(
           "TERMS_NOT_ACCEPTED", "You must accept the terms and conditions", 400);
     }
-    if (userRepository.existsByEmail(email.trim())) {
+    String normalizedEmail =
+        inputNormalizer.trimRequired(email, "EMAIL_REQUIRED", "Email is required");
+    String normalizedFirstName =
+        inputNormalizer.trimRequired(firstName, "FIRST_NAME_REQUIRED", "First name is required");
+    String normalizedLastName =
+        inputNormalizer.trimRequired(lastName, "LAST_NAME_REQUIRED", "Last name is required");
+    String normalizedNationality = inputNormalizer.blankToNull(nationality);
+
+    if (userRepository.existsByEmail(normalizedEmail)) {
       throw new AppException("EMAIL_ALREADY_EXISTS", "Email is already registered", 409);
     }
 
-    String normalizedNationality = blankToNull(nationality);
     String normalizedPhone = normalizePhone(normalizedNationality, phone);
     if (normalizedPhone != null && userRepository.existsByPhone(normalizedPhone)) {
       throw new AppException("PHONE_ALREADY_EXISTS", "Phone number is already registered", 409);
@@ -69,10 +81,10 @@ public class AuthService {
 
     OffsetDateTime now = OffsetDateTime.now();
     UserEntity user = new UserEntity();
-    user.setEmail(email.trim());
+    user.setEmail(normalizedEmail);
     user.setPasswordHash(passwordEncoder.encode(password));
-    user.setFirstName(firstName.trim());
-    user.setLastName(lastName.trim());
+    user.setFirstName(normalizedFirstName);
+    user.setLastName(normalizedLastName);
     user.setPhone(normalizedPhone);
     user.setNationality(normalizedNationality);
     user.setAcceptTerms(true);
@@ -120,7 +132,7 @@ public class AuthService {
 
   @Transactional
   public AuthTokens refresh(String refreshToken, String clientKey) {
-    String normalizedRefreshToken = blankToNull(refreshToken);
+    String normalizedRefreshToken = inputNormalizer.blankToNull(refreshToken);
     if (normalizedRefreshToken == null) {
       throw new AppException("REFRESH_TOKEN_REQUIRED", "Refresh token is required", 400);
     }
@@ -174,7 +186,7 @@ public class AuthService {
 
   @Transactional
   public void logout(String refreshToken) {
-    String normalizedRefreshToken = blankToNull(refreshToken);
+    String normalizedRefreshToken = inputNormalizer.blankToNull(refreshToken);
     if (normalizedRefreshToken == null) {
       throw new AppException("REFRESH_TOKEN_REQUIRED", "Refresh token is required", 400);
     }
@@ -182,12 +194,58 @@ public class AuthService {
     refreshTokenSessionService.revokeByRefreshToken(normalizedRefreshToken);
   }
 
-  private static String blankToNull(String value) {
-    if (value == null) {
-      return null;
+  @Transactional
+  public UserEntity updateCurrentUserProfile(
+      Long userId,
+      String firstName,
+      String lastName,
+      LocalDate dob,
+      String nationality,
+      String identifyNumber) {
+    UserEntity user = findById(userId);
+
+    String normalizedFirstName =
+        inputNormalizer.trimIfPresentNonBlank(
+            firstName, "FIRST_NAME_INVALID", "First name must not be blank");
+    String normalizedLastName =
+        inputNormalizer.trimIfPresentNonBlank(
+            lastName, "LAST_NAME_INVALID", "Last name must not be blank");
+    String normalizedNationality = inputNormalizer.normalizeOptionalCountryCode(nationality);
+    String normalizedIdentifyNumber = inputNormalizer.normalizeNullableString(identifyNumber);
+
+    if (normalizedFirstName != null) {
+      user.setFirstName(normalizedFirstName);
     }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+    if (normalizedLastName != null) {
+      user.setLastName(normalizedLastName);
+    }
+    if (dob != null) {
+      user.setDob(dob.atStartOfDay().atOffset(ZoneOffset.UTC));
+    }
+    if (nationality != null) {
+      user.setNationality(normalizedNationality);
+    }
+    if (identifyNumber != null) {
+      user.setIdentifyNumber(normalizedIdentifyNumber);
+    }
+
+    user.setUpdatedAt(OffsetDateTime.now());
+    return userRepository.save(user);
+  }
+
+  @Transactional
+  public void changePassword(Long userId, String currentPassword, String newPassword) {
+    UserEntity user = findById(userId);
+    if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+      throw new AppException(
+          "CURRENT_PASSWORD_INCORRECT", "Current password is incorrect", 401);
+    }
+
+    user.setPasswordHash(passwordEncoder.encode(newPassword));
+    user.setUpdatedAt(OffsetDateTime.now());
+    userRepository.save(user);
+    userSecurityStateService.invalidateTokens(user);
+    refreshTokenSessionService.revokeAllActiveByUserId(userId);
   }
 
   private AppException invalidCredentials(String normalizedEmail, String normalizedClientKey) {
@@ -200,18 +258,18 @@ public class AuthService {
   }
 
   private String normalizeClientKey(String clientKey, String fallbackValue) {
-    String explicitClientKey = blankToNull(clientKey);
+    String explicitClientKey = inputNormalizer.blankToNull(clientKey);
     if (explicitClientKey != null) {
       return explicitClientKey;
     }
 
-    String resolvedClientKey = blankToNull(clientKeyResolver.resolveClientKey());
+    String resolvedClientKey = inputNormalizer.blankToNull(clientKeyResolver.resolveClientKey());
     return resolvedClientKey == null ? fallbackValue : resolvedClientKey;
   }
 
-  private static String normalizePhone(String nationality, String phone) {
-    String normalizedCountryCode = blankToNull(nationality);
-    String normalizedPhone = blankToNull(phone);
+  private String normalizePhone(String nationality, String phone) {
+    String normalizedCountryCode = inputNormalizer.blankToNull(nationality);
+    String normalizedPhone = inputNormalizer.blankToNull(phone);
 
     if (normalizedCountryCode == null && normalizedPhone == null) {
       return null;
@@ -222,10 +280,7 @@ public class AuthService {
           "PHONE_COUNTRY_REQUIRED", "nationality and phone must be provided together", 400);
     }
 
-    String region = normalizedCountryCode.toUpperCase(Locale.ROOT);
-    if (region.length() != 2 || !region.chars().allMatch(Character::isLetter)) {
-      throw new AppException("INVALID_COUNTRY_CODE", "nationality must be ISO alpha-2", 400);
-    }
+    String region = inputNormalizer.normalizeOptionalCountryCode(normalizedCountryCode);
 
     try {
       var parsed = PHONE_NUMBER_UTIL.parse(normalizedPhone, region);

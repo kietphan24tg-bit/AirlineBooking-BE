@@ -2,6 +2,7 @@ package com.example.appbootstrap;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -847,6 +848,8 @@ class AuthControllerIntegrationTest {
                 .value(org.hamcrest.Matchers.containsString("generic success message")))
         .andExpect(
             jsonPath("$.paths['/api/auth/register'].post.summary").value("Register a new account"))
+        .andExpect(jsonPath("$.paths['/api/users/me']").exists())
+        .andExpect(jsonPath("$.paths['/api/users/me/password']").exists())
         .andExpect(
             jsonPath("$.paths['/api/auth/logout'].post.summary").value("Logout current session"));
   }
@@ -884,6 +887,205 @@ class AuthControllerIntegrationTest {
         .andExpect(
             jsonPath("$.message")
                 .value("If the email exists, a password reset link will be sent"));
+  }
+
+  @Test
+  void shouldReturnCurrentUserProfileForAuthenticatedRequest() throws Exception {
+    UserEntity user = saveUser("me@example.com", "secret123");
+    user.setDob(OffsetDateTime.parse("1999-01-15T00:00:00Z"));
+    user.setNationality("VN");
+    user.setIdentifyNumber("ID-001");
+    userRepository.save(user);
+    String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId());
+
+    mockMvc
+        .perform(get("/api/users/me").header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.email").value("me@example.com"))
+        .andExpect(jsonPath("$.data.firstName").value("Jane"))
+        .andExpect(jsonPath("$.data.phone").doesNotExist())
+        .andExpect(jsonPath("$.data.dob").value("1999-01-15"))
+        .andExpect(jsonPath("$.data.nationality").value("VN"))
+        .andExpect(jsonPath("$.data.identifyNumber").value("ID-001"))
+        .andExpect(jsonPath("$.message").value("Operation successful"));
+  }
+
+  @Test
+  void shouldRequireAuthenticationForCurrentUserEndpoints() throws Exception {
+    mockMvc
+        .perform(get("/api/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+    mockMvc
+        .perform(
+            patch("/api/users/me")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"firstName\":\"Alice\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+    mockMvc
+        .perform(
+            post("/api/users/me/password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "currentPassword":"secret123",
+                      "newPassword":"newSecret123"
+                    }
+                    """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+  }
+
+  @Test
+  void shouldPatchCurrentUserProfileWithoutChangingEmailOrPhone() throws Exception {
+    UserEntity user = saveUser("patch@example.com", "secret123");
+    user.setPhone("+84901234567");
+    user.setNationality("TH");
+    user.setIdentifyNumber("OLD-ID");
+    userRepository.save(user);
+    String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId());
+
+    mockMvc
+        .perform(
+            patch("/api/users/me")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "firstName":"Alice",
+                      "lastName":"Tran",
+                      "dob":"1998-12-01",
+                      "nationality":"VN",
+                      "identifyNumber":"NEW-ID"
+                    }
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.email").value("patch@example.com"))
+        .andExpect(jsonPath("$.data.phone").value("+84901234567"))
+        .andExpect(jsonPath("$.data.firstName").value("Alice"))
+        .andExpect(jsonPath("$.data.lastName").value("Tran"))
+        .andExpect(jsonPath("$.data.dob").value("1998-12-01"))
+        .andExpect(jsonPath("$.data.nationality").value("VN"))
+        .andExpect(jsonPath("$.data.identifyNumber").value("NEW-ID"))
+        .andExpect(jsonPath("$.message").value("Profile updated successfully"));
+
+    UserEntity updatedUser = userRepository.findById(user.getId()).orElseThrow();
+    org.assertj.core.api.Assertions.assertThat(updatedUser.getEmail()).isEqualTo("patch@example.com");
+    org.assertj.core.api.Assertions.assertThat(updatedUser.getPhone()).isEqualTo("+84901234567");
+    org.assertj.core.api.Assertions.assertThat(updatedUser.getFirstName()).isEqualTo("Alice");
+    org.assertj.core.api.Assertions.assertThat(updatedUser.getLastName()).isEqualTo("Tran");
+    org.assertj.core.api.Assertions.assertThat(updatedUser.getDob().toLocalDate())
+        .isEqualTo(java.time.LocalDate.parse("1998-12-01"));
+  }
+
+  @Test
+  void shouldValidateCurrentUserPatchPayload() throws Exception {
+    UserEntity user = saveUser("patch-invalid@example.com", "secret123");
+    String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId());
+
+    mockMvc
+        .perform(
+            patch("/api/users/me")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "firstName":"   ",
+                      "nationality":"VNM"
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.error.details.firstName").isNotEmpty())
+        .andExpect(jsonPath("$.error.details.nationality").isNotEmpty());
+  }
+
+  @Test
+  void shouldChangeCurrentUserPasswordAndInvalidateOldTokens() throws Exception {
+    UserEntity user = saveUser("change-password@example.com", "secret123");
+
+    String loginResponse =
+        mockMvc
+            .perform(
+                post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                          "email":"change-password@example.com",
+                          "password":"secret123"
+                        }
+                        """))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    String accessToken = extractJsonValue(loginResponse, "accessToken");
+    String refreshToken = extractJsonValue(loginResponse, "refreshToken");
+
+    mockMvc
+        .perform(
+            post("/api/users/me/password")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "currentPassword":"secret123",
+                      "newPassword":"newSecret123"
+                    }
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data").doesNotExist())
+        .andExpect(jsonPath("$.message").value("Password changed successfully"));
+
+    mockMvc
+        .perform(get("/api/users/me").header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+    mockMvc
+        .perform(
+            post("/api/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("REFRESH_TOKEN_REVOKED"));
+  }
+
+  @Test
+  void shouldRejectPasswordChangeWhenCurrentPasswordIsIncorrect() throws Exception {
+    UserEntity user = saveUser("wrong-current@example.com", "secret123");
+    String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId());
+
+    mockMvc
+        .perform(
+            post("/api/users/me/password")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "currentPassword":"wrong-secret",
+                      "newPassword":"newSecret123"
+                    }
+                    """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("CURRENT_PASSWORD_INCORRECT"))
+        .andExpect(jsonPath("$.path").value("/api/users/me/password"));
   }
 
   private UserEntity saveUser(String email, String password) {
