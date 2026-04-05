@@ -377,4 +377,3 @@ Chạy một test method:
 Xem report:
 
 - [app-bootstrap/build/reports/tests/test/index.html](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/build/reports/tests/test/index.html)
-
