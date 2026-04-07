@@ -9,14 +9,11 @@ import jakarta.validation.constraints.Size;
     description = "Reset token and new password used to confirm password reset")
 @SuppressWarnings("java:S1192")
 public record PasswordResetConfirmRequest(
-    @Schema(example = "reset-token") @NotBlank(message = TOKEN_REQUIRED_MESSAGE) String token,
+    @Schema(example = "reset-token") @NotBlank(message = TOKEN_REQ_MSG) String token,
     @Schema(example = "newSecret123")
-        @NotBlank(message = NEW_PASSWORD_REQUIRED_MESSAGE)
-        @Size(min = 8, max = 128, message = NEW_PASSWORD_MIN_LENGTH_MESSAGE)
-        String newPassword) {
+        @NotBlank(message = NEW_PWD_REQ_MSG) @Size(min = 8, max = 128, message = NEW_PWD_LEN_MSG) String newPassword) {
 
-  private static final String TOKEN_REQUIRED_MESSAGE = "Token is required";
-  private static final String NEW_PASSWORD_REQUIRED_MESSAGE = "New password is required";
-  private static final String NEW_PASSWORD_MIN_LENGTH_MESSAGE =
-      "New password must have at least 8 characters";
+  private static final String TOKEN_REQ_MSG = "Token is required";
+  private static final String NEW_PWD_REQ_MSG = "New password is required";
+  private static final String NEW_PWD_LEN_MSG = "New password must have at least 8 characters";
 }
