@@ -111,7 +111,7 @@ public class UsersController {
             : user.getDob().atZoneSameInstant(ZoneOffset.UTC).toLocalDate(),
         user.getNationality(),
         user.getIdentifyNumber(),
-        user.getRole(),
+        user.getRole() == null ? null : user.getRole().name(),
         user.getCreatedAt());
   }
 }

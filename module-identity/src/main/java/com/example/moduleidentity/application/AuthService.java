@@ -2,6 +2,7 @@ package com.example.moduleidentity.application;
 
 import com.example.common.exception.AppException;
 import com.example.moduleidentity.domain.security.AuthRateLimiter;
+import com.example.moduleidentity.domain.security.ClientKeyUtils;
 import com.example.moduleidentity.domain.security.InputNormalizer;
 import com.example.moduleidentity.domain.security.UserSecurityStateService;
 import com.example.moduleidentity.entity.UserEntity;
@@ -255,13 +256,7 @@ public class AuthService {
   }
 
   private String normalizeClientKey(String clientKey, String fallbackValue) {
-    String explicitClientKey = inputNormalizer.blankToNull(clientKey);
-    if (explicitClientKey != null) {
-      return explicitClientKey;
-    }
-
-    String resolvedClientKey = inputNormalizer.blankToNull(clientKeyResolver.resolveClientKey());
-    return resolvedClientKey == null ? fallbackValue : resolvedClientKey;
+    return ClientKeyUtils.normalizeClientKey(clientKey, clientKeyResolver, fallbackValue);
   }
 
   private String normalizePhone(String nationality, String phone) {

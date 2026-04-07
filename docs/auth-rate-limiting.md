@@ -79,19 +79,19 @@ public class RateLimitProperties {
 Giá trị mặc định hiện tại:
 
 - `login`
-  - `emailLimit = 5`
-  - `clientLimit = 20`
-  - `pairLimit = 5`
-  - `window = 10 phút`
+    - `emailLimit = 5`
+    - `clientLimit = 20`
+    - `pairLimit = 5`
+    - `window = 10 phút`
 - `passwordReset`
-  - `emailLimit = 3`
-  - `clientLimit = 10`
-  - `pairLimit = 3`
-  - `window = 15 phút`
+    - `emailLimit = 3`
+    - `clientLimit = 10`
+    - `pairLimit = 3`
+    - `window = 15 phút`
 - `refresh`
-  - `userLimit = 20`
-  - `clientLimit = 60`
-  - `window = 5 phút`
+    - `userLimit = 20`
+    - `clientLimit = 60`
+    - `window = 5 phút`
 
 ### 3.2. `AuthRateLimiter`
 
@@ -177,27 +177,35 @@ Trách nhiệm:
 - lấy `clientKey` từ HTTP request
 - thông thường `clientKey` ở đây là IP
 
-Thứ tự lấy IP hiện tại:
+Thứ tự lấy IP hiện tại (an toan hon voi trusted proxy):
 
-1. `X-Forwarded-For`
-2. `X-Real-IP`
-3. `request.getRemoteAddr()`
+1. lấy `request.getRemoteAddr()`
+2. kiểm tra remoteAddr có thuộc trusted proxy list hay không
+3. nếu trusted mới xét `X-Forwarded-For`, rồi `X-Real-IP`
+4. nếu không trusted thì dùng luôn `request.getRemoteAddr()`
 
 Code rút gọn:
 
 ```java
-String forwardedFor = request.getHeader("X-Forwarded-For");
-if (StringUtils.hasText(forwardedFor)) {
-  return forwardedFor.split(",")[0].trim();
+String remoteAddr = request.getRemoteAddr();
+if (isTrustedProxy(remoteAddr)) {
+  String forwardedFor = request.getHeader("X-Forwarded-For");
+  if (StringUtils.hasText(forwardedFor)) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  String realIp = request.getHeader("X-Real-IP");
+  if (StringUtils.hasText(realIp)) {
+    return realIp.trim();
+  }
 }
 
-String realIp = request.getHeader("X-Real-IP");
-if (StringUtils.hasText(realIp)) {
-  return realIp.trim();
-}
-
-return request.getRemoteAddr();
+return remoteAddr;
 ```
+
+Xem tài liệu chi tiết:
+
+- [docs/client-ip-trusted-proxy-guide.md](docs/client-ip-trusted-proxy-guide.md)
 
 ### 3.6. `AuthService` và `PasswordResetService`
 
@@ -421,14 +429,14 @@ Trong `AuthService.login(...)`:
 4. nếu đã vượt ngưỡng thì throw `AppException(..., 429)`
 5. tìm user theo email
 6. nếu không tìm thấy hoặc password sai:
-   - gọi `invalidCredentials(...)`
-   - bên trong `invalidCredentials(...)` gọi `recordLoginFailure(...)`
-   - tăng counter cho `email`, `client`, `pair`
-   - trả `401 INVALID_CREDENTIALS`
+    - gọi `invalidCredentials(...)`
+    - bên trong `invalidCredentials(...)` gọi `recordLoginFailure(...)`
+    - tăng counter cho `email`, `client`, `pair`
+    - trả `401 INVALID_CREDENTIALS`
 7. nếu đúng password:
-   - gọi `resetLoginFailures(...)`
-   - xóa các key login hiện tại
-   - tạo access token và refresh token
+    - gọi `resetLoginFailures(...)`
+    - xóa các key login hiện tại
+    - tạo access token và refresh token
 
 ### 7.3. Code chính
 
@@ -494,13 +502,13 @@ Trong `PasswordResetService.requestPasswordReset(...)`:
 4. nếu vượt ngưỡng thì trả `429 TOO_MANY_PASSWORD_RESET_REQUESTS`
 5. tìm user theo email
 6. nếu không có user:
-   - vẫn trả kết quả "thành công giả"
-   - không lộ user enumeration
+    - vẫn trả kết quả "thành công giả"
+    - không lộ user enumeration
 7. nếu có user:
-   - xóa reset token cũ
-   - tạo raw token mới
-   - hash token
-   - lưu hash vào DB
+    - xóa reset token cũ
+    - tạo raw token mới
+    - hash token
+    - lưu hash vào DB
 
 ### 8.3. Code chính
 
@@ -697,35 +705,35 @@ Ví dụ:
 
 ```yaml
 app:
-  rate-limit:
-    enabled: ${APP_RATE_LIMIT_ENABLED:true}
-    fail-open: ${APP_RATE_LIMIT_FAIL_OPEN:true}
-    login:
-      window: ${APP_RATE_LIMIT_LOGIN_WINDOW:10m}
-      email-limit: ${APP_RATE_LIMIT_LOGIN_EMAIL_LIMIT:5}
-      client-limit: ${APP_RATE_LIMIT_LOGIN_CLIENT_LIMIT:20}
-      pair-limit: ${APP_RATE_LIMIT_LOGIN_PAIR_LIMIT:5}
-    password-reset:
-      window: ${APP_RATE_LIMIT_PASSWORD_RESET_WINDOW:15m}
-      email-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_EMAIL_LIMIT:3}
-      client-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_CLIENT_LIMIT:10}
-      pair-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_PAIR_LIMIT:3}
-    refresh:
-      window: ${APP_RATE_LIMIT_REFRESH_WINDOW:5m}
-      user-limit: ${APP_RATE_LIMIT_REFRESH_USER_LIMIT:20}
-      client-limit: ${APP_RATE_LIMIT_REFRESH_CLIENT_LIMIT:60}
+    rate-limit:
+        enabled: ${APP_RATE_LIMIT_ENABLED:true}
+        fail-open: ${APP_RATE_LIMIT_FAIL_OPEN:true}
+        login:
+            window: ${APP_RATE_LIMIT_LOGIN_WINDOW:10m}
+            email-limit: ${APP_RATE_LIMIT_LOGIN_EMAIL_LIMIT:5}
+            client-limit: ${APP_RATE_LIMIT_LOGIN_CLIENT_LIMIT:20}
+            pair-limit: ${APP_RATE_LIMIT_LOGIN_PAIR_LIMIT:5}
+        password-reset:
+            window: ${APP_RATE_LIMIT_PASSWORD_RESET_WINDOW:15m}
+            email-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_EMAIL_LIMIT:3}
+            client-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_CLIENT_LIMIT:10}
+            pair-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_PAIR_LIMIT:3}
+        refresh:
+            window: ${APP_RATE_LIMIT_REFRESH_WINDOW:5m}
+            user-limit: ${APP_RATE_LIMIT_REFRESH_USER_LIMIT:20}
+            client-limit: ${APP_RATE_LIMIT_REFRESH_CLIENT_LIMIT:60}
 ```
 
 Redis được config qua:
 
 ```yaml
 spring:
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
-      timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
+    data:
+        redis:
+            host: ${SPRING_DATA_REDIS_HOST:localhost}
+            port: ${SPRING_DATA_REDIS_PORT:6379}
+            password: ${SPRING_DATA_REDIS_PASSWORD:}
+            timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
 ```
 
 ---

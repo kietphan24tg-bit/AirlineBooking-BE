@@ -54,6 +54,8 @@ app:
     logging:
         request-id-header: ${APP_REQUEST_ID_HEADER:X-Request-Id}
         json-enabled: ${APP_LOG_JSON_ENABLED:false}
+    client-ip:
+        trusted-proxies: ${APP_CLIENT_IP_TRUSTED_PROXIES:127.0.0.1,::1}
     swagger:
         title: ${APP_SWAGGER_TITLE:Airline Booking API}
         description: ${APP_SWAGGER_DESCRIPTION:Modular monolith backend for airline booking, payment, notification, and check-in workflows.}

@@ -2,6 +2,7 @@ package com.example.moduleidentity.application;
 
 import com.example.common.exception.AppException;
 import com.example.moduleidentity.domain.security.AuthRateLimiter;
+import com.example.moduleidentity.domain.security.ClientKeyUtils;
 import com.example.moduleidentity.domain.security.TokenHashingService;
 import com.example.moduleidentity.domain.security.UserSecurityStateService;
 import com.example.moduleidentity.entity.PasswordResetTokenEntity;
@@ -127,13 +128,6 @@ public class PasswordResetService {
   }
 
   private String normalizeClientKey(String clientKey, String normalizedEmail) {
-    if (clientKey != null && !clientKey.trim().isEmpty()) {
-      return clientKey.trim();
-    }
-    String resolvedClientKey = clientKeyResolver.resolveClientKey();
-    if (resolvedClientKey != null && !resolvedClientKey.trim().isEmpty()) {
-      return resolvedClientKey.trim();
-    }
-    return normalizedEmail;
+    return ClientKeyUtils.normalizeClientKey(clientKey, clientKeyResolver, normalizedEmail);
   }
 }

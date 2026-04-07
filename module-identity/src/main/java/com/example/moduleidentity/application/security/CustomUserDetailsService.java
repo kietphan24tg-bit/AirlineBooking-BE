@@ -22,7 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         userRepository
             .findByEmail(email)
             .orElseThrow(
-                () -> new UsernameNotFoundException("User not found with email: " + email));
+                () -> new UsernameNotFoundException("Invalid credentials"));
 
     return new AppUserPrincipal(
         user.getId(),

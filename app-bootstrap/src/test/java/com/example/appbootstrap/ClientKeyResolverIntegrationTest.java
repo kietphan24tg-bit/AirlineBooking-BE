@@ -25,7 +25,7 @@ class ClientKeyResolverIntegrationTest {
   @Autowired private MockMvc mockMvc;
 
   @Test
-  void shouldResolveClientIpFromForwardedHeader() throws Exception {
+  void shouldResolveClientIpFromForwardedHeaderWhenRemoteAddressIsTrustedProxy() throws Exception {
     mockMvc
         .perform(
             get("/client-key/current")

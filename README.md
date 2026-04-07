@@ -382,7 +382,7 @@ Database schema cua du an duoc quan ly bang Flyway va duoc chia theo cac nhom ng
 
 Migration SQL hien tai duoc dat tai:
 
-- [app-bootstrap/src/main/resources/db/migration](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/db/migration)
+- [database/src/main/resources/db/migration](/d:/Workspace/CNPM/AirlineBooking/airline-booking/database/src/main/resources/db/migration)
 
 ```mermaid
 erDiagram
@@ -394,11 +394,11 @@ erDiagram
         varchar phone UK
         timestamptz dob
         varchar password_hash
-        boolean is_verify
         varchar nationality
         varchar identify_number
         varchar role
         boolean accept_terms
+        timestamptz token_invalid_before
         timestamptz created_at
         timestamptz updated_at
     }
@@ -406,11 +406,21 @@ erDiagram
     REFRESH_TOKEN_SESSIONS {
         bigint id PK
         bigint user_id FK
-      text refresh_token_hash UK
+        text refresh_token_hash UK
         boolean revoked
         timestamptz expires_at
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    PASSWORD_RESET_TOKENS {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK
+        timestamptz expires_at
+        boolean used
+        timestamptz created_at
+        timestamptz used_at
     }
 
     AIRPORTS {
@@ -587,6 +597,7 @@ erDiagram
     FLIGHTS ||--o{ FLIGHT_FARES : has
     FARE_CLASSES ||--o{ FLIGHT_FARES : prices
     USERS ||--o{ REFRESH_TOKEN_SESSIONS : has
+    USERS ||--o{ PASSWORD_RESET_TOKENS : has
     USERS ||--o{ BOOKINGS : creates
     PROMOTIONS ||--o{ BOOKINGS : applies_to
     BOOKINGS ||--o{ PASSENGERS : contains
