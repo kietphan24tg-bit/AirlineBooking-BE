@@ -21,8 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     UserEntity user =
         userRepository
             .findByEmail(email)
-            .orElseThrow(
-                () -> new UsernameNotFoundException("Invalid credentials"));
+            .orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
 
     return new AppUserPrincipal(
         user.getId(),

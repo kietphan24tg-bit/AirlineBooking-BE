@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 @ExtendWith(MockitoExtension.class)
 class RedisRateLimitStoreTest {
@@ -32,19 +32,19 @@ class RedisRateLimitStoreTest {
   @Test
   void shouldIncrementAndSetExpiryForFirstKeyUse() {
     when(redisTemplate.execute(
-          org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-          eq(List.of("rate-limit:test")),
-          eq("300")))
+            org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+            eq(List.of("rate-limit:test")),
+            eq("300")))
         .thenReturn(1L);
 
     long count = store.increment("rate-limit:test", Duration.ofMinutes(5));
 
     assertEquals(1L, count);
     verify(redisTemplate)
-      .execute(
-        org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-        eq(List.of("rate-limit:test")),
-        eq("300"));
+        .execute(
+            org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+            eq(List.of("rate-limit:test")),
+            eq("300"));
   }
 
   @Test

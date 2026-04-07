@@ -21,6 +21,8 @@ public class PasswordResetService {
 
   private static final int RAW_TOKEN_BYTES = 32; // 256-bit
   private static final long EXPIRATION_MINUTES = 15;
+  private static final int PASSWORD_MIN_LENGTH = 8;
+  private static final int PASSWORD_MAX_LENGTH = 128;
 
   private final UserRepository userRepository;
   private final PasswordResetTokenRepository passwordResetTokenRepository;
@@ -100,6 +102,7 @@ public class PasswordResetService {
 
   @Transactional
   public void resetPassword(String rawToken, String newPassword) {
+    validateResetPasswordInput(rawToken, newPassword);
     String tokenHash = tokenHashingService.hashToken(rawToken);
     PasswordResetTokenEntity token =
         passwordResetTokenRepository
@@ -109,7 +112,7 @@ public class PasswordResetService {
                     new AppException(
                         "RESET_TOKEN_INVALID", "Password reset token is invalid or expired", 400));
 
-    if (token.isUsed() || token.getExpiresAt().isBefore(OffsetDateTime.now())) {
+    if (token.isUsed() || !token.getExpiresAt().isAfter(OffsetDateTime.now())) {
       throw new AppException(
           "RESET_TOKEN_INVALID", "Password reset token is invalid or expired", 400);
     }
@@ -125,6 +128,22 @@ public class PasswordResetService {
 
     // Revoke all existing refresh token sessions for this user so old tokens cannot be used
     refreshTokenSessionService.revokeAllActiveByUserId(user.getId());
+  }
+
+  private void validateResetPasswordInput(String rawToken, String newPassword) {
+    if (rawToken == null || rawToken.isBlank()) {
+      throw new AppException("RESET_TOKEN_REQUIRED", "Reset token is required", 400);
+    }
+    if (newPassword == null || newPassword.isBlank()) {
+      throw new AppException("NEW_PASSWORD_REQUIRED", "New password is required", 400);
+    }
+    int length = newPassword.length();
+    if (length < PASSWORD_MIN_LENGTH || length > PASSWORD_MAX_LENGTH) {
+      throw new AppException(
+          "NEW_PASSWORD_INVALID_LENGTH",
+          "New password must be between " + PASSWORD_MIN_LENGTH + " and " + PASSWORD_MAX_LENGTH + " characters",
+          400);
+    }
   }
 
   private String normalizeClientKey(String clientKey, String normalizedEmail) {

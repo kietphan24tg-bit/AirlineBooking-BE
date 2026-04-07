@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -27,7 +27,7 @@ public class HttpRequestClientKeyResolver implements ClientKeyResolver {
                 .map(value -> value == null ? "" : value.trim())
                 .filter(StringUtils::hasText)
                 .map(this::toIpMatcher)
-              .filter(Objects::nonNull)
+                .filter(Objects::nonNull)
                 .toList();
   }
 

@@ -60,16 +60,16 @@ class WebInfrastructureIntegrationTest {
         .andExpect(jsonPath("$.message").value("Custom success message"));
   }
 
-        @Test
-        void shouldWrapStringResponseWithDefaultMessage() throws Exception {
-          mockMvc
-          .perform(get("/test/string-success").with(user("tester")))
-          .andExpect(status().isOk())
-          .andExpect(header().exists("X-Request-Id"))
-          .andExpect(jsonPath("$.success").value(true))
-          .andExpect(jsonPath("$.data").value("ok"))
-          .andExpect(jsonPath("$.message").value("Operation successful"));
-        }
+  @Test
+  void shouldWrapStringResponseWithDefaultMessage() throws Exception {
+    mockMvc
+        .perform(get("/test/string-success").with(user("tester")))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data").value("ok"))
+        .andExpect(jsonPath("$.message").value("Operation successful"));
+  }
 
   @Test
   void shouldReturnStandardBusinessErrorResponse() throws Exception {
