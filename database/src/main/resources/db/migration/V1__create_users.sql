@@ -6,6 +6,7 @@ create table users (
     phone varchar(30),
     dob timestamp with time zone,
     password_hash varchar(255) not null,
+    is_verify boolean not null default false,
     nationality varchar(100),
     identify_number varchar(100),
     created_at timestamp with time zone not null default current_timestamp,
