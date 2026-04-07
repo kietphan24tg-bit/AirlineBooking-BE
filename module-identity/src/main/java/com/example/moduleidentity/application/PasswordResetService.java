@@ -141,7 +141,11 @@ public class PasswordResetService {
     if (length < PASSWORD_MIN_LENGTH || length > PASSWORD_MAX_LENGTH) {
       throw new AppException(
           "NEW_PASSWORD_INVALID_LENGTH",
-          "New password must be between " + PASSWORD_MIN_LENGTH + " and " + PASSWORD_MAX_LENGTH + " characters",
+          "New password must be between "
+              + PASSWORD_MIN_LENGTH
+              + " and "
+              + PASSWORD_MAX_LENGTH
+              + " characters",
           400);
     }
   }

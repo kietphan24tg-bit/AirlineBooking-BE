@@ -1,7 +1,7 @@
 package com.example.moduleidentity.application;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -116,7 +116,8 @@ class PasswordResetServiceTest {
   @Test
   void shouldRejectBlankResetTokenBeforeHashing() {
     AppException exception =
-        assertThrows(AppException.class, () -> passwordResetService.resetPassword(" ", "new-secret"));
+        assertThrows(
+            AppException.class, () -> passwordResetService.resetPassword(" ", "new-secret"));
 
     org.junit.jupiter.api.Assertions.assertEquals("RESET_TOKEN_REQUIRED", exception.getCode());
     verify(tokenHashingService, never()).hashToken(org.mockito.ArgumentMatchers.anyString());
@@ -125,9 +126,11 @@ class PasswordResetServiceTest {
   @Test
   void shouldRejectShortPasswordBeforeEncoding() {
     AppException exception =
-        assertThrows(AppException.class, () -> passwordResetService.resetPassword("raw-token", "short"));
+        assertThrows(
+            AppException.class, () -> passwordResetService.resetPassword("raw-token", "short"));
 
-    org.junit.jupiter.api.Assertions.assertEquals("NEW_PASSWORD_INVALID_LENGTH", exception.getCode());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        "NEW_PASSWORD_INVALID_LENGTH", exception.getCode());
     verify(passwordEncoder, never()).encode(org.mockito.ArgumentMatchers.anyString());
   }
 }
