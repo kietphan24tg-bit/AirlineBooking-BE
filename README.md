@@ -46,18 +46,18 @@ Muc tieu cua repo nay la phat trien backend cho bai toan:
 
 ### Modules
 
-| Module | Role |
-| --- | --- |
-| `app-bootstrap` | Entry point chinh, tap hop toan bo modules va khoi dong Spring Boot |
-| `common` | Shared code dung chung |
-| `database` | Database-related shared layer |
-| `module-identity` | Identity/authentication |
-| `module-flight` | Flight business logic |
-| `module-booking` | Booking business logic |
-| `module-payment` | Payment business logic |
-| `module-checkin` | Check-in business logic |
-| `module-notification` | Notification business logic |
-| `module-scheduler` | Background jobs / scheduled tasks |
+| Module                | Role                                                                |
+| --------------------- | ------------------------------------------------------------------- |
+| `app-bootstrap`       | Entry point chinh, tap hop toan bo modules va khoi dong Spring Boot |
+| `common`              | Shared code dung chung                                              |
+| `database`            | Database-related shared layer                                       |
+| `module-identity`     | Identity/authentication                                             |
+| `module-flight`       | Flight business logic                                               |
+| `module-booking`      | Booking business logic                                              |
+| `module-payment`      | Payment business logic                                              |
+| `module-checkin`      | Check-in business logic                                             |
+| `module-notification` | Notification business logic                                         |
+| `module-scheduler`    | Background jobs / scheduled tasks                                   |
 
 ### Project Structure
 
@@ -117,10 +117,10 @@ Chua config chung:
 - Swagger enable/path
 - actuator endpoints
 - custom `app.*` config:
-  - `app.jwt.*`
-  - `app.booking.*`
-  - `app.payment.*`
-  - `app.mail.from`
+    - `app.jwt.*`
+    - `app.booking.*`
+    - `app.payment.*`
+    - `app.mail.from`
 
 #### `application-local.yml`
 
@@ -160,40 +160,58 @@ Bien moi truong mau da duoc khai bao trong `.env.example`.
 Nhom bien quan trong:
 
 - profile
-  - `SPRING_PROFILES_ACTIVE`
-  - `SERVER_PORT`
+    - `SPRING_PROFILES_ACTIVE`
+    - `SERVER_PORT`
 - datasource
-  - `SPRING_DATASOURCE_URL`
-  - `SPRING_DATASOURCE_USERNAME`
-  - `SPRING_DATASOURCE_PASSWORD`
+    - `SPRING_DATASOURCE_URL`
+    - `SPRING_DATASOURCE_USERNAME`
+    - `SPRING_DATASOURCE_PASSWORD`
 - JPA / Flyway
-  - `SPRING_JPA_HIBERNATE_DDL_AUTO`
-  - `SPRING_JPA_SHOW_SQL`
-  - `SPRING_FLYWAY_ENABLED`
+    - `SPRING_JPA_HIBERNATE_DDL_AUTO`
+    - `SPRING_JPA_SHOW_SQL`
+    - `SPRING_FLYWAY_ENABLED`
 - JWT
-  - `APP_JWT_SECRET`
-  - `APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES`
-  - `APP_JWT_REFRESH_TOKEN_EXPIRATION_DAYS`
+    - `APP_JWT_SECRET`
+    - `APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES`
+    - `APP_JWT_REFRESH_TOKEN_EXPIRATION_DAYS`
 - booking rules
-  - `APP_BOOKING_PNR_EXPIRATION_MINUTES`
-  - `APP_BOOKING_CHECKIN_OPEN_HOURS`
-  - `APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES`
-  - `APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES`
+    - `APP_BOOKING_PNR_EXPIRATION_MINUTES`
+    - `APP_BOOKING_CHECKIN_OPEN_HOURS`
+    - `APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES`
+    - `APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES`
 - payment
-  - `APP_PAYMENT_PROVIDER`
-  - `APP_PAYMENT_WEBHOOK_SECRET`
-  - `APP_PAYMENT_RETURN_URL`
-  - `APP_PAYMENT_CANCEL_URL`
+    - `APP_PAYMENT_PROVIDER`
+    - `APP_PAYMENT_WEBHOOK_SECRET`
+    - `APP_PAYMENT_RETURN_URL`
+    - `APP_PAYMENT_CANCEL_URL`
+- redis / rate-limit
+    - `SPRING_DATA_REDIS_HOST`
+    - `SPRING_DATA_REDIS_PORT`
+    - `SPRING_DATA_REDIS_PASSWORD`
+    - `SPRING_DATA_REDIS_TIMEOUT`
+    - `APP_RATE_LIMIT_ENABLED`
+    - `APP_RATE_LIMIT_FAIL_OPEN`
+    - `APP_RATE_LIMIT_LOGIN_WINDOW`
+    - `APP_RATE_LIMIT_LOGIN_EMAIL_LIMIT`
+    - `APP_RATE_LIMIT_LOGIN_CLIENT_LIMIT`
+    - `APP_RATE_LIMIT_LOGIN_PAIR_LIMIT`
+    - `APP_RATE_LIMIT_PASSWORD_RESET_WINDOW`
+    - `APP_RATE_LIMIT_PASSWORD_RESET_EMAIL_LIMIT`
+    - `APP_RATE_LIMIT_PASSWORD_RESET_CLIENT_LIMIT`
+    - `APP_RATE_LIMIT_PASSWORD_RESET_PAIR_LIMIT`
+    - `APP_RATE_LIMIT_REFRESH_WINDOW`
+    - `APP_RATE_LIMIT_REFRESH_USER_LIMIT`
+    - `APP_RATE_LIMIT_REFRESH_CLIENT_LIMIT`
 - mail
-  - `SPRING_MAIL_HOST`
-  - `SPRING_MAIL_PORT`
-  - `SPRING_MAIL_USERNAME`
-  - `SPRING_MAIL_PASSWORD`
-  - `SPRING_MAIL_SMTP_AUTH`
-  - `SPRING_MAIL_SMTP_STARTTLS_ENABLE`
-  - `APP_MAIL_FROM`
+    - `SPRING_MAIL_HOST`
+    - `SPRING_MAIL_PORT`
+    - `SPRING_MAIL_USERNAME`
+    - `SPRING_MAIL_PASSWORD`
+    - `SPRING_MAIL_SMTP_AUTH`
+    - `SPRING_MAIL_SMTP_STARTTLS_ENABLE`
+    - `APP_MAIL_FROM`
 - Swagger
-  - `APP_SWAGGER_ENABLED`
+    - `APP_SWAGGER_ENABLED`
 
 ### Supabase Notes
 
@@ -211,6 +229,51 @@ Username mau:
 postgres.<project-ref>
 ```
 
+### Rate Limit Window and Refresh Session Flow
+
+#### 1) Rate limit window duoc luu nhu the nao
+
+- Rule duoc bind tu env qua `app.rate-limit.*` trong `application.yml`.
+- Moi candidate (`login:email`, `login:client`, `login:pair`, `refresh:user`, ...) tao thanh key theo format:
+    - `rate-limit:<action>:<dimension>:<identifier>`
+- Khi consume:
+    - `INCR key` trong Redis
+    - neu la lan dau (`count == 1`) thi `EXPIRE key = window`
+- Nhu vay window la sliding/fixed theo TTL cua key trong Redis, khong luu trong SQL.
+
+Files/hams lien quan:
+
+- `AuthThrottleService.candidate()` + `AuthThrottleService.key()`
+- `AuthThrottleService.consume()` + `AuthThrottleService.assertBelowLimit()`
+- `RedisRateLimitStore.increment()` (goi `increment` va `expire`)
+
+#### 2) Refresh token co revoke token cu khong
+
+Co.
+
+- Luong refresh trong `AuthService.refresh(...)`:
+    1. check active session qua `RefreshTokenSessionService.requireActiveSession(...)`
+    2. verify JWT refresh token
+    3. revoke token cu: `RefreshTokenSessionService.revokeByRefreshToken(...)`
+    4. tao token moi va luu session moi: `RefreshTokenSessionService.createSession(...)`
+
+=> Day la refresh token rotation: token cu bi danh dau `revoked=true`, token moi duoc tao session moi.
+
+#### 3) Refresh token session luu o dau
+
+- Luu o bang SQL `refresh_token_sessions` (PostgreSQL), khong luu Redis.
+- Truong chinh: `refresh_token_hash`, `revoked`, `expires_at`, `created_at`, `updated_at`, `user_id`.
+- Password reset thanh cong se revoke tat ca session active cua user:
+    - `PasswordResetService.resetPassword()` -> `RefreshTokenSessionService.revokeAllActiveByUserId(...)`
+
+Files lien quan:
+
+- `RefreshTokenSessionEntity`
+- `RefreshTokenSessionRepository`
+- `RefreshTokenSessionService`
+- `AuthService.refresh(...)`
+- `PasswordResetService.resetPassword(...)`
+
 ---
 
 ## Quick Start
@@ -225,9 +288,9 @@ Controller tra object binh thuong se duoc auto-wrap thanh:
 
 ```json
 {
-  "success": true,
-  "data": {},
-  "message": "Operation successful"
+    "success": true,
+    "data": {},
+    "message": "Operation successful"
 }
 ```
 
@@ -247,18 +310,18 @@ Loi duoc tra ve theo format:
 
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "details": {
-      "field": "message"
-    }
-  },
-  "statusCode": 400,
-  "timestamp": "2026-03-30T12:00:00Z",
-  "path": "/api/bookings",
-  "requestId": "..."
+    "success": false,
+    "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Validation failed",
+        "details": {
+            "field": "message"
+        }
+    },
+    "statusCode": 400,
+    "timestamp": "2026-03-30T12:00:00Z",
+    "path": "/api/bookings",
+    "requestId": "..."
 }
 ```
 
@@ -269,17 +332,17 @@ Loi duoc tra ve theo format:
 No dang xu ly 3 nhom loi chinh:
 
 - business exception
-  - `AppException`
+    - `AppException`
 - request / validation / HTTP exception
-  - `MethodArgumentNotValidException`
-  - `ConstraintViolationException`
-  - `HttpMessageNotReadableException`
-  - `MissingServletRequestParameterException`
-  - `HttpRequestMethodNotSupportedException`
-  - `NoResourceFoundException`
-  - `AccessDeniedException`
+    - `MethodArgumentNotValidException`
+    - `ConstraintViolationException`
+    - `HttpMessageNotReadableException`
+    - `MissingServletRequestParameterException`
+    - `HttpRequestMethodNotSupportedException`
+    - `NoResourceFoundException`
+    - `AccessDeniedException`
 - system exception
-  - `Exception`
+    - `Exception`
 
 Files lien quan:
 
@@ -319,7 +382,7 @@ Database schema cua du an duoc quan ly bang Flyway va duoc chia theo cac nhom ng
 
 Migration SQL hien tai duoc dat tai:
 
-- [app-bootstrap/src/main/resources/db/migration](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/db/migration)
+- [database/src/main/resources/db/migration](/d:/Workspace/CNPM/AirlineBooking/airline-booking/database/src/main/resources/db/migration)
 
 ```mermaid
 erDiagram
@@ -328,23 +391,36 @@ erDiagram
         varchar email UK
         varchar first_name
         varchar last_name
-        varchar phone
+        varchar phone UK
         timestamptz dob
         varchar password_hash
-        boolean is_verify
         varchar nationality
         varchar identify_number
         varchar role
+        boolean accept_terms
+        timestamptz token_invalid_before
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     REFRESH_TOKEN_SESSIONS {
         bigint id PK
         bigint user_id FK
-        text refresh_token UK
+        text refresh_token_hash UK
         boolean revoked
         timestamptz expires_at
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    PASSWORD_RESET_TOKENS {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK
+        timestamptz expires_at
+        boolean used
+        timestamptz created_at
+        timestamptz used_at
     }
 
     AIRPORTS {
@@ -521,6 +597,7 @@ erDiagram
     FLIGHTS ||--o{ FLIGHT_FARES : has
     FARE_CLASSES ||--o{ FLIGHT_FARES : prices
     USERS ||--o{ REFRESH_TOKEN_SESSIONS : has
+    USERS ||--o{ PASSWORD_RESET_TOKENS : has
     USERS ||--o{ BOOKINGS : creates
     PROMOTIONS ||--o{ BOOKINGS : applies_to
     BOOKINGS ||--o{ PASSENGERS : contains
@@ -550,8 +627,8 @@ Quy uoc hien tai:
 - Flyway la nguon chinh de tao va thay doi schema
 - JPA entity map theo schema migration
 - production / integration mode nen uu tien:
-  - `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`
-  - `SPRING_FLYWAY_ENABLED=true`
+    - `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`
+    - `SPRING_FLYWAY_ENABLED=true`
 
 ---
 
@@ -616,7 +693,7 @@ Neu muon debug:
 
 1. mo tab `Run and Debug`
 2. chon:
-   - `Debug AppBootstrapApplication`
+    - `Debug AppBootstrapApplication`
 3. bam `Start Debugging`
 
 Luu y:
@@ -636,12 +713,12 @@ Luu y:
 ### Local Run
 
 1. Mo dung root project:
-   - `d:\Workspace\CNPM\AirlineBooking\airline-booking`
+    - `d:\Workspace\CNPM\AirlineBooking\airline-booking`
 2. Vao `Run -> Edit Configurations`
 3. Tao hoac chon Spring Boot configuration cho:
-   - `AppBootstrapApplication`
+    - `AppBootstrapApplication`
 4. Chon module classpath:
-   - `app-bootstrap`
+    - `app-bootstrap`
 5. O muc `Environment variables`, set toi thieu:
 
 ```text
@@ -674,10 +751,10 @@ Vi vay:
 
 - `.env.example` la file mau de collaborator copy tham khao
 - gia tri that thuong duoc set trong:
-  - IntelliJ Run Configuration
-  - terminal session
-  - Docker Compose
-  - Railway dashboard
+    - IntelliJ Run Configuration
+    - terminal session
+    - Docker Compose
+    - Railway dashboard
 
 Khuyen nghi:
 

@@ -1,6 +1,7 @@
-package com.example.moduleidentity.service;
+package com.example.moduleidentity.application;
 
 import com.example.common.exception.AppException;
+import com.example.moduleidentity.domain.security.TokenHashingService;
 import com.example.moduleidentity.entity.RefreshTokenSessionEntity;
 import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.RefreshTokenSessionRepository;
@@ -12,9 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class RefreshTokenSessionService {
 
   private final RefreshTokenSessionRepository refreshTokenSessionRepository;
+  private final TokenHashingService tokenHashingService;
 
-  public RefreshTokenSessionService(RefreshTokenSessionRepository refreshTokenSessionRepository) {
+  public RefreshTokenSessionService(
+      RefreshTokenSessionRepository refreshTokenSessionRepository,
+      TokenHashingService tokenHashingService) {
     this.refreshTokenSessionRepository = refreshTokenSessionRepository;
+    this.tokenHashingService = tokenHashingService;
   }
 
   @Transactional
@@ -23,7 +28,7 @@ public class RefreshTokenSessionService {
     RefreshTokenSessionEntity session = new RefreshTokenSessionEntity();
     OffsetDateTime now = OffsetDateTime.now();
     session.setUser(user);
-    session.setRefreshToken(refreshToken);
+    session.setRefreshTokenHash(tokenHashingService.hashToken(refreshToken));
     session.setRevoked(false);
     session.setExpiresAt(expiresAt);
     session.setCreatedAt(now);
@@ -33,13 +38,7 @@ public class RefreshTokenSessionService {
 
   @Transactional(readOnly = true)
   public RefreshTokenSessionEntity requireActiveSession(String refreshToken) {
-    RefreshTokenSessionEntity session =
-        refreshTokenSessionRepository
-            .findByRefreshToken(refreshToken)
-            .orElseThrow(
-                () ->
-                    new AppException(
-                        "REFRESH_TOKEN_NOT_FOUND", "Refresh token session not found", 401));
+    RefreshTokenSessionEntity session = requireSessionByRawToken(refreshToken);
 
     if (session.isRevoked()) {
       throw new AppException("REFRESH_TOKEN_REVOKED", "Refresh token has been revoked", 401);
@@ -54,8 +53,7 @@ public class RefreshTokenSessionService {
 
   @Transactional
   public void revokeByRefreshToken(String refreshToken) {
-    refreshTokenSessionRepository
-        .findByRefreshToken(refreshToken)
+    findSessionByRawToken(refreshToken)
         .filter(session -> !session.isRevoked())
         .ifPresent(
             session -> {
@@ -63,6 +61,11 @@ public class RefreshTokenSessionService {
               session.setUpdatedAt(OffsetDateTime.now());
               refreshTokenSessionRepository.save(session);
             });
+  }
+
+  @Transactional
+  public boolean revokeIfActive(Long sessionId) {
+    return refreshTokenSessionRepository.revokeIfActive(sessionId, OffsetDateTime.now()) > 0;
   }
 
   @Transactional
@@ -81,5 +84,32 @@ public class RefreshTokenSessionService {
   @Transactional
   public long deleteExpiredSessions() {
     return refreshTokenSessionRepository.deleteByExpiresAtBefore(OffsetDateTime.now());
+  }
+
+  private RefreshTokenSessionEntity requireSessionByRawToken(String rawRefreshToken) {
+    return findSessionByRawToken(rawRefreshToken)
+        .orElseThrow(
+            () ->
+                new AppException(
+                    "REFRESH_TOKEN_NOT_FOUND", "Refresh token session not found", 401));
+  }
+
+  private java.util.Optional<RefreshTokenSessionEntity> findSessionByRawToken(
+      String rawRefreshToken) {
+    String hashed = tokenHashingService.hashToken(rawRefreshToken);
+    var byHashed = refreshTokenSessionRepository.findByRefreshTokenHash(hashed);
+    if (byHashed.isPresent()) {
+      return byHashed;
+    }
+
+    // Backward compatibility for legacy rows that may still contain raw token value.
+    var byLegacyRaw = refreshTokenSessionRepository.findByRefreshTokenHash(rawRefreshToken);
+    byLegacyRaw.ifPresent(
+        session -> {
+          session.setRefreshTokenHash(hashed);
+          session.setUpdatedAt(OffsetDateTime.now());
+          refreshTokenSessionRepository.save(session);
+        });
+    return byLegacyRaw;
   }
 }

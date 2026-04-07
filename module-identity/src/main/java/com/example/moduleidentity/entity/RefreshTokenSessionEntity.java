@@ -29,8 +29,8 @@ public class RefreshTokenSessionEntity {
   @JoinColumn(name = "user_id", nullable = false)
   private UserEntity user;
 
-  @Column(name = "refresh_token", nullable = false, unique = true, columnDefinition = "text")
-  private String refreshToken;
+  @Column(name = "refresh_token_hash", nullable = false, unique = true, columnDefinition = "text")
+  private String refreshTokenHash;
 
   @Column(nullable = false)
   private boolean revoked;

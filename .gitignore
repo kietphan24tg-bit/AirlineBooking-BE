@@ -42,6 +42,9 @@ out/
 ### Logs & temp ###
 *.log
 tmp/
+*.pdf
+
+/docs/
 
 ### Env files ###
 .env

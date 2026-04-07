@@ -9,8 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.appbootstrap.api.ApiSuccessMessage;
 import com.example.modulebooking.exception.BookingNotFoundException;
+import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
-import com.example.moduleidentity.security.AppUserPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
@@ -58,6 +58,17 @@ class WebInfrastructureIntegrationTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.value").value("ok"))
         .andExpect(jsonPath("$.message").value("Custom success message"));
+  }
+
+  @Test
+  void shouldWrapStringResponseWithDefaultMessage() throws Exception {
+    mockMvc
+        .perform(get("/test/string-success").with(user("tester")))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data").value("ok"))
+        .andExpect(jsonPath("$.message").value("Operation successful"));
   }
 
   @Test
@@ -122,7 +133,7 @@ class WebInfrastructureIntegrationTest {
             get("/test/admin-only")
                 .with(
                     user(
-                        new AppUserPrincipal(100L, "user@example.com", "secret", true, Role.USER))))
+                        new AppUserPrincipal(100L, "user@example.com", "secret", Role.USER, null))))
         .andExpect(status().isForbidden())
         .andExpect(header().exists("X-Request-Id"))
         .andExpect(jsonPath("$.success").value(false))
@@ -137,7 +148,7 @@ class WebInfrastructureIntegrationTest {
             get("/test/admin-only")
                 .with(
                     user(
-                        new AppUserPrincipal(1L, "admin@example.com", "secret", true, Role.ADMIN))))
+                        new AppUserPrincipal(1L, "admin@example.com", "secret", Role.ADMIN, null))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.value").value("admin"));
   }
@@ -149,7 +160,7 @@ class WebInfrastructureIntegrationTest {
             get("/test/users/42")
                 .with(
                     user(
-                        new AppUserPrincipal(42L, "owner@example.com", "secret", true, Role.USER))))
+                        new AppUserPrincipal(42L, "owner@example.com", "secret", Role.USER, null))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.userId").value(42));
   }
@@ -160,7 +171,7 @@ class WebInfrastructureIntegrationTest {
         .perform(
             get("/test/users/42")
                 .with(
-                    user(new AppUserPrincipal(7L, "other@example.com", "secret", true, Role.USER))))
+                    user(new AppUserPrincipal(7L, "other@example.com", "secret", Role.USER, null))))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
   }
@@ -173,7 +184,7 @@ class WebInfrastructureIntegrationTest {
                 .with(
                     user(
                         new AppUserPrincipal(
-                            7L, "manager@example.com", "secret", true, Role.MANAGER))))
+                            7L, "manager@example.com", "secret", Role.MANAGER, null))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.userId").value(42));
   }
@@ -192,6 +203,11 @@ class WebInfrastructureIntegrationTest {
     @ApiSuccessMessage("Custom success message")
     Map<String, Object> successWithMessage() {
       return Map.of("value", "ok");
+    }
+
+    @GetMapping("/string-success")
+    String stringSuccess() {
+      return "ok";
     }
 
     @GetMapping("/business-error")
