@@ -10,6 +10,7 @@ import com.example.moduleidentity.port.RateLimitStore;
 import com.example.moduleidentity.repository.PasswordResetTokenRepository;
 import com.example.moduleidentity.repository.RefreshTokenSessionRepository;
 import com.example.moduleidentity.repository.UserRepository;
+import jakarta.servlet.http.Cookie;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -46,6 +47,8 @@ import org.springframework.test.web.servlet.MockMvc;
     })
 @AutoConfigureMockMvc
 class AuthControllerRateLimitIntegrationTest {
+
+  private static final String REFRESH_COOKIE_NAME = "refresh_token";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository userRepository;
@@ -156,7 +159,7 @@ class AuthControllerRateLimitIntegrationTest {
   void shouldReturn429WhenRefreshAttemptsExceedThreshold() throws Exception {
     saveUser("refresh-limit@example.com", "secret123");
 
-    String loginResponse =
+    var loginResult =
         mockMvc
             .perform(
                 post("/api/auth/login")
@@ -170,32 +173,26 @@ class AuthControllerRateLimitIntegrationTest {
                         }
                         """))
             .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+            .andReturn();
 
-    String refreshToken = extractJsonValue(loginResponse, "refreshToken");
+    String refreshToken = extractCookieValue(loginResult.getResponse(), REFRESH_COOKIE_NAME);
 
-    String rotatedResponse =
+    var rotatedResult =
         mockMvc
             .perform(
                 post("/api/auth/refresh")
                     .header("X-Forwarded-For", "203.0.113.30")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                    .cookie(refreshTokenCookie(refreshToken)))
             .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+            .andReturn();
 
-    String newRefreshToken = extractJsonValue(rotatedResponse, "refreshToken");
+    String newRefreshToken = extractCookieValue(rotatedResult.getResponse(), REFRESH_COOKIE_NAME);
 
     mockMvc
         .perform(
             post("/api/auth/refresh")
                 .header("X-Forwarded-For", "203.0.113.30")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"" + newRefreshToken + "\"}"))
+                .cookie(refreshTokenCookie(newRefreshToken)))
         .andExpect(status().isTooManyRequests())
         .andExpect(jsonPath("$.error.code").value("TOO_MANY_REFRESH_ATTEMPTS"));
   }
@@ -214,15 +211,23 @@ class AuthControllerRateLimitIntegrationTest {
     return userRepository.save(user);
   }
 
-  private String extractJsonValue(String payload, String fieldName) {
-    String marker = "\"" + fieldName + "\":\"";
-    int start = payload.indexOf(marker);
-    if (start < 0) {
-      throw new IllegalStateException("Field not found: " + fieldName);
+  private String extractCookieValue(
+      org.springframework.mock.web.MockHttpServletResponse response, String cookieName) {
+    for (String headerValue : response.getHeaders("Set-Cookie")) {
+      if (headerValue.startsWith(cookieName + "=")) {
+        int valueStart = cookieName.length() + 1;
+        int valueEnd = headerValue.indexOf(';', valueStart);
+        if (valueEnd < 0) {
+          return headerValue.substring(valueStart);
+        }
+        return headerValue.substring(valueStart, valueEnd);
+      }
     }
-    int valueStart = start + marker.length();
-    int valueEnd = payload.indexOf('"', valueStart);
-    return payload.substring(valueStart, valueEnd);
+    throw new IllegalStateException("Cookie not found: " + cookieName);
+  }
+
+  private Cookie refreshTokenCookie(String token) {
+    return new Cookie(REFRESH_COOKIE_NAME, token);
   }
 
   @TestConfiguration

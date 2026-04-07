@@ -1,7 +1,9 @@
 package com.example.appbootstrap;
 
+import com.example.appbootstrap.config.AuthCookieProperties;
 import com.example.appbootstrap.config.BookingProperties;
 import com.example.appbootstrap.config.ClientIpProperties;
+import com.example.appbootstrap.config.CorsProperties;
 import com.example.appbootstrap.config.JwtProperties;
 import com.example.appbootstrap.config.LoggingProperties;
 import com.example.appbootstrap.config.MailProperties;
@@ -19,6 +21,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackages = "com.example")
 @EnableConfigurationProperties({
   JwtProperties.class,
+  AuthCookieProperties.class,
+  CorsProperties.class,
   ClientIpProperties.class,
   BookingProperties.class,
   PaymentProperties.class,

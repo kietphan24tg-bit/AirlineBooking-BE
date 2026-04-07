@@ -4,6 +4,7 @@ import com.example.appbootstrap.security.CustomAccessDeniedHandler;
 import com.example.appbootstrap.security.CustomAuthenticationEntryPoint;
 import com.example.appbootstrap.security.JwtAuthenticationFilter;
 import java.util.Arrays;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,14 +30,17 @@ public class SecurityConfig {
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
   private final CustomAccessDeniedHandler customAccessDeniedHandler;
+  private final CorsProperties corsProperties;
 
   public SecurityConfig(
       JwtAuthenticationFilter jwtAuthenticationFilter,
       CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
-      CustomAccessDeniedHandler customAccessDeniedHandler) {
+      CustomAccessDeniedHandler customAccessDeniedHandler,
+      CorsProperties corsProperties) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
     this.customAccessDeniedHandler = customAccessDeniedHandler;
+    this.corsProperties = corsProperties;
   }
 
   @Bean
@@ -95,8 +99,12 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOriginPatterns(
-        Arrays.asList("http://localhost:3000", "http://localhost:5173", "https://*.railway.app"));
+    List<String> allowedOrigins = corsProperties.allowedOriginPatterns();
+    if (allowedOrigins == null || allowedOrigins.isEmpty()) {
+      allowedOrigins =
+          Arrays.asList("http://localhost:3000", "http://localhost:5173", "https://*.railway.app");
+    }
+    configuration.setAllowedOriginPatterns(allowedOrigins);
     configuration.setAllowedMethods(
         Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(

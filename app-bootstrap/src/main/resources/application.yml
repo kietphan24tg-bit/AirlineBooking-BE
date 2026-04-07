@@ -35,6 +35,17 @@ management:
                 include: health,info
 
 app:
+    cors:
+        allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.railway.app}
+    auth:
+        refresh-cookie:
+            name: ${APP_AUTH_REFRESH_COOKIE_NAME:refresh_token}
+            path: ${APP_AUTH_REFRESH_COOKIE_PATH:/api/auth}
+            domain: ${APP_AUTH_REFRESH_COOKIE_DOMAIN:}
+            secure: ${APP_AUTH_REFRESH_COOKIE_SECURE:false}
+            http-only: ${APP_AUTH_REFRESH_COOKIE_HTTP_ONLY:true}
+            same-site: ${APP_AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
+            max-age-seconds: ${APP_AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS:604800}
     jwt:
         secret: ${APP_JWT_SECRET:Y2hhbmdlLW1lLWluLWxvY2FsLWRldmVsb3BtZW50LWp3dC1zZWNyZXQta2V5LTMyLWNoYXJzLXVwZGF0ZWQ=}
         access-token-expiration-minutes: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:15}
