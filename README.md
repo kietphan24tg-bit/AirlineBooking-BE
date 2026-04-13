@@ -1,388 +1,473 @@
 <div align="center">
 
-# Airline Booking Backend
+# Airline Booking Backend System
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Gradle](https://img.shields.io/badge/Gradle-9.x-02303A?logo=gradle&logoColor=white)](https://gradle.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Flyway](https://img.shields.io/badge/Flyway-Migrations-CC0200?logo=flyway&logoColor=white)](https://flywaydb.org/)
+[![Redis](https://img.shields.io/badge/Redis-Rate%20Limit-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
-Multi-module backend system for airline booking workflows built with Java, Spring Boot, and Gradle.
+**Modular monolith backend cho hệ thống đặt vé máy bay, mô phỏng luồng tìm chuyến bay -> đặt vé -> thanh toán -> check-in -> boarding**
 
-[Architecture](#architecture) •
-[Configuration](#configuration) •
-[Quick Start](#quick-start) •
-[VS Code Workflow](#vs-code-workflow) •
-[IntelliJ Run Configuration](#intellij-run-configuration) •
-[Railway Production Config](#railway-production-config)
+[Features](#-features) •
+[Tech Stack](#-tech-stack) •
+[Quick Start](#-quick-start) •
+[API Docs](#-api-endpoints) •
+[Documentation](#-documentation)
 
 </div>
 
 ---
 
-## Overview
+## 📋 Table of Contents
 
-`airline-booking` la backend dang `modular monolith` voi `Gradle multi-module`.
-
-Hien tai:
-
-- `app-bootstrap` la Spring Boot application duy nhat de chay he thong
-- `common`, `database`, va cac `module-*` la library/business modules
-- root project dong vai tro aggregator cho toan bo build
-
-Muc tieu cua repo nay la phat trien backend cho bai toan:
-
-- search flight
-- booking + PNR
-- payment
-- ticket
-- check-in
-- notification
+- [About the Project](#-about-the-project)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Architecture Overview](#-architecture-overview)
+- [Quick Start](#-quick-start)
+- [Environment Variables](#-environment-variables)
+- [API Endpoints](#-api-endpoints)
+- [Project Structure](#-project-structure)
+- [Database Schema](#-database-schema)
+- [Business Rules](#-business-rules)
+- [Development](#-development)
+- [Testing](#-testing)
+- [Security Overview](#-security-overview)
+- [Documentation](#-documentation)
 
 ---
 
-## Architecture
+## ✈️ About the Project
 
-### Modules
+**Airline Booking Backend System** là backend cho bài toán đặt vé máy bay, tập trung vào các luồng nghiệp vụ chính:
 
-| Module                | Role                                                                |
-| --------------------- | ------------------------------------------------------------------- |
-| `app-bootstrap`       | Entry point chinh, tap hop toan bo modules va khoi dong Spring Boot |
-| `common`              | Shared code dung chung                                              |
-| `database`            | Database-related shared layer                                       |
-| `module-identity`     | Identity/authentication                                             |
-| `module-flight`       | Flight business logic                                               |
-| `module-booking`      | Booking business logic                                              |
-| `module-payment`      | Payment business logic                                              |
-| `module-checkin`      | Check-in business logic                                             |
-| `module-notification` | Notification business logic                                         |
-| `module-scheduler`    | Background jobs / scheduled tasks                                   |
+- Tìm kiếm chuyến bay theo chặng, ngày bay, hạng vé
+- Tạo booking và sinh mã `PNR`
+- Giữ chỗ ghế trong thời gian thanh toán
+- Thanh toán và phát hành vé điện tử
+- Quản lý booking sau thanh toán
+- Check-in online và tạo boarding pass
+- Notification và các xử lý nền theo lịch
 
-### Project Structure
+### Core User Roles
+
+| Role | Description |
+|------|-------------|
+| **Passenger** | Tìm chuyến bay, đặt vé, thanh toán, check-in, quản lý booking |
+| **Admin / Manager** | Quản lý chuyến bay, ghế, dữ liệu vận hành và báo cáo |
+
+### Booking Flow
+
+```text
+Search Flight
+  -> Select Flight + Fare
+  -> Enter Passenger Info
+  -> Create Booking (PNR)
+  -> Select Seat + Add-ons
+  -> Payment
+  -> Ticket Issued
+  -> Check-in Online
+  -> Boarding Pass
+  -> Boarding
+```
+
+---
+
+## ✨ Features
+
+### 🔐 Authentication & User Profile
+- Đăng ký tài khoản
+- Xác thực email bằng OTP
+- Đăng nhập, refresh token, đăng xuất
+- Quên mật khẩu và đặt lại mật khẩu bằng OTP
+- Cập nhật hồ sơ người dùng
+
+### 🔎 Flight Search
+- Tìm kiếm chuyến bay theo điểm đi, điểm đến, ngày bay
+- Hỗ trợ one-way, round-trip, multi-city trong tài liệu thiết kế
+- Lọc theo hãng bay, khung giờ, giá tối đa, hạng ghế, chuyến bay thẳng
+- Xem sơ đồ ghế và ancillary services theo chuyến bay
+
+### 🎫 Booking & Ticketing
+- Tạo booking từ kết quả revalidate
+- Sinh mã `PNR` và trạng thái `PENDING_PAYMENT`
+- Chọn ghế cho từng hành khách
+- Chọn dịch vụ bổ sung như hành lý, suất ăn
+- Áp dụng mã khuyến mãi
+- Phát hành e-ticket sau thanh toán thành công
+
+### 💳 Payment
+- Khởi tạo thanh toán
+- Polling trạng thái thanh toán
+- Xử lý webhook từ cổng thanh toán
+- Đồng bộ trạng thái `booking`, `payment`, `seat`, `ticket`
+
+### 🛫 Check-in & Boarding
+- Check-in online trong khung thời gian cho phép
+- Xác nhận ghế khi check-in
+- Tạo boarding pass với QR data
+- Khóa chỉnh sửa booking sau khi check-in
+
+### ⏰ Background Jobs & Notifications
+- Tự động hết hạn booking chưa thanh toán
+- Tự động trả ghế về trạng thái khả dụng
+- Gửi email xác nhận booking, hủy vé, hoàn tiền
+- Nhắc check-in trước giờ bay
+- Theo dõi và thông báo thay đổi trạng thái chuyến bay
+
+### 🛡️ Platform Concerns
+- JWT access token + refresh token rotation
+- Redis rate limiting cho login, reset password, refresh token
+- Global exception handling
+- Request ID propagation cho observability
+- Swagger/OpenAPI cho môi trường phù hợp
+
+---
+
+## 🛠 Tech Stack
+
+<table>
+<tr>
+<td>
+
+### Core
+
+| Component | Technology |
+|-----------|------------|
+| **Language** | [Java](https://openjdk.org/) 21 |
+| **Framework** | [Spring Boot](https://spring.io/projects/spring-boot) 4.0.5 |
+| **Build Tool** | [Gradle](https://gradle.org/) 9.x Wrapper |
+| **Architecture** | Modular Monolith |
+| **Database** | [PostgreSQL](https://www.postgresql.org/) 16 |
+| **Migrations** | [Flyway](https://flywaydb.org/) |
+
+</td>
+<td>
+
+### Integrations
+
+| Component | Technology |
+|-----------|------------|
+| **Auth** | Spring Security + JWT |
+| **Persistence** | Spring Data JPA |
+| **Rate Limiting** | Redis |
+| **API Docs** | Springdoc OpenAPI |
+| **Logging** | Logback + Logstash encoder |
+| **Testing** | JUnit 5 + Spring Boot Test + JaCoCo |
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗 Architecture Overview
+
+### Module Layout
+
+| Module | Responsibility |
+|--------|----------------|
+| `app-bootstrap` | Spring Boot entry point, web layer, security, OpenAPI, runtime wiring |
+| `common` | Shared exceptions, common contracts, reusable utilities |
+| `database` | Database-related shared layer và Flyway migrations |
+| `module-identity` | Authentication, profile, password reset, refresh session |
+| `module-flight` | Flight, airport, airline, fare, aircraft, seat inventory |
+| `module-booking` | Booking, passenger, seat hold, ancillaries, tickets |
+| `module-payment` | Payment domain và transaction status |
+| `module-checkin` | Check-in và boarding-pass flow |
+| `module-notification` | Notification use cases |
+| `module-scheduler` | Scheduled jobs như expire booking |
+
+### Application Layers
+
+```text
+Clients
+  -> REST API (Spring Boot)
+  -> Security / Validation / Error Handling / Rate Limiting
+  -> Business Modules
+  -> PostgreSQL / Redis / Mail / Payment Provider
+```
+
+### Current Implementation Note
+
+Repository hiện đã có web layer cho nhóm nghiệp vụ `identity` và đã chuẩn bị cấu trúc module cho các nhóm nghiệp vụ còn lại. Phần scope nghiệp vụ của booking, payment, check-in, ticketing trong README này được tổng hợp từ tài liệu đặc tả trong `docs/`.
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- JDK 21
+- PostgreSQL 16+
+- Redis
+- PowerShell hoặc terminal tương thích để chạy Gradle Wrapper
+
+### Installation
+
+```bash
+# Clone repository
+git clone <your-repository-url>
+cd airline-booking
+
+# Copy env template
+cp .env.example .env
+
+# Update values for local environment
+```
+
+### Run Locally
+
+```powershell
+# Format and verify code style
+.\gradlew formatCode
+
+# Run application
+.\gradlew :app-bootstrap:bootRun
+```
+
+Hoặc dùng script local:
+
+```powershell
+.\scripts\run-local.ps1
+```
+
+### Verify Installation
+
+```bash
+# Health endpoint
+curl http://localhost:8080/actuator/health
+
+# Swagger UI
+http://localhost:8080/swagger-ui.html
+
+# OpenAPI
+http://localhost:8080/v3/api-docs
+```
+
+---
+
+## 📜 Available Commands
+
+| Command | Description |
+|--------|-------------|
+| `.\gradlew tasks --all` | Liệt kê toàn bộ Gradle tasks |
+| `.\gradlew :app-bootstrap:bootRun` | Chạy ứng dụng chính |
+| `.\scripts\run-local.ps1` | Nạp `.env` rồi chạy local |
+| `.\gradlew formatCode` | Format toàn bộ project bằng Spotless |
+| `.\gradlew qualityGate` | Chạy format check, test, jacoco, checkstyle |
+| `.\gradlew installGitHooks` | Cài pre-push hook dùng chung |
+| `.\gradlew test` | Chạy test cho các module |
+
+---
+
+## 🔧 Environment Variables
+
+Các biến môi trường mẫu đã được khai báo trong `.env.example`.
+
+### Required Variables
+
+```bash
+# PROFILE / SERVER
+SPRING_PROFILES_ACTIVE=local
+SERVER_PORT=8080
+
+# DATABASE
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/airline_booking
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=postgres
+
+# JWT
+APP_JWT_SECRET=change-me-super-secret-key
+APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES=15
+APP_JWT_REFRESH_TOKEN_EXPIRATION_DAYS=7
+
+# REDIS
+SPRING_DATA_REDIS_HOST=localhost
+SPRING_DATA_REDIS_PORT=6379
+
+# MAIL
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=your-email@gmail.com
+SPRING_MAIL_PASSWORD=your-app-password
+APP_MAIL_FROM=noreply@airline-booking.com
+```
+
+### Important Optional Variables
+
+```bash
+# COOKIE / CORS
+APP_AUTH_REFRESH_COOKIE_NAME=refresh_token
+APP_AUTH_REFRESH_COOKIE_PATH=/api/auth
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:3000,http://localhost:5173,https://*.railway.app
+
+# RATE LIMIT
+APP_RATE_LIMIT_ENABLED=true
+APP_RATE_LIMIT_FAIL_OPEN=true
+APP_RATE_LIMIT_LOGIN_WINDOW=10m
+APP_RATE_LIMIT_LOGIN_EMAIL_LIMIT=5
+APP_RATE_LIMIT_LOGIN_CLIENT_LIMIT=20
+APP_RATE_LIMIT_LOGIN_PAIR_LIMIT=5
+APP_RATE_LIMIT_PASSWORD_RESET_WINDOW=15m
+APP_RATE_LIMIT_PASSWORD_RESET_EMAIL_LIMIT=3
+APP_RATE_LIMIT_PASSWORD_RESET_CLIENT_LIMIT=10
+APP_RATE_LIMIT_PASSWORD_RESET_PAIR_LIMIT=3
+APP_RATE_LIMIT_REFRESH_WINDOW=5m
+APP_RATE_LIMIT_REFRESH_USER_LIMIT=20
+APP_RATE_LIMIT_REFRESH_CLIENT_LIMIT=60
+
+# BOOKING RULES
+APP_BOOKING_PNR_EXPIRATION_MINUTES=15
+APP_BOOKING_CHECKIN_OPEN_HOURS=24
+APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES=40
+APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES=60
+
+# PAYMENT
+APP_PAYMENT_PROVIDER=payos
+APP_PAYMENT_WEBHOOK_SECRET=change-me
+APP_PAYMENT_RETURN_URL=http://localhost:3000/payment/success
+APP_PAYMENT_CANCEL_URL=http://localhost:3000/payment/cancel
+
+# SWAGGER / LOGGING
+APP_SWAGGER_ENABLED=true
+APP_REQUEST_ID_HEADER=X-Request-Id
+APP_LOG_JSON_ENABLED=false
+```
+
+### Profiles
+
+| Profile | Usage |
+|---------|-------|
+| `local` | Local development |
+| `staging` | Staging / preview deployment |
+| `prod` | Production deployment |
+
+---
+
+## 📡 API Endpoints
+
+### Response Convention
+
+**Success**
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "Operation successful"
+}
+```
+
+**Error**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Validation failed",
+    "details": {}
+  },
+  "statusCode": 400,
+  "timestamp": "2026-04-08T00:00:00Z",
+  "path": "/api/example",
+  "requestId": "..."
+}
+```
+
+### Authentication
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/api/auth/register` | Đăng ký tài khoản | Public |
+| `POST` | `/api/auth/send-verify-otp` | Gửi OTP xác thực email | Public |
+| `POST` | `/api/auth/verify-email` | Xác thực OTP email | Public |
+| `POST` | `/api/auth/login` | Đăng nhập | Public |
+| `POST` | `/api/auth/refresh` | Làm mới access token | Public |
+| `POST` | `/api/auth/logout` | Đăng xuất | Authenticated |
+| `POST` | `/api/auth/forgot-password` | Gửi OTP reset password | Public |
+| `POST` | `/api/auth/reset-password` | Đặt lại mật khẩu | Public |
+| `POST` | `/api/auth/change-password` | Đổi mật khẩu | Authenticated |
+
+### Users
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/users/me` | Lấy thông tin user hiện tại | Authenticated |
+| `PATCH` | `/api/users/me` | Cập nhật hồ sơ | Authenticated |
+
+### Planned Business Endpoints
+
+Theo tài liệu API trong `docs/api/endpoints.md`, hệ thống còn bao phủ các nhóm endpoint sau:
+
+- `GET /api/flights/search`, `POST /api/flights/revalidate`
+- `POST /api/bookings`, `POST /api/bookings/:id/seats`, `POST /api/bookings/:id/services`
+- `POST /api/payments`, `GET /api/payments/:id/status`, `POST /api/payments/webhook`
+- `POST /api/checkin`, `GET /api/checkin/boarding-pass/:booking_id`
+- `GET /api/tickets`, `GET /api/tickets/:ticket_number`, `GET /api/tickets/lookup`
+
+### Swagger
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/swagger-ui.html` | Swagger UI |
+| `/v3/api-docs` | OpenAPI JSON |
+| `/actuator/health` | Health check |
+
+---
+
+## 📁 Project Structure
 
 ```text
 airline-booking/
-├── app-bootstrap/
-├── common/
-├── database/
-├── module-identity/
-├── module-flight/
-├── module-booking/
-├── module-payment/
-├── module-checkin/
-├── module-notification/
-├── module-scheduler/
+├── app-bootstrap/          # Spring Boot application entry point
+├── common/                 # Shared classes and exceptions
+├── database/               # Flyway migrations and shared database layer
+├── module-identity/        # Auth, user profile, password reset, refresh token
+├── module-flight/          # Flight, airport, airline, fare, seat inventory
+├── module-booking/         # Booking, passenger, services, ticketing
+├── module-payment/         # Payment domain
+├── module-checkin/         # Check-in and boarding pass
+├── module-notification/    # Notification logic
+├── module-scheduler/       # Scheduled/background jobs
+├── docs/
+│   ├── api/
+│   └── specs/
+├── scripts/
+├── config/checkstyle/
 ├── build.gradle
 ├── settings.gradle
+├── Dockerfile
 └── .env.example
 ```
 
-### Runtime Entry Point
-
-Ung dung chay chinh nam tai:
-
-- [AppBootstrapApplication.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/AppBootstrapApplication.java)
-
 ---
 
-## Configuration
-
-### Main Config Files
-
-Config runtime chinh duoc dat tai `app-bootstrap/src/main/resources`:
-
-- [application.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application.yml)
-- [application-local.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application-local.yml)
-- [application-staging.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application-staging.yml)
-- [application-prod.yml](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/resources/application-prod.yml)
-
-Template env dat tai:
-
-- [.env.example](/d:/Workspace/CNPM/AirlineBooking/airline-booking/.env.example)
-
-Test config rieng van giu o:
-
-- [app-bootstrap/src/test/resources/application.properties](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/test/resources/application.properties)
-
-### Config Responsibility
-
-#### `application.yml`
-
-Chua config chung:
-
-- app name
-- active profile
-- server port
-- Swagger enable/path
-- actuator endpoints
-- custom `app.*` config:
-    - `app.jwt.*`
-    - `app.booking.*`
-    - `app.payment.*`
-    - `app.mail.from`
-
-#### `application-local.yml`
-
-Chua config local:
-
-- PostgreSQL datasource local
-- JPA local settings
-- Flyway local settings
-- mail local settings
-
-#### `application-prod.yml`
-
-Chua config production:
-
-- PostgreSQL / Supabase datasource
-- JPA production settings
-- Flyway production settings
-- mail production settings
-- logging level production
-- Swagger tat o production
-
-#### `application-staging.yml`
-
-Chua config staging:
-
-- PostgreSQL / Supabase datasource
-- JPA staging settings
-- Flyway staging settings
-- mail staging settings
-- logging level staging
-- Swagger bat o staging
-
-### Environment Variables
-
-Bien moi truong mau da duoc khai bao trong `.env.example`.
-
-Nhom bien quan trong:
-
-- profile
-    - `SPRING_PROFILES_ACTIVE`
-    - `SERVER_PORT`
-- datasource
-    - `SPRING_DATASOURCE_URL`
-    - `SPRING_DATASOURCE_USERNAME`
-    - `SPRING_DATASOURCE_PASSWORD`
-- JPA / Flyway
-    - `SPRING_JPA_HIBERNATE_DDL_AUTO`
-    - `SPRING_JPA_SHOW_SQL`
-    - `SPRING_FLYWAY_ENABLED`
-- JWT
-    - `APP_JWT_SECRET`
-    - `APP_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES`
-    - `APP_JWT_REFRESH_TOKEN_EXPIRATION_DAYS`
-- booking rules
-    - `APP_BOOKING_PNR_EXPIRATION_MINUTES`
-    - `APP_BOOKING_CHECKIN_OPEN_HOURS`
-    - `APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES`
-    - `APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES`
-- payment
-    - `APP_PAYMENT_PROVIDER`
-    - `APP_PAYMENT_WEBHOOK_SECRET`
-    - `APP_PAYMENT_RETURN_URL`
-    - `APP_PAYMENT_CANCEL_URL`
-- redis / rate-limit
-    - `SPRING_DATA_REDIS_HOST`
-    - `SPRING_DATA_REDIS_PORT`
-    - `SPRING_DATA_REDIS_PASSWORD`
-    - `SPRING_DATA_REDIS_TIMEOUT`
-    - `APP_RATE_LIMIT_ENABLED`
-    - `APP_RATE_LIMIT_FAIL_OPEN`
-    - `APP_RATE_LIMIT_LOGIN_WINDOW`
-    - `APP_RATE_LIMIT_LOGIN_EMAIL_LIMIT`
-    - `APP_RATE_LIMIT_LOGIN_CLIENT_LIMIT`
-    - `APP_RATE_LIMIT_LOGIN_PAIR_LIMIT`
-    - `APP_RATE_LIMIT_PASSWORD_RESET_WINDOW`
-    - `APP_RATE_LIMIT_PASSWORD_RESET_EMAIL_LIMIT`
-    - `APP_RATE_LIMIT_PASSWORD_RESET_CLIENT_LIMIT`
-    - `APP_RATE_LIMIT_PASSWORD_RESET_PAIR_LIMIT`
-    - `APP_RATE_LIMIT_REFRESH_WINDOW`
-    - `APP_RATE_LIMIT_REFRESH_USER_LIMIT`
-    - `APP_RATE_LIMIT_REFRESH_CLIENT_LIMIT`
-- mail
-    - `SPRING_MAIL_HOST`
-    - `SPRING_MAIL_PORT`
-    - `SPRING_MAIL_USERNAME`
-    - `SPRING_MAIL_PASSWORD`
-    - `SPRING_MAIL_SMTP_AUTH`
-    - `SPRING_MAIL_SMTP_STARTTLS_ENABLE`
-    - `APP_MAIL_FROM`
-- Swagger
-    - `APP_SWAGGER_ENABLED`
-
-### Supabase Notes
-
-Staging va production deu co the dung Supabase PostgreSQL.
-
-JDBC URL mau:
-
-```text
-jdbc:postgresql://aws-1-<region>.pooler.supabase.com:6543/postgres?sslmode=require
-```
-
-Username mau:
-
-```text
-postgres.<project-ref>
-```
-
-### Rate Limit Window and Refresh Session Flow
-
-#### 1) Rate limit window duoc luu nhu the nao
-
-- Rule duoc bind tu env qua `app.rate-limit.*` trong `application.yml`.
-- Moi candidate (`login:email`, `login:client`, `login:pair`, `refresh:user`, ...) tao thanh key theo format:
-    - `rate-limit:<action>:<dimension>:<identifier>`
-- Khi consume:
-    - `INCR key` trong Redis
-    - neu la lan dau (`count == 1`) thi `EXPIRE key = window`
-- Nhu vay window la sliding/fixed theo TTL cua key trong Redis, khong luu trong SQL.
-
-Files/hams lien quan:
-
-- `AuthThrottleService.candidate()` + `AuthThrottleService.key()`
-- `AuthThrottleService.consume()` + `AuthThrottleService.assertBelowLimit()`
-- `RedisRateLimitStore.increment()` (goi `increment` va `expire`)
-
-#### 2) Refresh token co revoke token cu khong
-
-Co.
-
-- Luong refresh trong `AuthService.refresh(...)`:
-    1. check active session qua `RefreshTokenSessionService.requireActiveSession(...)`
-    2. verify JWT refresh token
-    3. revoke token cu: `RefreshTokenSessionService.revokeByRefreshToken(...)`
-    4. tao token moi va luu session moi: `RefreshTokenSessionService.createSession(...)`
-
-=> Day la refresh token rotation: token cu bi danh dau `revoked=true`, token moi duoc tao session moi.
-
-#### 3) Refresh token session luu o dau
-
-- Luu o bang SQL `refresh_token_sessions` (PostgreSQL), khong luu Redis.
-- Truong chinh: `refresh_token_hash`, `revoked`, `expires_at`, `created_at`, `updated_at`, `user_id`.
-- Password reset thanh cong se revoke tat ca session active cua user:
-    - `PasswordResetService.resetPassword()` -> `RefreshTokenSessionService.revokeAllActiveByUserId(...)`
-
-Files lien quan:
-
-- `RefreshTokenSessionEntity`
-- `RefreshTokenSessionRepository`
-- `RefreshTokenSessionService`
-- `AuthService.refresh(...)`
-- `PasswordResetService.resetPassword(...)`
-
----
-
-## Quick Start
-
-## API Response Convention
-
-Toan bo web layer dang dung response format thong nhat tai `app-bootstrap`.
-
-### Success Response
-
-Controller tra object binh thuong se duoc auto-wrap thanh:
-
-```json
-{
-    "success": true,
-    "data": {},
-    "message": "Operation successful"
-}
-```
-
-Neu muon custom message thanh cong, dung annotation:
-
-- `@ApiSuccessMessage("Booking created successfully")`
-
-Files lien quan:
-
-- [ApiSuccessMessage.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/api/ApiSuccessMessage.java)
-- [ApiSuccessResponse.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/api/ApiSuccessResponse.java)
-- [ApiSuccessResponseBodyAdvice.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/api/ApiSuccessResponseBodyAdvice.java)
-
-### Error Response
-
-Loi duoc tra ve theo format:
-
-```json
-{
-    "success": false,
-    "error": {
-        "code": "VALIDATION_ERROR",
-        "message": "Validation failed",
-        "details": {
-            "field": "message"
-        }
-    },
-    "statusCode": 400,
-    "timestamp": "2026-03-30T12:00:00Z",
-    "path": "/api/bookings",
-    "requestId": "..."
-}
-```
-
-### Global Exception Handling
-
-`GlobalExceptionHandler` nam trong `app-bootstrap` va ap dung chung cho toan bo application web.
-
-No dang xu ly 3 nhom loi chinh:
-
-- business exception
-    - `AppException`
-- request / validation / HTTP exception
-    - `MethodArgumentNotValidException`
-    - `ConstraintViolationException`
-    - `HttpMessageNotReadableException`
-    - `MissingServletRequestParameterException`
-    - `HttpRequestMethodNotSupportedException`
-    - `NoResourceFoundException`
-    - `AccessDeniedException`
-- system exception
-    - `Exception`
-
-Files lien quan:
-
-- [AppException.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/AppException.java)
-- [ApiError.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/ApiError.java)
-- [ApiErrorResponse.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/ApiErrorResponse.java)
-- [GlobalExceptionHandler.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/exception/GlobalExceptionHandler.java)
-
-### Request ID
-
-Moi HTTP request deu duoc `RequestIdFilter` gan `requestId` vao MDC.
-
-Dieu nay co nghia la:
-
-- log se tu dong co `requestId`
-- error response se tra ve `requestId`
-- response header se co `X-Request-Id` mac dinh
-
-File lien quan:
-
-- [RequestIdFilter.java](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/main/java/com/example/appbootstrap/config/RequestIdFilter.java)
-
----
-
-## Database Schema
+## 🗄 Database Schema
+
+Database được quản lý bằng **Flyway SQL migrations** và chia theo các nhóm nghiệp vụ chính:
+
+- Identity và user profile
+- Flights, airlines, airports, aircraft, seats
+- Bookings, passengers, services, promotions
+- Payments
+- Tickets và boarding passes
+
+### Main Entities
+
+| Group | Entities |
+|------|----------|
+| **Identity** | `users`, `refresh_token_sessions`, `password_reset_tokens` |
+| **Flight** | `airports`, `airlines`, `aircraft`, `seats`, `flights`, `flight_fares`, `tax_fees` |
+| **Booking** | `bookings`, `passengers`, `flight_seats`, `booking_services`, `promotions` |
+| **Payment** | `payments` |
+| **Ticketing** | `tickets`, `boarding_passes` |
 
 ### Entity Relationship Diagram
-
-Database schema cua du an duoc quan ly bang Flyway va duoc chia theo cac nhom nghiep vu:
-
-- identity
-- flights and inventory
-- bookings and passengers
-- payments
-- services and promotions
-- tickets and boarding passes
-
-Migration SQL hien tai duoc dat tai:
-
-- [database/src/main/resources/db/migration](/d:/Workspace/CNPM/AirlineBooking/airline-booking/database/src/main/resources/db/migration)
 
 ```mermaid
 erDiagram
@@ -620,265 +705,156 @@ erDiagram
     TICKETS ||--|| BOARDING_PASSES : generates
 ```
 
-### Source Of Truth
+### Source of Truth
 
-Quy uoc hien tai:
+- Flyway là nguồn chính để tạo và cập nhật schema
+- JPA entities map theo schema migration
+- Môi trường staging/production nên dùng:
+  - `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`
+  - `SPRING_FLYWAY_ENABLED=true`
 
-- Flyway la nguon chinh de tao va thay doi schema
-- JPA entity map theo schema migration
-- production / integration mode nen uu tien:
-    - `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`
-    - `SPRING_FLYWAY_ENABLED=true`
+Migration files hiện đặt tại:
+
+- `database/src/main/resources/db/migration`
+- `app-bootstrap/src/main/resources/db/migration`
 
 ---
 
-### Prerequisites
+## 📐 Business Rules
 
-- JDK 21
-- Gradle wrapper
-- PostgreSQL local hoac Supabase database
+### Booking & PNR
+- Booking được tạo với trạng thái `PENDING_PAYMENT`
+- Hệ thống sinh `pnr_expires_at = current_time + 15 phút`
+- Nếu người dùng đã chọn ghế, ghế chuyển sang `RESERVED`
+- Khi thanh toán thành công, booking chuyển sang `CONFIRMED`
 
-### Useful Commands
+### Seat Locking
 
-```powershell
-.\gradlew tasks --all
+| Action | Condition | Result |
+|--------|-----------|--------|
+| Chọn ghế | `seat.status = AVAILABLE` | `RESERVED` |
+| Thanh toán thành công | `booking.status = CONFIRMED` | `BOOKED` |
+| Hết hạn PNR | Cron job | `AVAILABLE` |
+| Hủy booking | Booking cancelled | `AVAILABLE` |
+
+### Check-in Window
+- Check-in online mở trước `24 giờ`
+- Đóng trước `40 phút` với chuyến nội địa
+- Đóng trước `60 phút` với chuyến quốc tế
+- Booking phải ở trạng thái `CONFIRMED`
+
+### Auto Expire
+- Cron job quét các booking quá hạn thanh toán
+- Booking `PENDING_PAYMENT` quá TTL sẽ chuyển sang `EXPIRED`
+- Toàn bộ ghế giữ chỗ được trả về `AVAILABLE`
+
+### Cancellation & Refund
+- Chỉ cho hủy booking đã `CONFIRMED`
+- Không cho hủy nếu vé đã `CHECKED_IN`, `NO_SHOW`, hoặc booking đã hoàn tất
+- Sau refund thành công:
+  - `booking -> CANCELLED`
+  - `payment -> REFUNDED`
+  - `ticket -> CANCELLED`
+  - `seat -> AVAILABLE`
+
+---
+
+## 💻 Development
+
+### Suggested Workflow
+
+```bash
+# Format code
 .\gradlew formatCode
+
+# Run checks and tests
 .\gradlew qualityGate
+
+# Start application
 .\gradlew :app-bootstrap:bootRun
-.\scripts\run-local.ps1
 ```
 
-### Swagger URL
+### Quality Tooling
 
-Sau khi app chay:
+- Spotless for formatting
+- Checkstyle for static code style checks
+- JaCoCo for coverage report
+- Shared pre-push hook via `installGitHooks`
 
-- `http://localhost:8080/swagger-ui.html`
-- `http://localhost:8080/swagger-ui/index.html`
-- `http://localhost:8080/v3/api-docs`
+### Local Notes
 
-### Flyway
-
-`app-bootstrap` da co dependency Flyway, nhung migration chi co y nghia khi module `database` co script migration thuc te.
+- `app-bootstrap` là Spring Boot app duy nhất để chạy toàn hệ thống
+- Các `module-*` là library/business modules, không chạy độc lập như service riêng
+- `scripts/run-local.ps1` là cách nhanh nhất để chạy local với `.env`
 
 ---
 
-## VS Code Workflow
-
-### Files Added for VS Code
-
-- [.vscode/launch.json](/d:/Workspace/CNPM/AirlineBooking/airline-booking/.vscode/launch.json)
-- [scripts/run-local.ps1](/d:/Workspace/CNPM/AirlineBooking/airline-booking/scripts/run-local.ps1)
-
-### Recommended Way
-
-Cach thuc te va on nhat cho VS Code:
-
-1. chinh gia tri local trong `.env`
-2. mo terminal PowerShell trong VS Code
-3. chay:
-
-```powershell
-.\scripts\run-local.ps1
-```
-
-Script se:
-
-- doc `.env`
-- nap cac bien vao process hien tai
-- chay `:app-bootstrap:bootRun`
-
-### Debug in VS Code
-
-Neu muon debug:
-
-1. mo tab `Run and Debug`
-2. chon:
-    - `Debug AppBootstrapApplication`
-3. bam `Start Debugging`
-
-Luu y:
-
-- `launch.json` dang chua mot bo `env` local co san
-- neu ban doi gia tri local trong `.env`, can cap nhat lai `launch.json` neu muon debug dung cung gia tri do
-
-### When to Use Which
-
-- run app nhanh: dung `.\scripts\run-local.ps1`
-- debug breakpoints: dung `.vscode/launch.json`
-
----
-
-## IntelliJ Run Configuration
-
-### Local Run
-
-1. Mo dung root project:
-    - `d:\Workspace\CNPM\AirlineBooking\airline-booking`
-2. Vao `Run -> Edit Configurations`
-3. Tao hoac chon Spring Boot configuration cho:
-    - `AppBootstrapApplication`
-4. Chon module classpath:
-    - `app-bootstrap`
-5. O muc `Environment variables`, set toi thieu:
-
-```text
-SPRING_PROFILES_ACTIVE=local;
-SERVER_PORT=8080;
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/airline_booking;
-SPRING_DATASOURCE_USERNAME=postgres;
-SPRING_DATASOURCE_PASSWORD=postgres;
-SPRING_JPA_HIBERNATE_DDL_AUTO=validate;
-SPRING_JPA_SHOW_SQL=true;
-SPRING_FLYWAY_ENABLED=false;
-APP_JWT_SECRET=change-me-local;
-APP_SWAGGER_ENABLED=true
-```
-
-Neu can mail local:
-
-```text
-SPRING_MAIL_HOST=localhost;
-SPRING_MAIL_PORT=1025;
-SPRING_MAIL_SMTP_AUTH=false;
-SPRING_MAIL_SMTP_STARTTLS_ENABLE=false
-```
-
-### Using `.env.example`
-
-Spring Boot khong doc `.env` theo kieu Node.js mot cach native.
-
-Vi vay:
-
-- `.env.example` la file mau de collaborator copy tham khao
-- gia tri that thuong duoc set trong:
-    - IntelliJ Run Configuration
-    - terminal session
-    - Docker Compose
-    - Railway dashboard
-
-Khuyen nghi:
-
-- commit `.env.example`
-- khong commit `.env` that
-
-### Practical IntelliJ Workflow
-
-Khuyen nghi:
-
-1. sua gia tri local trong `.env`
-2. copy cac bien can thiet tu `.env`
-3. paste vao `Environment variables` trong IntelliJ Run Configuration
-
-IntelliJ hien khong tu dong doc `.env` trong setup hien tai cua project nay.
-
----
-
-## Railway Production Config
-
-Tren Railway, set env vars trong service settings.
-
-### Minimum Production Variables
-
-```text
-SPRING_PROFILES_ACTIVE=staging
-SERVER_PORT=8080
-SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-<region>.pooler.supabase.com:6543/postgres?sslmode=require
-SPRING_DATASOURCE_USERNAME=postgres.<project-ref>
-SPRING_DATASOURCE_PASSWORD=<supabase-db-password>
-SPRING_JPA_HIBERNATE_DDL_AUTO=validate
-SPRING_JPA_SHOW_SQL=false
-SPRING_FLYWAY_ENABLED=true
-APP_JWT_SECRET=<strong-secret>
-APP_SWAGGER_ENABLED=true
-```
-
-Neu co payment va email that:
-
-```text
-APP_PAYMENT_PROVIDER=mock
-APP_PAYMENT_WEBHOOK_SECRET=<secret>
-APP_PAYMENT_RETURN_URL=https://your-frontend-domain/payment/success
-APP_PAYMENT_CANCEL_URL=https://your-frontend-domain/payment/cancel
-
-SPRING_MAIL_HOST=smtp.gmail.com
-SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=<email>
-SPRING_MAIL_PASSWORD=<app-password>
-SPRING_MAIL_SMTP_AUTH=true
-SPRING_MAIL_SMTP_STARTTLS_ENABLE=true
-APP_MAIL_FROM=noreply@airline-booking.com
-```
-
-### Profile Rule
-
-- local dung `SPRING_PROFILES_ACTIVE=local`
-- Railway staging dung `SPRING_PROFILES_ACTIVE=staging`
-- Railway production dung `SPRING_PROFILES_ACTIVE=prod`
-- khong hardcode secret trong `application*.yml`
-
----
-
-## Quality Workflow
-
-Project da co bo local quality workflow:
-
-- Spotless
-- Checkstyle
-- JaCoCo
-- pre-push hook
-
-### Install Git Hook
-
-```powershell
-.\gradlew installGitHooks
-```
-
-### Verification Flow
-
-```powershell
-.\gradlew formatCode
-.\gradlew qualityGate
-```
-
----
-
-## Testing
+## 🧪 Testing
 
 ### Test Stack
 
 - JUnit 5
 - Spring Boot Test
-- JaCoCo coverage report
+- Spring Security Test
+- JaCoCo
+- H2 in-memory cho test bootstrap
 
-### Test Database
+### Useful Commands
 
-Test config rieng cua `app-bootstrap` dang dung H2 in-memory:
+```bash
+.\gradlew test
+.\gradlew :app-bootstrap:test
+.\gradlew qualityGate
+```
 
-- [app-bootstrap/src/test/resources/application.properties](/d:/Workspace/CNPM/AirlineBooking/airline-booking/app-bootstrap/src/test/resources/application.properties)
+### Current Test Focus
 
-Hien tai test config:
-
-- dung H2 in-memory
-- tat Flyway trong test
-
-Dieu nay giup `contextLoads()` va test bootstrap chay on dinh hon.
-
----
-
-## Notes
-
-- Chi `app-bootstrap` la Spring Boot application chinh.
-- Cac module con khong duoc thiet ke de chay doc lap nhu app rieng.
-- Runtime config nen tap trung o `app-bootstrap/src/main/resources`.
-- Cac `application.properties` trong module con hien tai chi nen xem la placeholder, khong phai noi config runtime chinh.
+- Authentication service
+- Password reset service
+- Refresh token session flow
+- JWT authentication filter
+- Auth controller integration
+- Rate limiting integration
 
 ---
 
-## Next Steps
+## 🔒 Security Overview
 
-Co the bo sung tiep:
+### Authentication & Authorization
+- JWT access token + refresh token
+- Refresh token rotation và revoke session cũ
+- Spring Security bảo vệ route
+- Refresh token cookie có cấu hình `httpOnly`, `sameSite`, `secure`
 
-- CI/CD workflow document
-- deployment guide cho Railway
-- Spring Data repositories theo tung module
-- controller va service implementation cho cac module nghiep vu
+### API Protection
+- Redis-backed rate limiting cho login, reset password, refresh token
+- Global validation và standardized error response
+- CORS cấu hình theo allowed origin patterns
+- Request ID gắn vào response và log
+
+### Data & Infrastructure
+- Password hashing ở identity module
+- PostgreSQL cho dữ liệu chính
+- Redis cho throttle/rate limit state
+- Flyway để kiểm soát schema thay đổi
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| `docs/specs/index.md` | Tổng quan đặc tả dự án |
+| `docs/specs/overview.md` | Bối cảnh và core flow nghiệp vụ |
+| `docs/specs/use_case.md` | Danh sách use case |
+| `docs/specs/business_rule.md` | Business rules chi tiết |
+| `docs/specs/state_machine_design.md` | Thiết kế state machine |
+| `docs/specs/user_story.md` | User stories |
+| `docs/api/endpoints.md` | API contract dự kiến |
+| `README.md` | Tổng quan kỹ thuật và cách chạy dự án |
+
+---
+
+## 📄 License
+
+This project is currently used for academic / internal development purposes. Update the license section when the repository licensing policy is finalized.

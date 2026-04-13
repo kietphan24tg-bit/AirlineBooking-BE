@@ -69,6 +69,7 @@ public class SecurityConfig {
                         "/actuator/health",
                         "/error",
                         "/api/auth/**",
+                        "/api/payments/webhooks/payos",
                         "/api/flights/**")
                     .permitAll()
                     // admin api

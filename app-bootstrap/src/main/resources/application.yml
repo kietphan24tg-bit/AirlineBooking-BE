@@ -56,10 +56,16 @@ app:
         domestic-checkin-close-minutes: ${APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES:40}
         international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
     payment:
-        provider: ${APP_PAYMENT_PROVIDER:mock}
+        provider: ${APP_PAYMENT_PROVIDER:payos}
+        # Unused for PayOS (webhook HMAC uses payos.checksum-key). Retained for existing env binding.
         webhook-secret: ${APP_PAYMENT_WEBHOOK_SECRET:change-me}
         return-url: ${APP_PAYMENT_RETURN_URL:http://localhost:3000/payment/success}
         cancel-url: ${APP_PAYMENT_CANCEL_URL:http://localhost:3000/payment/cancel}
+        payos:
+            client-id: ${PAYOS_CLIENT_ID:}
+            api-key: ${PAYOS_API_KEY:}
+            checksum-key: ${PAYOS_CHECKSUM_KEY:}
+            base-url: ${PAYOS_BASE_URL:https://api-merchant.payos.vn}
     mail:
         from: ${APP_MAIL_FROM:noreply@airline-booking.local}
     logging:
