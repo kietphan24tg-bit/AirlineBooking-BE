@@ -3,6 +3,7 @@ package com.example.appbootstrap.config;
 import com.example.appbootstrap.security.CustomAccessDeniedHandler;
 import com.example.appbootstrap.security.CustomAuthenticationEntryPoint;
 import com.example.appbootstrap.security.JwtAuthenticationFilter;
+import com.example.appbootstrap.security.JwtService;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,24 +29,25 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
   private final CustomAccessDeniedHandler customAccessDeniedHandler;
   private final CorsProperties corsProperties;
 
   public SecurityConfig(
-      JwtAuthenticationFilter jwtAuthenticationFilter,
       CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
       CustomAccessDeniedHandler customAccessDeniedHandler,
       CorsProperties corsProperties) {
-    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
     this.customAccessDeniedHandler = customAccessDeniedHandler;
     this.corsProperties = corsProperties;
   }
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(
+      HttpSecurity http, JwtService jwtService, UserDetailsService userDetailsService)
+      throws Exception {
+    JwtAuthenticationFilter jwtAuthenticationFilter =
+        new JwtAuthenticationFilter(jwtService, userDetailsService);
     http.csrf(csrf -> csrf.disable())
         .httpBasic(httpBasic -> httpBasic.disable())
         .formLogin(formLogin -> formLogin.disable())
