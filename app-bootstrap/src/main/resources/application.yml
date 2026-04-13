@@ -55,6 +55,19 @@ app:
         checkin-open-hours: ${APP_BOOKING_CHECKIN_OPEN_HOURS:24}
         domestic-checkin-close-minutes: ${APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES:40}
         international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
+    airport-import:
+        enabled: ${APP_AIRPORT_IMPORT_ENABLED:false}
+        base-url: ${APP_AIRPORT_IMPORT_BASE_URL:https://airportsapi.com}
+        cron: ${APP_AIRPORT_IMPORT_CRON:0 0 3 * * *}
+        page-size: ${APP_AIRPORT_IMPORT_PAGE_SIZE:100}
+        request-timeout-seconds: ${APP_AIRPORT_IMPORT_REQUEST_TIMEOUT_SECONDS:20}
+        max-retries: ${APP_AIRPORT_IMPORT_MAX_RETRIES:2}
+        allowed-types: ${APP_AIRPORT_IMPORT_ALLOWED_TYPES:medium_airport,large_airport}
+        require-iata: ${APP_AIRPORT_IMPORT_REQUIRE_IATA:true}
+        include: ${APP_AIRPORT_IMPORT_INCLUDE:country,region}
+        fallback-city: ${APP_AIRPORT_IMPORT_FALLBACK_CITY:UNKNOWN}
+        fallback-country: ${APP_AIRPORT_IMPORT_FALLBACK_COUNTRY:UNKNOWN}
+        fallback-time-zone: ${APP_AIRPORT_IMPORT_FALLBACK_TIME_ZONE:UTC}
     payment:
         provider: ${APP_PAYMENT_PROVIDER:payos}
         # Unused for PayOS (webhook HMAC uses payos.checksum-key). Retained for existing env binding.
