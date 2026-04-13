@@ -9,8 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.payment")
 public record PaymentProperties(
     String provider,
-    @Deprecated(since = "1.0", forRemoval = false)
-    String webhookSecret,
+    @Deprecated(since = "1.0", forRemoval = false) String webhookSecret,
     String returnUrl,
     String cancelUrl,
     Payos payos) {

@@ -17,7 +17,8 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select p from PaymentEntity p where p.transactionId = :transactionId")
-  Optional<PaymentEntity> findByTransactionIdForUpdate(@Param("transactionId") String transactionId);
+  Optional<PaymentEntity> findByTransactionIdForUpdate(
+      @Param("transactionId") String transactionId);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select p from PaymentEntity p where p.id = :paymentId")

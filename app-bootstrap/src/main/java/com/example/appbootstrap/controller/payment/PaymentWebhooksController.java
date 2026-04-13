@@ -27,15 +27,23 @@ public class PaymentWebhooksController {
   }
 
   @PostMapping(path = "/payos", consumes = MediaType.APPLICATION_JSON_VALUE)
-  @Operation(summary = "Receive PayOS webhook", description = "Verifies and processes PayOS payment webhooks")
+  @Operation(
+      summary = "Receive PayOS webhook",
+      description = "Verifies and processes PayOS payment webhooks")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
         description = "Webhook received",
         content = @Content(schema = @Schema(implementation = PaymentWebhookResponse.class))),
     @ApiResponse(responseCode = "400", description = "Invalid webhook payload", content = @Content),
-    @ApiResponse(responseCode = "401", description = "Invalid webhook signature", content = @Content),
-    @ApiResponse(responseCode = "500", description = "Webhook processing failed", content = @Content)
+    @ApiResponse(
+        responseCode = "401",
+        description = "Invalid webhook signature",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "500",
+        description = "Webhook processing failed",
+        content = @Content)
   })
   PaymentWebhookResponse handlePayosWebhook(@RequestBody String rawPayload) {
     try {

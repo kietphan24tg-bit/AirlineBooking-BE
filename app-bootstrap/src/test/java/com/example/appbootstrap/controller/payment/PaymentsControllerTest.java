@@ -47,7 +47,12 @@ class PaymentsControllerTest {
                     "Thẻ & ngân hàng",
                     List.of(
                         new PaymentMethodView.PaymentMethodItemView(
-                            "PAYOS_QR", "Mobile Banking (VietQR)", "PAYOS", "vietqr.png", true, null))),
+                            "PAYOS_QR",
+                            "Mobile Banking (VietQR)",
+                            "PAYOS",
+                            "vietqr.png",
+                            true,
+                            null))),
                 new PaymentMethodView(
                     "PAY_LATER",
                     "Thanh toán sau",
@@ -67,8 +72,7 @@ class PaymentsControllerTest {
     assertEquals("PAYOS", response.groups().getFirst().methods().getFirst().provider());
     assertEquals("vietqr.png", response.groups().getFirst().methods().getFirst().icon());
     assertEquals(true, response.groups().getFirst().methods().getFirst().supported());
-    assertEquals(
-        30, response.groups().get(1).methods().getFirst().meta().holdDurationMinutes());
+    assertEquals(30, response.groups().get(1).methods().getFirst().meta().holdDurationMinutes());
   }
 
   @Test
@@ -81,7 +85,12 @@ class PaymentsControllerTest {
                     "Thẻ & ngân hàng",
                     List.of(
                         new PaymentMethodView.PaymentMethodItemView(
-                            "PAYOS_QR", "Mobile Banking (VietQR)", "PAYOS", "vietqr.png", true, null)))));
+                            "PAYOS_QR",
+                            "Mobile Banking (VietQR)",
+                            "PAYOS",
+                            "vietqr.png",
+                            true,
+                            null)))));
 
     PaymentMethodsResponse response = controller.getPaymentMethods(principal(), 10L, true);
 
@@ -105,10 +114,7 @@ class PaymentsControllerTest {
                     "plink_123",
                     "000201PAYOSQR"),
                 new CreatePaymentResult.PaymentActionView(
-                    "QR",
-                    "000201PAYOSQR",
-                    null,
-                    "https://pay.payos.vn/web/123")));
+                    "QR", "000201PAYOSQR", null, "https://pay.payos.vn/web/123")));
 
     CreatePaymentResponse response =
         controller.createPayment(principal(), new CreatePaymentRequest(10L, "PAYOS"));

@@ -55,7 +55,13 @@ public class PaymentWebhookService {
 
     LookupResult lookupResult = findPaymentForWebhook(event);
     if (lookupResult.conflict()) {
-      saveAudit(null, null, event, OUTCOME_REJECTED, "PAYMENT_LOOKUP_MISMATCH", "Webhook lookup mismatch");
+      saveAudit(
+          null,
+          null,
+          event,
+          OUTCOME_REJECTED,
+          "PAYMENT_LOOKUP_MISMATCH",
+          "Webhook lookup mismatch");
       return;
     }
 
@@ -168,7 +174,10 @@ public class PaymentWebhookService {
       byOrderCode = paymentRepository.findByIdForUpdate(event.orderCode()).orElse(null);
     }
 
-    // if both transactionId and orderCode are present in the webhook and they point to different payments, we have a mismatch and should reject the webhook to avoid potential fraud or data corruption. Otherwise, if only one of them is present, or both are present and point to the same payment, we can proceed with that payment.
+    // if both transactionId and orderCode are present in the webhook and they point to different
+    // payments, we have a mismatch and should reject the webhook to avoid potential fraud or data
+    // corruption. Otherwise, if only one of them is present, or both are present and point to the
+    // same payment, we can proceed with that payment.
     if (byTransactionId != null
         && byOrderCode != null
         && !Objects.equals(byTransactionId.getId(), byOrderCode.getId())) {
@@ -193,7 +202,8 @@ public class PaymentWebhookService {
   }
 
   private boolean bookingExpired(BookingEntity booking, NormalizedPayosWebhookEvent event) {
-    return booking.getPnrExpiresAt() != null && event.occurredAt().isAfter(booking.getPnrExpiresAt());
+    return booking.getPnrExpiresAt() != null
+        && event.occurredAt().isAfter(booking.getPnrExpiresAt());
   }
 
   private boolean isPending(PaymentEntity payment) {

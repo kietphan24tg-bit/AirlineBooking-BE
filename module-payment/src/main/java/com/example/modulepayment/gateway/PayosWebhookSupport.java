@@ -55,9 +55,7 @@ public class PayosWebhookSupport {
           expectedSignature.getBytes(StandardCharsets.UTF_8),
           signature.getBytes(StandardCharsets.UTF_8))) {
         throw new AppException(
-            "PAYMENT_WEBHOOK_INVALID_SIGNATURE",
-            "PayOS webhook signature is invalid",
-            401);
+            "PAYMENT_WEBHOOK_INVALID_SIGNATURE", "PayOS webhook signature is invalid", 401);
       }
 
       PayosWebhookPayload payload = objectMapper.treeToValue(root, PayosWebhookPayload.class);
@@ -68,8 +66,7 @@ public class PayosWebhookSupport {
 
       String eventType = isSuccessPayload(payload) ? EVENT_TYPE_SUCCEEDED : EVENT_TYPE_FAILED;
       OffsetDateTime receivedAt = OffsetDateTime.now(ZoneOffset.UTC);
-      OffsetDateTime occurredAt =
-          parseOccurredAt(webhookData.transactionDateTime(), receivedAt);
+      OffsetDateTime occurredAt = parseOccurredAt(webhookData.transactionDateTime(), receivedAt);
 
       return new NormalizedPayosWebhookEvent(
           PROVIDER_PAYOS,
@@ -87,8 +84,9 @@ public class PayosWebhookSupport {
       throw badRequest("Webhook payload could not be parsed");
     }
   }
-  
-  // Normalize the PayOS webhook payload into a standard format that our application can use, and verify the signature to ensure the webhook is authentic and has not been tampered with
+
+  // Normalize the PayOS webhook payload into a standard format that our application can use, and
+  // verify the signature to ensure the webhook is authentic and has not been tampered with
   static String buildWebhookSignaturePayload(JsonNode dataNode) {
     List<String> fieldNames = new ArrayList<>();
     Iterator<Entry<String, JsonNode>> fields = dataNode.fields();
@@ -104,8 +102,9 @@ public class PayosWebhookSupport {
     }
     return String.join("&", parts);
   }
-  
-  //convert a JsonNode value to a string for signature generation, following PayOS's rules for how to serialize different types of values
+
+  // convert a JsonNode value to a string for signature generation, following PayOS's rules for how
+  // to serialize different types of values
   private static String scalarValue(JsonNode valueNode) {
     if (valueNode == null || valueNode.isNull()) {
       return "";
@@ -144,18 +143,20 @@ public class PayosWebhookSupport {
 
   private static OffsetDateTime parseOccurredAt(String rawValue, OffsetDateTime fallback) {
     if (rawValue == null || rawValue.isBlank()) {
-      return fallback; //return now if transactionDateTime is missing or blank, to avoid rejecting the webhook just because of a timestamp issue
+      return fallback; // return now if transactionDateTime is missing or blank, to avoid rejecting
+      // the webhook just because of a timestamp issue
     }
     try {
       LocalDateTime localDateTime = LocalDateTime.parse(rawValue, TRANSACTION_TIME_FORMATTER);
-      return localDateTime.atZone(PAYOS_ZONE_ID).toOffsetDateTime(); 
-      //normalize the transactionDateTime to UTC+0, so that we can compare/sort it reliably regardless of the timezone of the PayOS account
+      return localDateTime.atZone(PAYOS_ZONE_ID).toOffsetDateTime();
+      // normalize the transactionDateTime to UTC+0, so that we can compare/sort it reliably
+      // regardless of the timezone of the PayOS account
     } catch (DateTimeParseException exception) {
       return fallback;
     }
   }
 
-  //check if the payload indicates a successful payment according to PayOS's rules
+  // check if the payload indicates a successful payment according to PayOS's rules
   private static boolean isSuccessPayload(PayosWebhookPayload payload) {
     return Boolean.TRUE.equals(payload.success())
         && "00".equals(payload.code())

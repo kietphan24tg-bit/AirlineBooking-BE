@@ -37,7 +37,8 @@ class PaymentWebhookServiceTest {
   @BeforeEach
   void setUp() {
     paymentWebhookService =
-        new PaymentWebhookService(paymentRepository, paymentWebhookEventRepository, payosWebhookSupport);
+        new PaymentWebhookService(
+            paymentRepository, paymentWebhookEventRepository, payosWebhookSupport);
   }
 
   @Test
@@ -56,9 +57,11 @@ class PaymentWebhookServiceTest {
     PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
 
     when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
-    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("PAYOS", event.idempotencyKey()))
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
         .thenReturn(false);
-    when(paymentRepository.findByTransactionIdForUpdate("plink_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
     when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
@@ -89,7 +92,8 @@ class PaymentWebhookServiceTest {
             "{\"code\":\"00\"}");
 
     when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
-    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("PAYOS", event.idempotencyKey()))
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
         .thenReturn(true);
 
     paymentWebhookService.handlePayosWebhook("payload");
@@ -114,13 +118,17 @@ class PaymentWebhookServiceTest {
     PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
 
     when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
-    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("PAYOS", event.idempotencyKey()))
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
         .thenReturn(false);
-    when(paymentRepository.findByTransactionIdForUpdate("plink_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
     when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
-    when(paymentRepository.save(any(PaymentEntity.class))).thenThrow(new IllegalStateException("db-down"));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenThrow(new IllegalStateException("db-down"));
 
-    assertThrows(IllegalStateException.class, () -> paymentWebhookService.handlePayosWebhook("payload"));
+    assertThrows(
+        IllegalStateException.class, () -> paymentWebhookService.handlePayosWebhook("payload"));
 
     verify(paymentWebhookEventRepository, never()).save(any());
   }
@@ -141,9 +149,11 @@ class PaymentWebhookServiceTest {
     PaymentEntity payment = payment("FAILED", "PENDING_PAYMENT");
 
     when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
-    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("PAYOS", event.idempotencyKey()))
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
         .thenReturn(false);
-    when(paymentRepository.findByTransactionIdForUpdate("plink_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
     when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
 
     paymentWebhookService.handlePayosWebhook("payload");
@@ -174,9 +184,11 @@ class PaymentWebhookServiceTest {
     PaymentEntity payment = payment("SUCCESS", "CONFIRMED");
 
     when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
-    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("PAYOS", event.idempotencyKey()))
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
         .thenReturn(false);
-    when(paymentRepository.findByTransactionIdForUpdate("plink_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
     when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
 
     paymentWebhookService.handlePayosWebhook("payload");

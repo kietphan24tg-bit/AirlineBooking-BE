@@ -74,12 +74,7 @@ public class PaymentService {
                         payosSupported,
                         null),
                     new PaymentMethodView.PaymentMethodItemView(
-                        METHOD_VNPAY,
-                        "Thanh toán VNPay",
-                        "VNPAY",
-                        "vnpay.png",
-                        false,
-                        null))),
+                        METHOD_VNPAY, "Thanh toán VNPay", "VNPAY", "vnpay.png", false, null))),
             new PaymentMethodView(
                 "EWALLET",
                 "Ví điện tử",
@@ -124,17 +119,13 @@ public class PaymentService {
 
     if (!paymentProperties.isPayosConfigured()) {
       throw new AppException(
-          "PAYMENT_PROVIDER_MISCONFIGURED",
-          "PayOS provider is not fully configured",
-          500);
+          "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
     }
 
     BookingEntity booking = requirePayableBookingForUpdate(command.bookingId(), command.userId());
     if (!supportsCurrency(booking.getCurrency())) {
       throw new AppException(
-          "UNSUPPORTED_PAYMENT_CURRENCY",
-          "Only VND payments are supported in phase 1",
-          400);
+          "UNSUPPORTED_PAYMENT_CURRENCY", "Only VND payments are supported in phase 1", 400);
     }
 
     OffsetDateTime expireAt = booking.getPnrExpiresAt();
@@ -226,9 +217,7 @@ public class PaymentService {
         booking.getStatus() == null ? "" : booking.getStatus().trim().toUpperCase(Locale.ROOT);
     if (!"PENDING".equals(normalizedStatus) && !"PENDING_PAYMENT".equals(normalizedStatus)) {
       throw new AppException(
-          "BOOKING_NOT_PAYABLE",
-          "Booking is not eligible for payment in its current status",
-          409);
+          "BOOKING_NOT_PAYABLE", "Booking is not eligible for payment in its current status", 409);
     }
   }
 

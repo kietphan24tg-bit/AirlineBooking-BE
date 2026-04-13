@@ -49,15 +49,17 @@ public class PayosPaymentGateway implements PaymentGateway {
   public PaymentGatewayResult createPaymentLink(PaymentGatewayRequest request) {
     if (!paymentProperties.isPayosConfigured()) {
       throw new AppException(
-          "PAYMENT_PROVIDER_MISCONFIGURED",
-          "PayOS provider is not fully configured",
-          500);
+          "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
     }
 
     long amount = toPayosAmount(request.amount());
     String signaturePayload =
         buildSignaturePayload(
-            amount, request.orderCode(), request.description(), request.returnUrl(), request.cancelUrl());
+            amount,
+            request.orderCode(),
+            request.description(),
+            request.returnUrl(),
+            request.cancelUrl());
     String signature = sign(signaturePayload, paymentProperties.payos().checksumKey());
 
     CreatePaymentLinkPayload payload =
@@ -91,25 +93,18 @@ public class PayosPaymentGateway implements PaymentGateway {
       HttpResponse<String> response =
           httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
       if (response.statusCode() >= 400) {
-        throw new AppException(
-            "PAYMENT_PROVIDER_ERROR",
-            "PayOS rejected payment request",
-            502);
+        throw new AppException("PAYMENT_PROVIDER_ERROR", "PayOS rejected payment request", 502);
       }
 
       PayosCreatePaymentResponse paymentResponse =
           objectMapper.readValue(response.body(), PayosCreatePaymentResponse.class);
       if (paymentResponse.code() == null || !PAYOS_SUCCESS_CODE.equals(paymentResponse.code())) {
         throw new AppException(
-            "PAYMENT_PROVIDER_ERROR",
-            "PayOS returned a non-success response",
-            502);
+            "PAYMENT_PROVIDER_ERROR", "PayOS returned a non-success response", 502);
       }
       if (paymentResponse.data() == null || paymentResponse.data().paymentLinkId() == null) {
         throw new AppException(
-            "PAYMENT_PROVIDER_ERROR",
-            "PayOS returned an invalid payment response",
-            502);
+            "PAYMENT_PROVIDER_ERROR", "PayOS returned an invalid payment response", 502);
       }
 
       return new PaymentGatewayResult(
@@ -120,12 +115,10 @@ public class PayosPaymentGateway implements PaymentGateway {
           ACTION_TYPE_QR,
           paymentResponse.data().createdAt() == null ? request.expiredAt() : request.expiredAt());
     } catch (IOException exception) {
-      throw new AppException(
-          "PAYMENT_PROVIDER_ERROR", "Unable to parse PayOS response", 502);
+      throw new AppException("PAYMENT_PROVIDER_ERROR", "Unable to parse PayOS response", 502);
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
-      throw new AppException(
-          "PAYMENT_PROVIDER_ERROR", "PayOS request was interrupted", 502);
+      throw new AppException("PAYMENT_PROVIDER_ERROR", "PayOS request was interrupted", 502);
     }
   }
 
@@ -151,26 +144,23 @@ public class PayosPaymentGateway implements PaymentGateway {
       return HexFormat.of().formatHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
     } catch (Exception exception) {
       throw new AppException(
-          "PAYMENT_PROVIDER_MISCONFIGURED",
-          "Unable to generate PayOS signature",
-          500);
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Unable to generate PayOS signature", 500);
     }
   }
 
   static long toPayosAmount(BigDecimal amount) {
     try {
-      //ép tiền về số nguyên VND
+      // ép tiền về số nguyên VND
       return amount.setScale(0, RoundingMode.UNNECESSARY).longValueExact();
     } catch (ArithmeticException exception) {
       throw new AppException(
-          "INVALID_PAYMENT_AMOUNT",
-          "Payment amount must be a whole-number VND amount",
-          400);
+          "INVALID_PAYMENT_AMOUNT", "Payment amount must be a whole-number VND amount", 400);
     }
   }
 
   private static String resolveBaseUrl(PaymentProperties paymentProperties) {
-    String configured = paymentProperties.payos() == null ? null : paymentProperties.payos().baseUrl();
+    String configured =
+        paymentProperties.payos() == null ? null : paymentProperties.payos().baseUrl();
     return configured == null || configured.isBlank() ? DEFAULT_BASE_URL : configured;
   }
 
