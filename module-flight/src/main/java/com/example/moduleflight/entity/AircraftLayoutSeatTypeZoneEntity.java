@@ -9,35 +9,35 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "seats")
+@Table(name = "aircraft_layout_seat_type_zones")
 @Getter
 @Setter
 @NoArgsConstructor
-public class SeatEntity {
+public class AircraftLayoutSeatTypeZoneEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "aircraft_id", nullable = false)
-  private AircraftEntity aircraft;
+  @JoinColumn(name = "aircraft_layout_id", nullable = false)
+  private AircraftLayoutEntity aircraftLayout;
 
-  @Column(name = "seat_number", nullable = false, length = 10)
-  private String seatNumber;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "seat_type_id", nullable = false)
+  private SeatTypeEntity seatType;
 
-  @Column(name = "seat_class", nullable = false, length = 30)
-  private String seatClass;
+  @Column(name = "row_start", nullable = false)
+  private Integer rowStart;
 
-  @Column(name = "created_at", nullable = false)
-  private OffsetDateTime createdAt;
+  @Column(name = "row_end", nullable = false)
+  private Integer rowEnd;
 
-  @Column(name = "updated_at", nullable = false)
-  private OffsetDateTime updatedAt;
+  @Column(name = "columns", length = 20)
+  private String columns;
 }

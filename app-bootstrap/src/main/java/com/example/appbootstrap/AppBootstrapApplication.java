@@ -10,6 +10,7 @@ import com.example.appbootstrap.config.MailProperties;
 import com.example.appbootstrap.config.SwaggerProperties;
 import com.example.moduleflight.config.AirlineImportProperties;
 import com.example.moduleflight.config.AirportImportProperties;
+import com.example.moduleflight.config.FlightImportProperties;
 import com.example.moduleidentity.config.RateLimitProperties;
 import com.example.modulepayment.config.PaymentProperties;
 import org.springframework.boot.SpringApplication;
@@ -35,7 +36,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   SwaggerProperties.class,
   RateLimitProperties.class,
   AirportImportProperties.class,
-  AirlineImportProperties.class
+  AirlineImportProperties.class,
+  FlightImportProperties.class
 })
 public class AppBootstrapApplication {
 

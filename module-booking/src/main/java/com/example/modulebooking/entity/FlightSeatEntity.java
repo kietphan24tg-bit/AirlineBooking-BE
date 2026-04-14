@@ -2,7 +2,8 @@ package com.example.modulebooking.entity;
 
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
-import com.example.moduleflight.entity.SeatEntity;
+import com.example.moduleflight.entity.SeatClassEntity;
+import com.example.moduleflight.entity.SeatTypeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,23 +33,23 @@ public class FlightSeatEntity {
   @JoinColumn(name = "flight_id", nullable = false)
   private FlightEntity flight;
 
+  @Column(name = "seat_number", nullable = false, length = 10)
+  private String seatNumber;
+
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "seat_id", nullable = false)
-  private SeatEntity seat;
+  @JoinColumn(name = "seat_class_id", nullable = false)
+  private SeatClassEntity seatClass;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "seat_type_id", nullable = false)
+  private SeatTypeEntity seatType;
 
   @Column(nullable = false, length = 20)
   private String status;
 
-  @Column(nullable = false, precision = 18, scale = 2)
-  private BigDecimal price;
-
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "fare_class_id")
   private FareClassEntity fareClass;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "passenger_id")
-  private PassengerEntity passenger;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "booking_id")
