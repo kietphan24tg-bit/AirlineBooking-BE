@@ -31,6 +31,18 @@ public class AirlineEntity {
   @Column(name = "logo_url", length = 500)
   private String logoUrl;
 
+  @Column(name = "country_code", length = 2)
+  private String countryCode;
+
+  @Column(length = 150)
+  private String country;
+
+  @Column(length = 150)
+  private String city;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
+
+  @Column(name = "updated_at", nullable = false)
+  private OffsetDateTime updatedAt;
 }

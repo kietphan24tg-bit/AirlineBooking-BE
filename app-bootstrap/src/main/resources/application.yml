@@ -68,6 +68,19 @@ app:
         fallback-city: ${APP_AIRPORT_IMPORT_FALLBACK_CITY:UNKNOWN}
         fallback-country: ${APP_AIRPORT_IMPORT_FALLBACK_COUNTRY:UNKNOWN}
         fallback-time-zone: ${APP_AIRPORT_IMPORT_FALLBACK_TIME_ZONE:UTC}
+    airline-import:
+        enabled: ${APP_AIRLINE_IMPORT_ENABLED:false}
+        base-url: ${APP_AIRLINE_IMPORT_BASE_URL:https://airlabs.co}
+        api-key: ${APP_AIRLABS_API_KEY:}
+        cron: ${APP_AIRLINE_IMPORT_CRON:0 30 3 * * *}
+        request-timeout-seconds: ${APP_AIRLINE_IMPORT_REQUEST_TIMEOUT_SECONDS:30}
+        max-retries: ${APP_AIRLINE_IMPORT_MAX_RETRIES:2}
+        require-iata: ${APP_AIRLINE_IMPORT_REQUIRE_IATA:false}
+        # AirLabs _fields (comma-separated); include country_code per Airlines DB docs (airlabs.co/docs/airlines).
+        fields: "${APP_AIRLINE_IMPORT_FIELDS:name,iata_code,icao_code,country_code}"
+        # Countries DB (airlabs.co/docs/countries) for ISO2 -> display name when airline has country_code.
+        fetch-countries-enrichment: ${APP_AIRLINE_IMPORT_FETCH_COUNTRIES_ENRICHMENT:true}
+        countries-fields: "${APP_AIRLINE_IMPORT_COUNTRIES_FIELDS:code,name}"
     payment:
         provider: ${APP_PAYMENT_PROVIDER:payos}
         # Unused for PayOS (webhook HMAC uses payos.checksum-key). Retained for existing env binding.

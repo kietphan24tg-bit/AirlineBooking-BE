@@ -8,6 +8,7 @@ import com.example.appbootstrap.config.JwtProperties;
 import com.example.appbootstrap.config.LoggingProperties;
 import com.example.appbootstrap.config.MailProperties;
 import com.example.appbootstrap.config.SwaggerProperties;
+import com.example.moduleflight.config.AirlineImportProperties;
 import com.example.moduleflight.config.AirportImportProperties;
 import com.example.moduleidentity.config.RateLimitProperties;
 import com.example.modulepayment.config.PaymentProperties;
@@ -33,7 +34,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   LoggingProperties.class,
   SwaggerProperties.class,
   RateLimitProperties.class,
-  AirportImportProperties.class
+  AirportImportProperties.class,
+  AirlineImportProperties.class
 })
 public class AppBootstrapApplication {
 

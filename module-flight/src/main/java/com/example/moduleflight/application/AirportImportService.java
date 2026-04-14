@@ -91,7 +91,8 @@ public class AirportImportService {
     AirportImportSummary summary =
         new AirportImportSummary(fetched, inserted, updated, skipped, failed);
     LOG.info(
-        "Airport import finished: fetched={}, inserted={}, updated={}, skipped={}, failed={}, fallbackCountry={}, fallbackCity={}, fallbackTimeZone={}",
+        "Airport import finished: fetched={}, inserted={}, updated={}, skipped={}, failed={}, "
+            + "fallbackCountry={}, fallbackCity={}, fallbackTimeZone={}",
         summary.fetched(),
         summary.inserted(),
         summary.updated(),
