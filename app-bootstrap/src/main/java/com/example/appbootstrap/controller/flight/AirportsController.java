@@ -28,12 +28,27 @@ public class AirportsController {
     this.airportQueryService = airportQueryService;
   }
 
+  @GetMapping
+  @Operation(
+      summary = "List all airports grouped by country",
+      description = "Returns all airports as a map of country name to airport items.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Grouped airports returned",
+        content = @Content)
+  })
+  Map<String, List<AirportByCountryItemResponse>> groupedAll() {
+    return toResponse(airportQueryService.findGroupedByCountry(null));
+  }
+
   @GetMapping("/grouped-by-country")
   @Operation(
       summary = "List airports grouped by country",
       description =
-          "Returns airports as a map of country name to airport items. Optional query `country`"
-              + " filters to a single country (exact match on stored country value).")
+          "Legacy-compatible grouped endpoint. Returns airports as a map of country name to"
+              + " airport items. Optional query `country` filters to a single country (exact"
+              + " match on stored country value).")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -44,7 +59,11 @@ public class AirportsController {
       @Parameter(description = "Exact country string as stored in database")
           @RequestParam(required = false)
           String country) {
-    Map<String, List<AirportGroupedItem>> raw = airportQueryService.findGroupedByCountry(country);
+    return toResponse(airportQueryService.findGroupedByCountry(country));
+  }
+
+  private Map<String, List<AirportByCountryItemResponse>> toResponse(
+      Map<String, List<AirportGroupedItem>> raw) {
     Map<String, List<AirportByCountryItemResponse>> result = new LinkedHashMap<>();
     raw.forEach(
         (key, items) ->
