@@ -8,5 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Long> {
 
-  Optional<FlightFareEntity> findByFlightAndFareClass(FlightEntity flight, FareClassEntity fareClass);
+  Optional<FlightFareEntity> findByFlightAndFareClass(
+      FlightEntity flight, FareClassEntity fareClass);
 }

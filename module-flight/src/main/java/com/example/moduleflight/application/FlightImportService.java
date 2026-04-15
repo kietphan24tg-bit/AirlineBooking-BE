@@ -86,7 +86,8 @@ public class FlightImportService {
     int skipped = 0;
 
     for (String airlineCode : airlineCodes) {
-      List<AirlabsScheduleItem> items = airlabsSchedulesClient.fetchSchedules(airlineCode, fromDate);
+      List<AirlabsScheduleItem> items =
+          airlabsSchedulesClient.fetchSchedules(airlineCode, fromDate);
       fetched += items.size();
       TransformResult transformed = transform(items, fromDate, toDate);
       skipped += transformed.skipped();
@@ -139,8 +140,10 @@ public class FlightImportService {
             .filter(StringUtils::hasText)
             .collect(Collectors.toSet());
 
-    Map<String, AirlineEntity> airlinesByCode = toAirlineByCode(airlineRepository.findByCodeIn(airlineCodes));
-    Map<String, AirportEntity> airportsByCode = toAirportByCode(airportRepository.findByCodeIn(airportCodes));
+    Map<String, AirlineEntity> airlinesByCode =
+        toAirlineByCode(airlineRepository.findByCodeIn(airlineCodes));
+    Map<String, AirportEntity> airportsByCode =
+        toAirportByCode(airportRepository.findByCodeIn(airportCodes));
 
     List<FlightCandidate> candidates = new ArrayList<>();
     int skipped = 0;
@@ -424,5 +427,6 @@ public class FlightImportService {
 
   private record FlightLookupKey(Long airlineId, String flightNumber, LocalDate flightDate) {}
 
-  public record FlightImportSummary(int fetched, int inserted, int updated, int skipped, int failed) {}
+  public record FlightImportSummary(
+      int fetched, int inserted, int updated, int skipped, int failed) {}
 }

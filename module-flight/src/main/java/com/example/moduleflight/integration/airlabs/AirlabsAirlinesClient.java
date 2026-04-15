@@ -97,10 +97,7 @@ public class AirlabsAirlinesClient {
           }
           throw new AppException(
               "AIRLINE_IMPORT_API_ERROR",
-              "AirLabs API returned error status: "
-                  + statusCode
-                  + ", body: "
-                  + response.body(),
+              "AirLabs API returned error status: " + statusCode + ", body: " + response.body(),
               502);
         }
         JsonNode root = objectMapper.readTree(response.body());

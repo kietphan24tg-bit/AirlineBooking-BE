@@ -106,7 +106,9 @@ public class AirlabsSchedulesClient {
           .append(URLEncoder.encode(airlineIata.trim(), StandardCharsets.UTF_8));
     }
     if (fromDate != null) {
-      builder.append("&date_from=").append(URLEncoder.encode(fromDate.toString(), StandardCharsets.UTF_8));
+      builder
+          .append("&date_from=")
+          .append(URLEncoder.encode(fromDate.toString(), StandardCharsets.UTF_8));
     }
     return URI.create(builder.toString());
   }

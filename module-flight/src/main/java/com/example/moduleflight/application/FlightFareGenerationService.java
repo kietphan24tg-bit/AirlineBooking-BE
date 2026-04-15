@@ -64,7 +64,9 @@ public class FlightFareGenerationService {
       BigDecimal totalPrice = basePrice.add(taxCalculation.totalTaxAmount());
 
       FlightFareEntity entity =
-          flightFareRepository.findByFlightAndFareClass(flight, fareClass).orElseGet(FlightFareEntity::new);
+          flightFareRepository
+              .findByFlightAndFareClass(flight, fareClass)
+              .orElseGet(FlightFareEntity::new);
       entity.setFlight(flight);
       entity.setFareClass(fareClass);
       entity.setBasePrice(basePrice);
@@ -110,10 +112,7 @@ public class FlightFareGenerationService {
     for (TaxFeeEntity tax : taxes) {
       BigDecimal amount = BigDecimal.ZERO;
       if ("PERCENT".equalsIgnoreCase(tax.getAmountType())) {
-        amount =
-            basePrice
-                .multiply(tax.getValue())
-                .setScale(2, RoundingMode.HALF_UP);
+        amount = basePrice.multiply(tax.getValue()).setScale(2, RoundingMode.HALF_UP);
       } else if ("FIXED".equalsIgnoreCase(tax.getAmountType())) {
         amount = tax.getValue().setScale(2, RoundingMode.HALF_UP);
       }

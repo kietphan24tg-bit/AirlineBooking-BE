@@ -7,5 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AircraftLayoutSeatTypeZoneRepository
     extends JpaRepository<AircraftLayoutSeatTypeZoneEntity, Long> {
 
-  List<AircraftLayoutSeatTypeZoneEntity> findByAircraftLayoutIdOrderByRowStartAsc(Long aircraftLayoutId);
+  List<AircraftLayoutSeatTypeZoneEntity> findByAircraftLayoutIdOrderByRowStartAsc(
+      Long aircraftLayoutId);
 }

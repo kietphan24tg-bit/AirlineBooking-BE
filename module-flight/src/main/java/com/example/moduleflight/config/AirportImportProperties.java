@@ -26,7 +26,8 @@ public record AirportImportProperties(
           "app.airport-import.request-timeout-seconds must be greater than 0");
     }
     if (maxRetries < 0) {
-      throw new IllegalArgumentException("app.airport-import.max-retries must be greater than or equal to 0");
+      throw new IllegalArgumentException(
+          "app.airport-import.max-retries must be greater than or equal to 0");
     }
   }
 }

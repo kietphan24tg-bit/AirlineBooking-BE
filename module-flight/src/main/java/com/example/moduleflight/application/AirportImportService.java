@@ -66,7 +66,9 @@ public class AirportImportService {
 
     while (true) {
       if (!seenCursors.add(cursor)) {
-        LOG.warn("Airport import detected repeated cursor '{}'; stopping to prevent infinite loop.", cursor);
+        LOG.warn(
+            "Airport import detected repeated cursor '{}'; stopping to prevent infinite loop.",
+            cursor);
         break;
       }
 

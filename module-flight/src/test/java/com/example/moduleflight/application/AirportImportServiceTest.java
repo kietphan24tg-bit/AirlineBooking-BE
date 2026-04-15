@@ -60,10 +60,7 @@ class AirportImportServiceTest {
     when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
     service =
         new AirportImportService(
-            airportsApiClient,
-            airportRepository,
-            properties,
-            transactionManager);
+            airportsApiClient, airportRepository, properties, transactionManager);
   }
 
   @Test
