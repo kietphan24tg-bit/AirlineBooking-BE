@@ -2,10 +2,20 @@ package com.example.moduleflight.application;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 
 public record FlightRankKey(
-    int promoRank, BigDecimal effectivePrice, OffsetDateTime departureTime, long flightId, long fareId)
+    int promoRank,
+    BigDecimal effectivePrice,
+    OffsetDateTime departureTime,
+    long flightId,
+    long fareId)
     implements Comparable<FlightRankKey> {
+
+  private static final Comparator<BigDecimal> PRICE_ORDER =
+      Comparator.nullsLast(Comparator.naturalOrder());
+  private static final Comparator<OffsetDateTime> DEPARTURE_ORDER =
+      Comparator.nullsLast(Comparator.naturalOrder());
 
   @Override
   public int compareTo(FlightRankKey other) {
@@ -13,11 +23,11 @@ public record FlightRankKey(
     if (byPromoRank != 0) {
       return byPromoRank;
     }
-    int byPrice = this.effectivePrice.compareTo(other.effectivePrice);
+    int byPrice = PRICE_ORDER.compare(this.effectivePrice, other.effectivePrice);
     if (byPrice != 0) {
       return byPrice;
     }
-    int byDeparture = this.departureTime.compareTo(other.departureTime);
+    int byDeparture = DEPARTURE_ORDER.compare(this.departureTime, other.departureTime);
     if (byDeparture != 0) {
       return byDeparture;
     }

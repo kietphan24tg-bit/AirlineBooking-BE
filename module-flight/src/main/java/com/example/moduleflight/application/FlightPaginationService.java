@@ -15,9 +15,13 @@ import org.springframework.util.StringUtils;
 public class FlightPaginationService {
 
   private static final String CURSOR_VERSION = "v1";
+  private static final String CURSOR_NULL_PRICE = "0";
+  private static final String CURSOR_NULL_DEPARTURE = OffsetDateTime.MIN.toString();
 
-  public <T extends HasRankKey> PageResult<T> paginate(List<T> sortedItems, int limit, String cursor) {
-    List<T> sorted = sortedItems.stream().sorted(Comparator.comparing(HasRankKey::rankKey)).toList();
+  public <T extends HasRankKey> PageResult<T> paginate(
+      List<T> sortedItems, int limit, String cursor) {
+    List<T> sorted =
+        sortedItems.stream().sorted(Comparator.comparing(HasRankKey::rankKey)).toList();
     FlightRankKey cursorKey = decodeCursor(cursor);
 
     List<T> pageItems = new ArrayList<>();
@@ -36,23 +40,30 @@ public class FlightPaginationService {
       pageItems.removeLast();
     }
 
-    String nextCursor = hasMore && !pageItems.isEmpty() ? encodeCursor(pageItems.getLast().rankKey()) : null;
+    String nextCursor =
+        hasMore && !pageItems.isEmpty() ? encodeCursor(pageItems.getLast().rankKey()) : null;
     return new PageResult<>(pageItems, nextCursor, hasMore, limit);
   }
 
   public String encodeCursor(FlightRankKey key) {
+    String pricePart =
+        key.effectivePrice() == null ? CURSOR_NULL_PRICE : key.effectivePrice().toPlainString();
+    String departurePart =
+        key.departureTime() == null ? CURSOR_NULL_DEPARTURE : key.departureTime().toString();
     String payload =
         key.promoRank()
             + "|"
-            + key.effectivePrice().toPlainString()
+            + pricePart
             + "|"
-            + key.departureTime()
+            + departurePart
             + "|"
             + key.flightId()
             + "|"
             + key.fareId();
     String encoded =
-        Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+        Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     return CURSOR_VERSION + "|" + encoded;
   }
 

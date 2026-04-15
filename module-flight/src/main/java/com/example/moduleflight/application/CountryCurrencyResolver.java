@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
 // identify the country code and currency of the flight
 public class CountryCurrencyResolver {
 
-  private static final String DEFAULT_COUNTRY_CODE = "GL";
+  private static final String DEFAULT_COUNTRY_CODE = "VN";
   private static final String DEFAULT_CURRENCY = "VND";
 
   private static final Map<String, String> COUNTRY_ALIASES =
@@ -42,7 +42,9 @@ public class CountryCurrencyResolver {
           "SG", "SGD");
 
   public String resolveCountryCode(FlightFareEntity fare) {
-    if (fare == null || fare.getFlight() == null || fare.getFlight().getDepartureAirport() == null) {
+    if (fare == null
+        || fare.getFlight() == null
+        || fare.getFlight().getDepartureAirport() == null) {
       return DEFAULT_COUNTRY_CODE;
     }
     String country = fare.getFlight().getDepartureAirport().getCountry();
@@ -57,6 +59,7 @@ public class CountryCurrencyResolver {
     if (!StringUtils.hasText(countryCode)) {
       return DEFAULT_CURRENCY;
     }
-    return CURRENCY_BY_COUNTRY.getOrDefault(countryCode.trim().toUpperCase(Locale.ROOT), DEFAULT_CURRENCY);
+    return CURRENCY_BY_COUNTRY.getOrDefault(
+        countryCode.trim().toUpperCase(Locale.ROOT), DEFAULT_CURRENCY);
   }
 }
