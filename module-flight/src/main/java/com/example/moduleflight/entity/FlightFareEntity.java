@@ -46,9 +46,6 @@ public class FlightFareEntity {
   @Column(name = "total_price", nullable = false, precision = 18, scale = 2)
   private BigDecimal totalPrice;
 
-  @Column(name = "available_seats", nullable = false)
-  private Integer availableSeats;
-
   @Column(nullable = false, length = 20)
   private String status;
 
