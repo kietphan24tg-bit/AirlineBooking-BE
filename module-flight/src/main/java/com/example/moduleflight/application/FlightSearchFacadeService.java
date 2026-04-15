@@ -8,12 +8,16 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
 public class FlightSearchFacadeService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FlightSearchFacadeService.class);
 
   private final FlightQueryService flightQueryService;
   private final FlightPricingService flightPricingService;
@@ -89,9 +93,20 @@ public class FlightSearchFacadeService {
       List<RankedFareOption> rankedFareOptions = new ArrayList<>();
 
       for (FlightFareEntity fare : fares) {
-        BigDecimal originalTotalPrice =
-            flightPricingService.calculateTotalPrice(
-                fare.getTotalPrice(), query.adult(), query.child(), query.infant());
+        BigDecimal originalTotalPrice;
+        try {
+          originalTotalPrice =
+              flightPricingService.calculateTotalPrice(
+                  fare.getTotalPrice(), query.adult(), query.child(), query.infant());
+        } catch (IllegalArgumentException ex) {
+          String fareCode = fare.getFareClass() != null ? fare.getFareClass().getCode() : "unknown";
+          LOG.warn(
+              "Skipping fare id={} fareCode={} due to pricing calculation failure",
+              fare.getId(),
+              fareCode,
+              ex);
+          continue;
+        }
         boolean fareAvailable = "AVAILABLE".equalsIgnoreCase(fare.getStatus());
         PromoPreview preview =
             promotionBatchPreviewService.preview(

@@ -74,11 +74,12 @@ public class PromotionPreviewService {
     if (discountAmount.signum() <= 0) {
       return PromoPreview.notApplicable("Promo discount is not applicable", originalPrice);
     }
-    BigDecimal discounted = originalPrice.subtract(discountAmount).max(BigDecimal.ZERO);
+    BigDecimal clampedDiscount = discountAmount.min(originalPrice);
+    BigDecimal discounted = originalPrice.subtract(clampedDiscount).max(BigDecimal.ZERO);
     int discountPercent =
         originalPrice.signum() == 0
             ? 0
-            : discountAmount
+            : clampedDiscount
                 .multiply(BigDecimal.valueOf(100))
                 .divide(originalPrice, 0, RoundingMode.HALF_UP)
                 .intValue();
@@ -98,7 +99,7 @@ public class PromotionPreviewService {
         "Promo applied successfully",
         originalPrice,
         discounted,
-        discountAmount,
+        clampedDiscount,
         discountPercent > 0 ? discountPercent : null);
   }
 

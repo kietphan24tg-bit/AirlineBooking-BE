@@ -3,6 +3,7 @@ package com.example.moduleflight.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -64,8 +65,7 @@ class FlightSearchServiceTest {
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
-    when(promotionBatchPreviewService.preview(
-            any(), any(), anyString(), anyString(), any(Boolean.class)))
+    when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), anyBoolean()))
         .thenReturn(
             new PromotionBatchPreviewService.PromoPreview(
                 "APPLIED",
@@ -89,7 +89,7 @@ class FlightSearchServiceTest {
                 OffsetDateTime.parse("2026-05-01T02:00:00Z"),
                 1002L,
                 2L));
-    when(flightPaginationService.paginate(any(), any(Integer.class), any()))
+    when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenReturn(
             new FlightPaginationService.PageResult<>(
                 List.of(

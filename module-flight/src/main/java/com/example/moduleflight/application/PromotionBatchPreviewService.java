@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -73,6 +74,9 @@ public class PromotionBatchPreviewService {
       String currency,
       String countryCode,
       boolean fareAvailable) {
+    if (originalPrice == null) {
+      return PromoPreview.notApplicable("Original price is required", null);
+    }
     if (context.promotion == null) {
       return new PromoPreview(
           context.fallbackStatus,
@@ -89,7 +93,10 @@ public class PromotionBatchPreviewService {
 
     PromotionValueSnapshotEntity scopedValue = resolveScopedValue(context, currency, countryCode);
     BigDecimal discountAmount = calculateDiscount(context.promotion, scopedValue, originalPrice);
-    if (discountAmount == null || discountAmount.signum() <= 0) {
+    if (discountAmount == null) {
+      return PromoPreview.mayApply("Promo may apply at booking step", originalPrice);
+    }
+    if (discountAmount.signum() <= 0) {
       return PromoPreview.notApplicable("Promo discount is not applicable", originalPrice);
     }
 
@@ -206,12 +213,13 @@ public class PromotionBatchPreviewService {
       BigDecimal discountAmount,
       Integer discountPercent) {
     public static PromoPreview notApplicable(String message, BigDecimal originalPrice) {
-      return new PromoPreview(
-          "NOT_APPLICABLE", message, originalPrice, null, BigDecimal.ZERO, null);
+      BigDecimal price = Objects.requireNonNullElse(originalPrice, BigDecimal.ZERO);
+      return new PromoPreview("NOT_APPLICABLE", message, price, null, BigDecimal.ZERO, null);
     }
 
     public static PromoPreview mayApply(String message, BigDecimal originalPrice) {
-      return new PromoPreview("MAY_APPLY", message, originalPrice, null, BigDecimal.ZERO, null);
+      BigDecimal price = Objects.requireNonNullElse(originalPrice, BigDecimal.ZERO);
+      return new PromoPreview("MAY_APPLY", message, price, null, BigDecimal.ZERO, null);
     }
   }
 }
