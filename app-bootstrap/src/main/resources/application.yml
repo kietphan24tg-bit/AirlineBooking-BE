@@ -55,6 +55,41 @@ app:
         checkin-open-hours: ${APP_BOOKING_CHECKIN_OPEN_HOURS:24}
         domestic-checkin-close-minutes: ${APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES:40}
         international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
+    airport-import:
+        enabled: ${APP_AIRPORT_IMPORT_ENABLED:false}
+        base-url: ${APP_AIRPORT_IMPORT_BASE_URL:https://airportsapi.com}
+        cron: ${APP_AIRPORT_IMPORT_CRON:0 0 3 * * *}
+        page-size: ${APP_AIRPORT_IMPORT_PAGE_SIZE:100}
+        request-timeout-seconds: ${APP_AIRPORT_IMPORT_REQUEST_TIMEOUT_SECONDS:20}
+        max-retries: ${APP_AIRPORT_IMPORT_MAX_RETRIES:2}
+        allowed-types: ${APP_AIRPORT_IMPORT_ALLOWED_TYPES:medium_airport,large_airport}
+        require-iata: ${APP_AIRPORT_IMPORT_REQUIRE_IATA:true}
+        include: ${APP_AIRPORT_IMPORT_INCLUDE:country,region}
+        fallback-city: ${APP_AIRPORT_IMPORT_FALLBACK_CITY:UNKNOWN}
+        fallback-country: ${APP_AIRPORT_IMPORT_FALLBACK_COUNTRY:UNKNOWN}
+        fallback-time-zone: ${APP_AIRPORT_IMPORT_FALLBACK_TIME_ZONE:UTC}
+    airline-import:
+        enabled: ${APP_AIRLINE_IMPORT_ENABLED:false}
+        base-url: ${APP_AIRLINE_IMPORT_BASE_URL:https://airlabs.co}
+        api-key: ${APP_AIRLABS_API_KEY:}
+        cron: ${APP_AIRLINE_IMPORT_CRON:0 30 3 * * *}
+        request-timeout-seconds: ${APP_AIRLINE_IMPORT_REQUEST_TIMEOUT_SECONDS:30}
+        max-retries: ${APP_AIRLINE_IMPORT_MAX_RETRIES:2}
+        require-iata: ${APP_AIRLINE_IMPORT_REQUIRE_IATA:false}
+        # AirLabs _fields (comma-separated); include country_code per Airlines DB docs (airlabs.co/docs/airlines).
+        fields: "${APP_AIRLINE_IMPORT_FIELDS:name,iata_code,icao_code,country_code}"
+        # Countries DB (airlabs.co/docs/countries) for ISO2 -> display name when airline has country_code.
+        fetch-countries-enrichment: ${APP_AIRLINE_IMPORT_FETCH_COUNTRIES_ENRICHMENT:true}
+        countries-fields: "${APP_AIRLINE_IMPORT_COUNTRIES_FIELDS:code,name}"
+    flight-import:
+        enabled: ${APP_FLIGHT_IMPORT_ENABLED:false}
+        base-url: ${APP_FLIGHT_IMPORT_BASE_URL:https://airlabs.co}
+        api-key: ${APP_AIRLABS_API_KEY:}
+        cron: ${APP_FLIGHT_IMPORT_CRON:0 0 2 * * *}
+        request-timeout-seconds: ${APP_FLIGHT_IMPORT_REQUEST_TIMEOUT_SECONDS:30}
+        max-retries: ${APP_FLIGHT_IMPORT_MAX_RETRIES:2}
+        airline-iata-codes: ${APP_FLIGHT_IMPORT_AIRLINE_IATA_CODES:VN,VJ,QH}
+        days-ahead: ${APP_FLIGHT_IMPORT_DAYS_AHEAD:7}
     payment:
         provider: ${APP_PAYMENT_PROVIDER:payos}
         # Unused for PayOS (webhook HMAC uses payos.checksum-key). Retained for existing env binding.

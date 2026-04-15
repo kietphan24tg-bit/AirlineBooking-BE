@@ -15,11 +15,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "seats")
+@Table(name = "aircraft_layout")
 @Getter
 @Setter
 @NoArgsConstructor
-public class SeatEntity {
+public class AircraftLayoutEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,15 +29,15 @@ public class SeatEntity {
   @JoinColumn(name = "aircraft_id", nullable = false)
   private AircraftEntity aircraft;
 
-  @Column(name = "seat_number", nullable = false, length = 10)
-  private String seatNumber;
+  @Column(name = "total_rows", nullable = false)
+  private Integer totalRows;
 
-  @Column(name = "seat_class", nullable = false, length = 30)
-  private String seatClass;
+  @Column(name = "columns", nullable = false, length = 10)
+  private String columns;
+
+  @Column(name = "business_rows", nullable = false)
+  private Integer businessRows;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
-
-  @Column(name = "updated_at", nullable = false)
-  private OffsetDateTime updatedAt;
 }

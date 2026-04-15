@@ -73,7 +73,8 @@ public class SecurityConfig {
                         "/error",
                         "/api/auth/**",
                         "/api/payments/webhooks/payos",
-                        "/api/flights/**")
+                        "/api/flights/**",
+                        "/api/airports/**")
                     .permitAll()
                     // admin api
                     .requestMatchers("/api/admin/**")
