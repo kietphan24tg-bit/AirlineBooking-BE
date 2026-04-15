@@ -118,8 +118,9 @@ public class AirlabsAirlinesClient {
 
   private URI buildAirlinesUri() {
     String baseUrl = sanitizeBaseUrl(properties.baseUrl());
+    String apiKey = requiredApiKey();
     StringBuilder builder = new StringBuilder(baseUrl).append(AIRLINES_PATH).append("?api_key=");
-    builder.append(URLEncoder.encode(properties.apiKey(), StandardCharsets.UTF_8));
+    builder.append(URLEncoder.encode(apiKey, StandardCharsets.UTF_8));
     if (StringUtils.hasText(properties.fields())) {
       builder
           .append("&_fields=")
@@ -130,14 +131,22 @@ public class AirlabsAirlinesClient {
 
   private URI buildCountriesUri() {
     String baseUrl = sanitizeBaseUrl(properties.baseUrl());
+    String apiKey = requiredApiKey();
     StringBuilder builder = new StringBuilder(baseUrl).append(COUNTRIES_PATH).append("?api_key=");
-    builder.append(URLEncoder.encode(properties.apiKey(), StandardCharsets.UTF_8));
+    builder.append(URLEncoder.encode(apiKey, StandardCharsets.UTF_8));
     if (StringUtils.hasText(properties.countriesFields())) {
       builder
           .append("&_fields=")
           .append(URLEncoder.encode(properties.countriesFields().trim(), StandardCharsets.UTF_8));
     }
     return URI.create(builder.toString());
+  }
+
+  private String requiredApiKey() {
+    if (!StringUtils.hasText(properties.apiKey())) {
+      throw new IllegalStateException("app.airline-import.api-key is required to call AirLabs API");
+    }
+    return properties.apiKey().trim();
   }
 
   private static String sanitizeBaseUrl(String configuredBaseUrl) {

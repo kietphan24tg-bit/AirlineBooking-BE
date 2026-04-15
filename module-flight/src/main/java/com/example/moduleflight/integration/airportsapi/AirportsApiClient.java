@@ -6,7 +6,6 @@ import com.example.moduleflight.integration.airportsapi.dto.AirportsApiPageRespo
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -15,6 +14,7 @@ import java.time.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 public class AirportsApiClient {
@@ -81,25 +81,22 @@ public class AirportsApiClient {
 
   private URI buildEndpoint(String cursor) {
     String baseUrl = sanitizeBaseUrl(properties.baseUrl());
-    StringBuilder builder = new StringBuilder(baseUrl).append(AIRPORTS_PATH);
-    builder.append("?page[size]=").append(Math.max(1, properties.pageSize()));
-    builder.append("&sort=name");
+    UriComponentsBuilder builder =
+        UriComponentsBuilder.fromUriString(baseUrl + AIRPORTS_PATH)
+            .queryParam("page[size]", Math.max(1, properties.pageSize()))
+            .queryParam("sort", "name");
 
     if (StringUtils.hasText(properties.include())) {
-      builder
-          .append("&include=")
-          .append(URLEncoder.encode(properties.include(), StandardCharsets.UTF_8));
+      builder.queryParam("include", properties.include());
     }
     if (StringUtils.hasText(properties.allowedTypes())) {
-      builder
-          .append("&filter[type]=")
-          .append(URLEncoder.encode(properties.allowedTypes(), StandardCharsets.UTF_8));
+      builder.queryParam("filter[type]", properties.allowedTypes());
     }
 
-    if (cursor != null && !cursor.isBlank()) {
-      builder.append("&page[cursor]=").append(URLEncoder.encode(cursor, StandardCharsets.UTF_8));
+    if (StringUtils.hasText(cursor)) {
+      builder.queryParam("page[cursor]", cursor);
     }
-    return URI.create(builder.toString());
+    return builder.build(true).toUri();
   }
 
   private String sanitizeBaseUrl(String configuredBaseUrl) {

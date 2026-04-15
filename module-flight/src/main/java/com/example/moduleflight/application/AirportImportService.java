@@ -345,6 +345,9 @@ public class AirportImportService {
       return byId;
     }
     for (IncludedResource includedResource : page.included()) {
+      if (includedResource == null || isBlank(includedResource.id())) {
+        continue;
+      }
       if ("countries".equals(includedResource.type())
           && includedResource.attributes() != null
           && !isBlank(includedResource.attributes().name())) {
@@ -360,6 +363,9 @@ public class AirportImportService {
       return byId;
     }
     for (IncludedResource includedResource : page.included()) {
+      if (includedResource == null || isBlank(includedResource.id())) {
+        continue;
+      }
       if ("regions".equals(includedResource.type())
           && includedResource.attributes() != null
           && !isBlank(includedResource.attributes().name())) {
