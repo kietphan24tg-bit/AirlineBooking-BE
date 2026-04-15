@@ -29,12 +29,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class AirportImportServiceTest {
 
   @Mock private AirportsApiClient airportsApiClient;
   @Mock private AirportRepository airportRepository;
+  @Mock private PlatformTransactionManager transactionManager;
 
   private AirportImportService service;
 
@@ -54,7 +57,13 @@ class AirportImportServiceTest {
             "UNKNOWN",
             "UNKNOWN",
             "UTC");
-    service = new AirportImportService(airportsApiClient, airportRepository, properties);
+    when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+    service =
+        new AirportImportService(
+            airportsApiClient,
+            airportRepository,
+            properties,
+            transactionManager);
   }
 
   @Test

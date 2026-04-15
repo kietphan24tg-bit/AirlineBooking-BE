@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -217,17 +218,36 @@ public class FlightImportService {
       return new UpsertResult(0, 0);
     }
 
+    Set<AirlineEntity> airlines = new HashSet<>();
+    LocalDate minDate = null;
+    LocalDate maxDate = null;
+    for (FlightCandidate candidate : candidates) {
+      airlines.add(candidate.airline());
+      if (minDate == null || candidate.flightDate().isBefore(minDate)) {
+        minDate = candidate.flightDate();
+      }
+      if (maxDate == null || candidate.flightDate().isAfter(maxDate)) {
+        maxDate = candidate.flightDate();
+      }
+    }
+
+    Map<FlightLookupKey, FlightEntity> existingByKey = new LinkedHashMap<>();
+    if (!airlines.isEmpty() && minDate != null && maxDate != null) {
+      List<FlightEntity> existingFlights =
+          flightRepository.findByAirlineInAndFlightDateBetween(airlines, minDate, maxDate);
+      for (FlightEntity existing : existingFlights) {
+        existingByKey.put(toLookupKey(existing), existing);
+      }
+    }
+
     int inserted = 0;
     int updated = 0;
     OffsetDateTime now = OffsetDateTime.now();
     List<FlightEntity> toSave = new ArrayList<>();
 
     for (FlightCandidate candidate : candidates) {
-      Optional<FlightEntity> existingOptional =
-          flightRepository.findByAirlineAndFlightNumberAndFlightDate(
-              candidate.airline(), candidate.flightNumber(), candidate.flightDate());
-      if (existingOptional.isPresent()) {
-        FlightEntity existing = existingOptional.get();
+      FlightEntity existing = existingByKey.get(toLookupKey(candidate));
+      if (existing != null) {
         applyCandidate(existing, candidate, now, false);
         toSave.add(existing);
         updated++;
@@ -301,7 +321,17 @@ public class FlightImportService {
     if (!StringUtils.hasText(normalized)) {
       return null;
     }
-    return aircraftRepository.findFirstByModelIgnoreCase(normalized).orElse(null);
+    return aircraftRepository.findByModelIgnoreCase(normalized).orElse(null);
+  }
+
+  private static FlightLookupKey toLookupKey(FlightCandidate candidate) {
+    Long airlineId = candidate.airline() == null ? null : candidate.airline().getId();
+    return new FlightLookupKey(airlineId, candidate.flightNumber(), candidate.flightDate());
+  }
+
+  private static FlightLookupKey toLookupKey(FlightEntity flight) {
+    Long airlineId = flight.getAirline() == null ? null : flight.getAirline().getId();
+    return new FlightLookupKey(airlineId, flight.getFlightNumber(), flight.getFlightDate());
   }
 
   private static Set<String> parseAirlineCodes(String configuredCodes) {
@@ -391,6 +421,8 @@ public class FlightImportService {
   private record TransformResult(List<FlightCandidate> candidates, int skipped) {}
 
   private record UpsertResult(int inserted, int updated) {}
+
+  private record FlightLookupKey(Long airlineId, String flightNumber, LocalDate flightDate) {}
 
   public record FlightImportSummary(int fetched, int inserted, int updated, int skipped, int failed) {}
 }

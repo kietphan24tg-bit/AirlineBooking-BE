@@ -53,10 +53,15 @@ public class AirportsApiClient {
 
         HttpResponse<String> response =
             httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (response.statusCode() >= 400) {
+        int statusCode = response.statusCode();
+        if (statusCode >= 400) {
+          boolean transientStatus = statusCode == 429 || (statusCode >= 500 && statusCode < 600);
+          if (transientStatus && attempt < attempts) {
+            continue;
+          }
           throw new AppException(
               "AIRPORT_IMPORT_API_ERROR",
-              "Airport API returned error status: " + response.statusCode(),
+              "Airport API returned error status: " + statusCode + ", body: " + response.body(),
               502);
         }
         return objectMapper.readValue(response.body(), AirportsApiPageResponse.class);

@@ -44,6 +44,8 @@ public class AirlabsSchedulesClient {
     URI endpoint = buildSchedulesUri(airlineIata, fromDate);
     int retries = Math.max(0, properties.maxRetries());
     int attempts = retries + 1;
+    Integer lastStatusCode = null;
+    String lastBody = null;
 
     for (int attempt = 1; attempt <= attempts; attempt++) {
       try {
@@ -55,10 +57,20 @@ public class AirlabsSchedulesClient {
                 .build();
         HttpResponse<String> response =
             httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (response.statusCode() >= 400) {
+        int statusCode = response.statusCode();
+        if (statusCode >= 400) {
+          lastStatusCode = statusCode;
+          lastBody = response.body();
+          boolean retryable = statusCode == 429 || statusCode >= 500;
+          if (retryable && attempt < attempts) {
+            continue;
+          }
           throw new AppException(
               "FLIGHT_IMPORT_API_ERROR",
-              "AirLabs schedules API returned error status: " + response.statusCode(),
+              "AirLabs schedules API returned error status: "
+                  + statusCode
+                  + ", body: "
+                  + response.body(),
               502);
         }
         JsonNode root = objectMapper.readTree(response.body());
@@ -75,7 +87,13 @@ public class AirlabsSchedulesClient {
       }
     }
 
-    throw new AppException("FLIGHT_IMPORT_API_ERROR", "AirLabs schedules request failed", 502);
+    throw new AppException(
+        "FLIGHT_IMPORT_API_ERROR",
+        "AirLabs schedules request failed after retries. Last status="
+            + lastStatusCode
+            + ", body="
+            + lastBody,
+        502);
   }
 
   private URI buildSchedulesUri(String airlineIata, LocalDate fromDate) {

@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AircraftRepository extends JpaRepository<AircraftEntity, Long> {
 
-  Optional<AircraftEntity> findFirstByModelIgnoreCase(String model);
+  Optional<AircraftEntity> findByModelIgnoreCase(String model);
 }

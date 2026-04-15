@@ -11,9 +11,11 @@ import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +77,7 @@ public class FlightSeatGenerationService {
     Map<Long, List<LayoutTypeZone>> seatTypeZoneCache = new HashMap<>();
     Map<String, Long> seatTypeIdByCode = loadSeatTypeIds();
     Timestamp createdAt = Timestamp.from(OffsetDateTime.now().toInstant());
+    Set<String> generatedSeatNumbers = new LinkedHashSet<>();
 
     for (int row = 1; row <= totalRows; row++) {
       for (int i = 0; i < columns.size(); i++) {
@@ -90,7 +93,7 @@ public class FlightSeatGenerationService {
           continue;
         }
         Long seatTypeId =
-            resolveSeatTypeId(layout, row, column, seatTypeZoneCache, seatTypeIdByCode);
+            resolveSeatTypeId(layout, row, column, columns, seatTypeZoneCache, seatTypeIdByCode);
         if (seatTypeId == null) {
           LOG.warn(
               "Skip seat generation: no seat type resolved for layoutId={}, row={}, column={}",
@@ -100,8 +103,11 @@ public class FlightSeatGenerationService {
           continue;
         }
         upsertFlightSeat(flight.getId(), seatNumber, seatClassId, seatTypeId, createdAt);
+        generatedSeatNumbers.add(seatNumber);
       }
     }
+
+    markRemovedAvailableSeatsUnavailable(flight.getId(), generatedSeatNumbers);
   }
 
   private void upsertFlightSeat(
@@ -189,6 +195,7 @@ public class FlightSeatGenerationService {
       AircraftLayoutEntity layout,
       int row,
       String column,
+      List<String> layoutColumns,
       Map<Long, List<LayoutTypeZone>> zoneCache,
       Map<String, Long> seatTypeIdByCode) {
     if (layout.getId() != null) {
@@ -200,14 +207,68 @@ public class FlightSeatGenerationService {
       }
     }
 
+    return resolveSeatTypeIdByPosition(column, layoutColumns, seatTypeIdByCode);
+  }
+
+  private Long resolveSeatTypeIdByPosition(
+      String column, List<String> layoutColumns, Map<String, Long> seatTypeIdByCode) {
+    int columnIndex = -1;
+    int lastIndex = -1;
     String normalized = normalizeColumn(column);
-    if ("A".equals(normalized) || "F".equals(normalized)) {
+
+    if (layoutColumns != null && !layoutColumns.isEmpty()) {
+      lastIndex = layoutColumns.size() - 1;
+      columnIndex = layoutColumns.indexOf(normalized);
+    }
+
+    if (columnIndex < 0) {
+      columnIndex = alphabeticalColumnIndex(normalized);
+      if (columnIndex < 0) {
+        return seatTypeIdByCode.get("MIDDLE");
+      }
+      // Fallback sequence when explicit layout letters are not available.
+      lastIndex = 25;
+    }
+
+    if (columnIndex == 0 || columnIndex == lastIndex) {
       return seatTypeIdByCode.get("WINDOW");
     }
-    if ("C".equals(normalized) || "D".equals(normalized)) {
+    if (columnIndex == 1 || columnIndex == lastIndex - 1) {
       return seatTypeIdByCode.get("AISLE");
     }
     return seatTypeIdByCode.get("MIDDLE");
+  }
+
+  private int alphabeticalColumnIndex(String normalizedColumn) {
+    if (!StringUtils.hasText(normalizedColumn)) {
+      return -1;
+    }
+    char first = normalizedColumn.charAt(0);
+    if (first < 'A' || first > 'Z') {
+      return -1;
+    }
+    return first - 'A';
+  }
+
+  private void markRemovedAvailableSeatsUnavailable(Long flightId, Set<String> generatedSeatNumbers) {
+    if (generatedSeatNumbers == null || generatedSeatNumbers.isEmpty()) {
+      jdbcTemplate.update(
+          "update flight_seats set status = 'UNAVAILABLE' where flight_id = ? and status = 'AVAILABLE'",
+          flightId);
+      return;
+    }
+
+    String placeholders =
+        generatedSeatNumbers.stream().map(value -> "?").collect(Collectors.joining(", "));
+    String sql =
+        "update flight_seats set status = 'UNAVAILABLE' "
+            + "where flight_id = ? and status = 'AVAILABLE' and seat_number not in ("
+            + placeholders
+            + ")";
+    List<Object> params = new ArrayList<>();
+    params.add(flightId);
+    params.addAll(generatedSeatNumbers);
+    jdbcTemplate.update(sql, params.toArray());
   }
 
   private List<LayoutTypeZone> loadSeatTypeZones(Long layoutId) {

@@ -21,61 +21,61 @@ insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, r
 select al.id, st.id, 1, al.total_rows, 'A,F'
 from aircraft_layout al
 join seat_types st on st.code = 'WINDOW'
-where al.columns = 'ABCDEF'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEF'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'C,D'
 from aircraft_layout al
 join seat_types st on st.code = 'AISLE'
-where al.columns = 'ABCDEF'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEF'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'B,E'
 from aircraft_layout al
 join seat_types st on st.code = 'MIDDLE'
-where al.columns = 'ABCDEF'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEF'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'A,H'
 from aircraft_layout al
 join seat_types st on st.code = 'WINDOW'
-where al.columns = 'ABCDEFGH'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEFGH'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'C,D,E,F'
 from aircraft_layout al
 join seat_types st on st.code = 'AISLE'
-where al.columns = 'ABCDEFGH'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEFGH'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'B,G'
 from aircraft_layout al
 join seat_types st on st.code = 'MIDDLE'
-where al.columns = 'ABCDEFGH'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEFGH'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'A,J'
 from aircraft_layout al
 join seat_types st on st.code = 'WINDOW'
-where al.columns = 'ABCDEFGHJ'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEFGHJ'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'C,D,F,G'
 from aircraft_layout al
 join seat_types st on st.code = 'AISLE'
-where al.columns = 'ABCDEFGHJ'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEFGHJ'
 on conflict do nothing;
 
 insert into aircraft_layout_seat_type_zones (aircraft_layout_id, seat_type_id, row_start, row_end, columns)
 select al.id, st.id, 1, al.total_rows, 'B,E,H'
 from aircraft_layout al
 join seat_types st on st.code = 'MIDDLE'
-where al.columns = 'ABCDEFGHJ'
+where regexp_replace(upper(coalesce(al.columns, '')), '[^A-Z]', '', 'g') = 'ABCDEFGHJ'
 on conflict do nothing;

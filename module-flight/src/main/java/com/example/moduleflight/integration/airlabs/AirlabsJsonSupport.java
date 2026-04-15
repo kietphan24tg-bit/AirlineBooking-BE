@@ -24,7 +24,12 @@ public final class AirlabsJsonSupport {
   public static <T> List<T> readList(JsonNode root, Class<T> elementClass, ObjectMapper mapper) {
     JsonNode arrayNode = unwrapArray(root);
     if (arrayNode == null || !arrayNode.isArray()) {
-      return List.of();
+      String payloadPreview = root == null ? "null" : root.toString();
+      throw new AppException(
+          "AIRLINE_IMPORT_API_ERROR",
+          "Unexpected AirLabs payload shape. Expected array or {response:[...]}, got: "
+              + payloadPreview,
+          502);
     }
     try {
       List<T> out = new ArrayList<>();

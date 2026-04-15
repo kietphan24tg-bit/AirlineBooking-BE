@@ -24,7 +24,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
@@ -36,20 +37,23 @@ public class AirportImportService {
   private final AirportsApiClient airportsApiClient;
   private final AirportRepository airportRepository;
   private final AirportImportProperties properties;
+  private final TransactionTemplate transactionTemplate;
 
   public AirportImportService(
       AirportsApiClient airportsApiClient,
       AirportRepository airportRepository,
-      AirportImportProperties properties) {
+      AirportImportProperties properties,
+      PlatformTransactionManager transactionManager) {
     this.airportsApiClient = airportsApiClient;
     this.airportRepository = airportRepository;
     this.properties = properties;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public AirportImportSummary importAirports() {
 
     String cursor = null;
+    Set<String> seenCursors = new HashSet<>();
     int fetched = 0;
     int inserted = 0;
     int updated = 0;
@@ -61,6 +65,11 @@ public class AirportImportService {
     int fallbackTimeZoneCount = 0;
 
     while (true) {
+      if (!seenCursors.add(cursor)) {
+        LOG.warn("Airport import detected repeated cursor '{}'; stopping to prevent infinite loop.", cursor);
+        break;
+      }
+
       AirportsApiPageResponse page = airportsApiClient.fetchPage(cursor);
       List<AirportData> data = page.data() == null ? List.of() : page.data();
       fetched += data.size();
@@ -73,16 +82,33 @@ public class AirportImportService {
       mergeSkipBreakdown(skipBreakdown, transformResult.skipBreakdown());
 
       try {
-        UpsertResult upsertResult = upsert(transformResult.candidates());
-        inserted += upsertResult.inserted();
-        updated += upsertResult.updated();
+        UpsertResult upsertResult =
+            transactionTemplate.execute(status -> upsert(transformResult.candidates()));
+        if (upsertResult == null) {
+          failed += transformResult.candidates().size();
+          LOG.warn("Airport import upsert returned null result for cursor={}", cursor);
+        } else {
+          inserted += upsertResult.inserted();
+          updated += upsertResult.updated();
+        }
       } catch (RuntimeException exception) {
         failed += transformResult.candidates().size();
-        throw exception;
+        LOG.warn(
+            "Airport import failed on page cursor={}: {}",
+            cursor,
+            exception.getMessage(),
+            exception);
       }
 
       String nextCursor = resolveNextCursor(page);
       if (nextCursor == null || nextCursor.isBlank()) {
+        break;
+      }
+      if (seenCursors.contains(nextCursor)) {
+        LOG.warn(
+            "Airport import next cursor '{}' was already processed (current='{}'); stopping to prevent infinite loop.",
+            nextCursor,
+            cursor);
         break;
       }
       cursor = nextCursor;

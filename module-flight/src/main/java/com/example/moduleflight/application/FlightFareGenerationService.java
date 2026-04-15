@@ -71,7 +71,9 @@ public class FlightFareGenerationService {
       entity.setTaxBreakdown(taxCalculation.breakdownJson());
       entity.setTotalTaxAmount(taxCalculation.totalTaxAmount());
       entity.setTotalPrice(totalPrice);
-      entity.setStatus("AVAILABLE");
+      if (entity.getId() == null || entity.getStatus() == null) {
+        entity.setStatus("AVAILABLE");
+      }
       entity.setUpdatedAt(now);
       toSave.add(entity);
     }

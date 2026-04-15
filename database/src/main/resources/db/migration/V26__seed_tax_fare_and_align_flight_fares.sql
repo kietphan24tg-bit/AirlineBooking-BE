@@ -26,4 +26,9 @@ alter table flight_fares
 
 alter table flight_fares
     add constraint chk_flight_fares_prices_non_negative
-        check (base_price >= 0 and total_tax_amount >= 0 and total_price >= 0);
+        check (
+            base_price >= 0
+            and total_tax_amount >= 0
+            and total_price >= 0
+            and total_price = base_price + total_tax_amount
+        );

@@ -89,10 +89,18 @@ public class AirlabsAirlinesClient {
 
         HttpResponse<String> response =
             httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (response.statusCode() >= 400) {
+        int statusCode = response.statusCode();
+        if (statusCode >= 400) {
+          boolean retryable = statusCode == 429 || statusCode >= 500;
+          if (retryable && attempt < attempts) {
+            continue;
+          }
           throw new AppException(
               "AIRLINE_IMPORT_API_ERROR",
-              "AirLabs API returned error status: " + response.statusCode(),
+              "AirLabs API returned error status: "
+                  + statusCode
+                  + ", body: "
+                  + response.body(),
               502);
         }
         JsonNode root = objectMapper.readTree(response.body());

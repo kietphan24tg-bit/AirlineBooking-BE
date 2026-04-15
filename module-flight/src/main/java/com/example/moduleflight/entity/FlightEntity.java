@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -16,7 +17,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "flights")
+@Table(
+    name = "flights",
+    uniqueConstraints =
+        @UniqueConstraint(
+            name = "uq_flights_airline_number_date",
+            columnNames = {"airline_id", "flight_number", "flight_date"}))
 @Getter
 @Setter
 @NoArgsConstructor

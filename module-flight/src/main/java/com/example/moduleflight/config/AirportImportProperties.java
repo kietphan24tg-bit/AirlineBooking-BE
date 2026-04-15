@@ -15,4 +15,18 @@ public record AirportImportProperties(
     String include,
     String fallbackCity,
     String fallbackCountry,
-    String fallbackTimeZone) {}
+    String fallbackTimeZone) {
+
+  public AirportImportProperties {
+    if (pageSize <= 0) {
+      throw new IllegalArgumentException("app.airport-import.page-size must be greater than 0");
+    }
+    if (requestTimeoutSeconds <= 0) {
+      throw new IllegalArgumentException(
+          "app.airport-import.request-timeout-seconds must be greater than 0");
+    }
+    if (maxRetries < 0) {
+      throw new IllegalArgumentException("app.airport-import.max-retries must be greater than or equal to 0");
+    }
+  }
+}
