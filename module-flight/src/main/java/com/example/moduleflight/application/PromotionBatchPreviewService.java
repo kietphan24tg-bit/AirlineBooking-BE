@@ -59,7 +59,9 @@ public class PromotionBatchPreviewService {
         promotionValueSnapshotRepository.findAllByPromotion(promotion);
     for (PromotionValueSnapshotEntity scopedValue : scopedValues) {
       String key =
-          normalizeCurrency(scopedValue.getCurrency()) + ":" + normalizeCountry(scopedValue.getCountryCode());
+          normalizeCurrency(scopedValue.getCurrency())
+              + ":"
+              + normalizeCountry(scopedValue.getCountryCode());
       valuesByScope.put(key, scopedValue);
     }
     return new PromotionContext(promotion, valuesByScope, null, null);
@@ -128,7 +130,9 @@ public class PromotionBatchPreviewService {
       PromotionValueSnapshotEntity scopedValue,
       BigDecimal originalPrice) {
     String discountType =
-        promotion.getDiscountType() == null ? "" : promotion.getDiscountType().trim().toUpperCase(Locale.ROOT);
+        promotion.getDiscountType() == null
+            ? ""
+            : promotion.getDiscountType().trim().toUpperCase(Locale.ROOT);
     if ("PERCENT".equals(discountType)) {
       BigDecimal percent = promotion.getDiscountValue();
       if (percent == null) {

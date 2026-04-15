@@ -1,6 +1,5 @@
 package com.example.moduleflight.application;
 
-import com.example.moduleflight.application.FlightPaginationService.HasRankKey;
 import com.example.moduleflight.application.FlightPaginationService.PageResult;
 import com.example.moduleflight.application.PromotionBatchPreviewService.PromoPreview;
 import com.example.moduleflight.application.PromotionBatchPreviewService.PromotionContext;
@@ -76,8 +75,9 @@ public class FlightSearchFacadeService {
       FlightSearchQuery query,
       String cursor,
       PromotionContext promotionContext) {
-    List<List<FlightFareEntity>> groupedFlights = flightQueryService.findByRouteAndDate(fromCode, toCode, date);
-    List<RankedFlightOption> rankedOptions = new ArrayList<>();
+    List<List<FlightFareEntity>> groupedFlights =
+        flightQueryService.findByRouteAndDate(fromCode, toCode, date);
+    List<FlightSearchPageItem> rankedOptions = new ArrayList<>();
 
     for (List<FlightFareEntity> fares : groupedFlights) {
       if (fares == null || fares.isEmpty()) {
@@ -111,7 +111,8 @@ public class FlightSearchFacadeService {
                 preview.message());
         rankedFareOptions.add(
             new RankedFareOption(
-                fareOption, flightRankingService.buildFareRankKey(fare, preview, originalTotalPrice)));
+                fareOption,
+                flightRankingService.buildFareRankKey(fare, preview, originalTotalPrice)));
       }
 
       rankedFareOptions.sort(Comparator.comparing(RankedFareOption::rankKey));
@@ -132,12 +133,13 @@ public class FlightSearchFacadeService {
               firstFare.getFlight().getArrivalTime(),
               currency,
               rankedFareOptions.stream().map(RankedFareOption::view).toList());
-      rankedOptions.add(new RankedFlightOption(flightOption, rankedFareOptions.getFirst().rankKey()));
+      rankedOptions.add(new RankedFlightRow(flightOption, rankedFareOptions.getFirst().rankKey()));
     }
 
-    PageResult<RankedFlightOption> page = flightPaginationService.paginate(rankedOptions, query.limit(), cursor);
+    PageResult<? extends FlightSearchPageItem> page =
+        flightPaginationService.paginate(rankedOptions, query.limit(), cursor);
     List<FlightSearchResult.FlightOptionView> items =
-        page.items().stream().map(RankedFlightOption::view).toList();
+        page.items().stream().map(FlightSearchPageItem::view).toList();
     return new DirectionResult(
         items, new FlightSearchResult.PageInfo(page.nextCursor(), page.hasMore(), page.limit()));
   }
@@ -151,8 +153,8 @@ public class FlightSearchFacadeService {
 
   private record RankedFareOption(FlightSearchResult.FareOptionView view, FlightRankKey rankKey) {}
 
-  private record RankedFlightOption(FlightSearchResult.FlightOptionView view, FlightRankKey rankKey)
-      implements HasRankKey {}
+  private record RankedFlightRow(FlightSearchResult.FlightOptionView view, FlightRankKey rankKey)
+      implements FlightSearchPageItem {}
 
   private record DirectionResult(
       List<FlightSearchResult.FlightOptionView> items, FlightSearchResult.PageInfo pageInfo) {

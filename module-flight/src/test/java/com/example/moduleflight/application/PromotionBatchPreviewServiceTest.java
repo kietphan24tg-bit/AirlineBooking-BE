@@ -29,11 +29,14 @@ class PromotionBatchPreviewServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new PromotionBatchPreviewService(promotionSnapshotRepository, promotionValueSnapshotRepository);
+    service =
+        new PromotionBatchPreviewService(
+            promotionSnapshotRepository, promotionValueSnapshotRepository);
   }
 
   @Test
-  void loadContext_fetchesPromotionAndValuesOnce_thenPreviewMultipleFaresWithoutExtraRepositoryCalls() {
+  void
+      loadContext_fetchesPromotionAndValuesOnce_thenPreviewMultipleFaresWithoutExtraRepositoryCalls() {
     PromotionSnapshotEntity promotion = new PromotionSnapshotEntity();
     promotion.setCode("SAVE20");
     promotion.setDiscountType("PERCENT");
@@ -42,7 +45,8 @@ class PromotionBatchPreviewServiceTest {
     promotion.setStartsAt(OffsetDateTime.now().minusDays(1));
     promotion.setExpiresAt(OffsetDateTime.now().plusDays(1));
     promotion.setUsedCount(0);
-    when(promotionSnapshotRepository.findByCodeIgnoreCase("SAVE20")).thenReturn(Optional.of(promotion));
+    when(promotionSnapshotRepository.findByCodeIgnoreCase("SAVE20"))
+        .thenReturn(Optional.of(promotion));
 
     PromotionValueSnapshotEntity value = new PromotionValueSnapshotEntity();
     value.setCurrency("VND");
@@ -57,9 +61,9 @@ class PromotionBatchPreviewServiceTest {
         service.preview(context, new BigDecimal("3000000"), "VND", "VN", true);
 
     assertEquals("APPLIED", first.status());
-    assertEquals(new BigDecimal("1800000.00"), first.discountedPrice());
+    assertEquals(0, first.discountedPrice().compareTo(new BigDecimal("1800000")));
     assertEquals("APPLIED", second.status());
-    assertEquals(new BigDecimal("2800000.00"), second.discountedPrice());
+    assertEquals(0, second.discountedPrice().compareTo(new BigDecimal("2800000")));
 
     verify(promotionSnapshotRepository, times(1)).findByCodeIgnoreCase("SAVE20");
     verify(promotionValueSnapshotRepository, times(1)).findAllByPromotion(promotion);

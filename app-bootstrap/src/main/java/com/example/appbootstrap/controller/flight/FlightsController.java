@@ -70,7 +70,8 @@ public class FlightsController {
     FlightSearchTripType tripType = parseTripType(request.tripType());
     if (tripType == FlightSearchTripType.ROUND_TRIP) {
       if (request.returnDate() == null) {
-        throw new AppException("RETURN_DATE_REQUIRED", "returnDate is required for round-trip", 400);
+        throw new AppException(
+            "RETURN_DATE_REQUIRED", "returnDate is required for round-trip", 400);
       }
       LocalDate departureDate = request.departureDate();
       if (departureDate != null && request.returnDate().isBefore(departureDate)) {
@@ -95,8 +96,7 @@ public class FlightsController {
     try {
       return FlightSearchTripType.valueOf(tripType.trim().toUpperCase(Locale.ROOT));
     } catch (IllegalArgumentException exception) {
-      throw new AppException(
-          "INVALID_TRIP_TYPE", "tripType must be ONE_WAY or ROUND_TRIP", 400);
+      throw new AppException("INVALID_TRIP_TYPE", "tripType must be ONE_WAY or ROUND_TRIP", 400);
     }
   }
 }

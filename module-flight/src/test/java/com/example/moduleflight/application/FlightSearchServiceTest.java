@@ -3,6 +3,7 @@ package com.example.moduleflight.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -53,16 +54,18 @@ class FlightSearchServiceTest {
     inboundFare.setTotalPrice(new BigDecimal("1400000"));
 
     when(promotionBatchPreviewService.loadContext(anyString()))
-        .thenReturn(PromotionBatchPreviewService.PromotionContext.withMessage("NOT_APPLICABLE", "none"));
+        .thenReturn(
+            PromotionBatchPreviewService.PromotionContext.withMessage("NOT_APPLICABLE", "none"));
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(List.of(outboundFare)));
     when(flightQueryService.findByRouteAndDate("HAN", "SGN", LocalDate.parse("2026-05-10")))
         .thenReturn(List.of(List.of(inboundFare)));
     when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
-    when(flightPricingService.calculateTotalPrice(any(), any(Integer.class), any(Integer.class), any(Integer.class)))
+    when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
-    when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), any(Boolean.class)))
+    when(promotionBatchPreviewService.preview(
+            any(), any(), anyString(), anyString(), any(Boolean.class)))
         .thenReturn(
             new PromotionBatchPreviewService.PromoPreview(
                 "APPLIED",
@@ -74,10 +77,18 @@ class FlightSearchServiceTest {
     when(flightRankingService.buildFareRankKey(any(), any(), any()))
         .thenReturn(
             new FlightRankKey(
-                0, new BigDecimal("1200000"), OffsetDateTime.parse("2026-05-01T02:00:00Z"), 1001L, 1L))
+                0,
+                new BigDecimal("1200000"),
+                OffsetDateTime.parse("2026-05-01T02:00:00Z"),
+                1001L,
+                1L))
         .thenReturn(
             new FlightRankKey(
-                0, new BigDecimal("1200000"), OffsetDateTime.parse("2026-05-01T02:00:00Z"), 1002L, 2L));
+                0,
+                new BigDecimal("1200000"),
+                OffsetDateTime.parse("2026-05-01T02:00:00Z"),
+                1002L,
+                2L));
     when(flightPaginationService.paginate(any(), any(Integer.class), any()))
         .thenReturn(
             new FlightPaginationService.PageResult<>(
@@ -198,6 +209,7 @@ class FlightSearchServiceTest {
     return fare;
   }
 
-  private record TestRankedFlightOption(FlightSearchResult.FlightOptionView view, FlightRankKey rankKey)
-      implements FlightPaginationService.HasRankKey {}
+  private record TestRankedFlightOption(
+      FlightSearchResult.FlightOptionView view, FlightRankKey rankKey)
+      implements FlightSearchPageItem {}
 }

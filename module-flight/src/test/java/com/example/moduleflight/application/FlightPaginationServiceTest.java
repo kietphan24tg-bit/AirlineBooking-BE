@@ -23,16 +23,22 @@ class FlightPaginationServiceTest {
   @Test
   void paginate_supportsVersionedCursorV1() {
     FlightRankKey key1 =
-        new FlightRankKey(0, new BigDecimal("100"), OffsetDateTime.parse("2026-05-01T00:00:00Z"), 1L, 1L);
+        new FlightRankKey(
+            0, new BigDecimal("100"), OffsetDateTime.parse("2026-05-01T00:00:00Z"), 1L, 1L);
     FlightRankKey key2 =
-        new FlightRankKey(0, new BigDecimal("200"), OffsetDateTime.parse("2026-05-01T01:00:00Z"), 2L, 2L);
-    var firstPage = service.paginate(List.of(new RankedItem("A", key1), new RankedItem("B", key2)), 1, null);
+        new FlightRankKey(
+            0, new BigDecimal("200"), OffsetDateTime.parse("2026-05-01T01:00:00Z"), 2L, 2L);
+    var firstPage =
+        service.paginate(List.of(new RankedItem("A", key1), new RankedItem("B", key2)), 1, null);
     assertEquals(1, firstPage.items().size());
     assertEquals("A", firstPage.items().getFirst().name());
     assertNotNull(firstPage.nextCursor());
 
     var secondPage =
-        service.paginate(List.of(new RankedItem("A", key1), new RankedItem("B", key2)), 1, firstPage.nextCursor());
+        service.paginate(
+            List.of(new RankedItem("A", key1), new RankedItem("B", key2)),
+            1,
+            firstPage.nextCursor());
     assertEquals(1, secondPage.items().size());
     assertEquals("B", secondPage.items().getFirst().name());
   }
