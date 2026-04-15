@@ -12,7 +12,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,9 +38,6 @@ public class FlightSeatEntity {
 
   @Column(nullable = false, length = 20)
   private String status;
-
-  @Column(nullable = false, precision = 18, scale = 2)
-  private BigDecimal price;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "fare_class_id")
