@@ -49,8 +49,7 @@ public class FlightsController {
     @ApiResponse(responseCode = "200", description = "Search completed", content = @Content),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content)
   })
-  FlightSearchResponse searchFlights(
-      @Valid @ParameterObject FlightSearchQueryRequest request) {
+  FlightSearchResponse searchFlights(@Valid @ParameterObject FlightSearchQueryRequest request) {
     validateBusinessRules(request);
     FlightSearchTripType tripType = parseTripType(request.tripType());
     FlightSearchQuery query =
