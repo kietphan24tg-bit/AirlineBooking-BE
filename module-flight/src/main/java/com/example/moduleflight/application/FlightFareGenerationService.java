@@ -104,7 +104,8 @@ public class FlightFareGenerationService {
     flightFareRepository.saveAll(toSave);
   }
 
-  private BigDecimal resolveBasePrice(FareClassEntity fareClass, String currency, String countryCode) {
+  private BigDecimal resolveBasePrice(
+      FareClassEntity fareClass, String currency, String countryCode) {
     if (StringUtils.hasText(countryCode)) {
       BigDecimal countrySpecific = resolveBasePriceFromConfig(fareClass, currency, countryCode);
       if (countrySpecific != null) {
@@ -112,12 +113,14 @@ public class FlightFareGenerationService {
       }
     }
 
-    BigDecimal currencyGlobal = resolveBasePriceFromConfig(fareClass, currency, GLOBAL_COUNTRY_CODE);
+    BigDecimal currencyGlobal =
+        resolveBasePriceFromConfig(fareClass, currency, GLOBAL_COUNTRY_CODE);
     if (currencyGlobal != null) {
       return currencyGlobal;
     }
 
-    BigDecimal defaultGlobal = resolveBasePriceFromConfig(fareClass, DEFAULT_CURRENCY, GLOBAL_COUNTRY_CODE);
+    BigDecimal defaultGlobal =
+        resolveBasePriceFromConfig(fareClass, DEFAULT_CURRENCY, GLOBAL_COUNTRY_CODE);
     if (defaultGlobal != null) {
       return defaultGlobal;
     }
@@ -135,13 +138,15 @@ public class FlightFareGenerationService {
   private BigDecimal resolveBasePriceFromConfig(
       FareClassEntity fareClass, String currency, String countryCode) {
     return fareClassPriceRepository
-        .findByFareClassAndCurrencyAndCountryCode(fareClass, normalize(currency), normalize(countryCode))
+        .findByFareClassAndCurrencyAndCountryCode(
+            fareClass, normalize(currency), normalize(countryCode))
         .map(FareClassPriceEntity::getBasePrice)
         .orElse(null);
   }
 
   private String resolveCountryCode(FlightEntity flight) {
-    if (flight.getDepartureAirport() == null || !StringUtils.hasText(flight.getDepartureAirport().getCountry())) {
+    if (flight.getDepartureAirport() == null
+        || !StringUtils.hasText(flight.getDepartureAirport().getCountry())) {
       return null;
     }
     String normalizedCountry = normalize(flight.getDepartureAirport().getCountry());
