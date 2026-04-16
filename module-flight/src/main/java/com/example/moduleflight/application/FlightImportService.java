@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,7 @@ import org.springframework.util.StringUtils;
 public class FlightImportService {
 
   private static final Logger LOG = LoggerFactory.getLogger(FlightImportService.class);
+  private static final Pattern IATA_CODE_PATTERN = Pattern.compile("^[A-Z0-9]{2}$");
 
   private final AirlabsSchedulesClient airlabsSchedulesClient;
   private final FlightRepository flightRepository;
@@ -108,13 +110,31 @@ public class FlightImportService {
   }
 
   private Set<String> resolveAirlineCodes() {
-    Set<String> dbCodes =
+    Set<String> rawDbCodes =
         airlineRepository.findAllCodes().stream()
             .map(FlightImportService::normalizeCode)
             .filter(StringUtils::hasText)
             .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+    Set<String> dbCodes =
+        rawDbCodes.stream()
+            .filter(FlightImportService::isValidIataCode)
+            .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+    int droppedDbCodes = rawDbCodes.size() - dbCodes.size();
 
-    Set<String> configuredCodes = parseAirlineCodes(properties.airlineIataCodes());
+    Set<String> rawConfiguredCodes = parseAirlineCodes(properties.airlineIataCodes());
+    Set<String> configuredCodes =
+        rawConfiguredCodes.stream()
+            .filter(FlightImportService::isValidIataCode)
+            .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+    int droppedConfiguredCodes = rawConfiguredCodes.size() - configuredCodes.size();
+
+    if (droppedDbCodes > 0 || droppedConfiguredCodes > 0) {
+      LOG.warn(
+          "Flight import ignored invalid airline codes: dbDropped={}, configuredDropped={} (expected IATA format: 2 alphanumeric chars).",
+          droppedDbCodes,
+          droppedConfiguredCodes);
+    }
+
     if (configuredCodes.isEmpty()) {
       return dbCodes;
     }
@@ -397,6 +417,10 @@ public class FlightImportService {
   private static String normalizeCode(String value) {
     String normalized = normalizeText(value);
     return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
+  }
+
+  private static boolean isValidIataCode(String code) {
+    return StringUtils.hasText(code) && IATA_CODE_PATTERN.matcher(code).matches();
   }
 
   private static String normalizeText(String value) {
