@@ -20,6 +20,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class AirportsApiClient {
 
   private static final String AIRPORTS_PATH = "/api/airports";
+  private static final String PAGE_SIZE_PARAM = "page%5Bsize%5D";
+  private static final String FILTER_TYPE_PARAM = "filter%5Btype%5D";
+  private static final String PAGE_CURSOR_PARAM = "page%5Bcursor%5D";
 
   private final AirportImportProperties properties;
   private final ObjectMapper objectMapper;
@@ -83,18 +86,18 @@ public class AirportsApiClient {
     String baseUrl = sanitizeBaseUrl(properties.baseUrl());
     UriComponentsBuilder builder =
         UriComponentsBuilder.fromUriString(baseUrl + AIRPORTS_PATH)
-            .queryParam("page[size]", Math.max(1, properties.pageSize()))
+            .queryParam(PAGE_SIZE_PARAM, Math.max(1, properties.pageSize()))
             .queryParam("sort", "name");
 
     if (StringUtils.hasText(properties.include())) {
       builder.queryParam("include", properties.include());
     }
     if (StringUtils.hasText(properties.allowedTypes())) {
-      builder.queryParam("filter[type]", properties.allowedTypes());
+      builder.queryParam(FILTER_TYPE_PARAM, properties.allowedTypes());
     }
 
     if (StringUtils.hasText(cursor)) {
-      builder.queryParam("page[cursor]", cursor);
+      builder.queryParam(PAGE_CURSOR_PARAM, cursor);
     }
     return builder.build(true).toUri();
   }
