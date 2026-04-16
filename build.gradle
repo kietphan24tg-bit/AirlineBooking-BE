@@ -95,6 +95,15 @@ subprojects {
         finalizedBy tasks.named('jacocoTestReport')
     }
 
+    tasks.withType(Test).configureEach {
+        maxHeapSize = '384m'
+        maxParallelForks = 1
+        jvmArgs(
+            '-XX:TieredStopAtLevel=1',
+            '-XX:ReservedCodeCacheSize=240m',
+            '-Djdk.attach.allowAttachSelf=true')
+    }
+
     tasks.named('check') {
         dependsOn tasks.named('spotlessCheck')
     }
