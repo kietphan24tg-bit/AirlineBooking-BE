@@ -34,4 +34,15 @@ public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Lo
       @Param("toCode") String toCode,
       @Param("flightDate") LocalDate flightDate,
       @Param("flightStatuses") List<String> flightStatuses);
+
+  @Query(
+      """
+      select ff
+      from FlightFareEntity ff
+      join fetch ff.flight f
+      join fetch f.departureAirport dep
+      join fetch ff.fareClass fc
+      where ff.id = :id
+      """)
+  Optional<FlightFareEntity> findByIdWithDetails(@Param("id") Long id);
 }
