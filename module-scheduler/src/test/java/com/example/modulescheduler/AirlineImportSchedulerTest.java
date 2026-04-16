@@ -29,7 +29,8 @@ class AirlineImportSchedulerTest {
             "",
             true,
             "code,name");
-    AirlineImportScheduler scheduler = new AirlineImportScheduler(airlineImportService, properties);
+    AirlineImportScheduler scheduler =
+        new AirlineImportScheduler(airlineImportService, properties, false);
 
     scheduler.runAirlineImport();
 
@@ -41,7 +42,8 @@ class AirlineImportSchedulerTest {
     AirlineImportProperties properties =
         new AirlineImportProperties(
             true, "https://airlabs.co", "key", "0 30 3 * * *", 20, 2, false, "", true, "code,name");
-    AirlineImportScheduler scheduler = new AirlineImportScheduler(airlineImportService, properties);
+    AirlineImportScheduler scheduler =
+        new AirlineImportScheduler(airlineImportService, properties, false);
 
     scheduler.runAirlineImport();
 

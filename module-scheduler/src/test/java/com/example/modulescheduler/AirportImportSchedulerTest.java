@@ -31,7 +31,8 @@ class AirportImportSchedulerTest {
             "UNKNOWN",
             "UNKNOWN",
             "UTC");
-    AirportImportScheduler scheduler = new AirportImportScheduler(airportImportService, properties);
+    AirportImportScheduler scheduler =
+        new AirportImportScheduler(airportImportService, properties, false);
 
     scheduler.runAirportImport();
 
@@ -54,7 +55,8 @@ class AirportImportSchedulerTest {
             "UNKNOWN",
             "UNKNOWN",
             "UTC");
-    AirportImportScheduler scheduler = new AirportImportScheduler(airportImportService, properties);
+    AirportImportScheduler scheduler =
+        new AirportImportScheduler(airportImportService, properties, false);
 
     scheduler.runAirportImport();
 

@@ -57,6 +57,7 @@ app:
         international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
     airport-import:
         enabled: ${APP_AIRPORT_IMPORT_ENABLED:false}
+        run-on-startup: ${APP_AIRPORT_IMPORT_RUN_ON_STARTUP:false}
         base-url: ${APP_AIRPORT_IMPORT_BASE_URL:https://airportsapi.com}
         cron: ${APP_AIRPORT_IMPORT_CRON:0 0 3 * * *}
         page-size: ${APP_AIRPORT_IMPORT_PAGE_SIZE:100}
@@ -70,6 +71,7 @@ app:
         fallback-time-zone: ${APP_AIRPORT_IMPORT_FALLBACK_TIME_ZONE:UTC}
     airline-import:
         enabled: ${APP_AIRLINE_IMPORT_ENABLED:false}
+        run-on-startup: ${APP_AIRLINE_IMPORT_RUN_ON_STARTUP:false}
         base-url: ${APP_AIRLINE_IMPORT_BASE_URL:https://airlabs.co}
         api-key: ${APP_AIRLABS_API_KEY:}
         cron: ${APP_AIRLINE_IMPORT_CRON:0 30 3 * * *}
@@ -83,6 +85,7 @@ app:
         countries-fields: "${APP_AIRLINE_IMPORT_COUNTRIES_FIELDS:code,name}"
     flight-import:
         enabled: ${APP_FLIGHT_IMPORT_ENABLED:false}
+        run-on-startup: ${APP_FLIGHT_IMPORT_RUN_ON_STARTUP:false}
         base-url: ${APP_FLIGHT_IMPORT_BASE_URL:https://airlabs.co}
         api-key: ${APP_AIRLABS_API_KEY:}
         cron: ${APP_FLIGHT_IMPORT_CRON:0 0 2 * * *}
