@@ -3,6 +3,7 @@ package com.example.moduleflight.application;
 import com.example.moduleflight.application.FlightPaginationService.PageResult;
 import com.example.moduleflight.application.PromotionBatchPreviewService.PromoPreview;
 import com.example.moduleflight.application.PromotionBatchPreviewService.PromotionContext;
+import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -68,8 +69,15 @@ public class FlightSearchFacadeService {
               promotionContext);
     }
 
+    List<FlightSearchResult.FlightOptionView> outboundItems = outbound.items();
+    List<FlightSearchResult.FlightOptionView> inboundItems = inbound.items();
     return new FlightSearchResult(
-        outbound.items(), inbound.items(), outbound.pageInfo(), inbound.pageInfo());
+        outboundItems,
+        inboundItems,
+        outbound.pageInfo(),
+        inbound.pageInfo(),
+        FlightSearchResult.priceRangeFromFlights(outboundItems),
+        FlightSearchResult.priceRangeFromFlights(inboundItems));
   }
 
   private DirectionResult searchDirection(
@@ -93,12 +101,17 @@ public class FlightSearchFacadeService {
       List<RankedFareOption> rankedFareOptions = new ArrayList<>();
 
       for (FlightFareEntity fare : fares) {
+        if (fare.getTotalPrice() == null) {
+          String fareCode = fare.getFareClass() != null ? fare.getFareClass().getCode() : "unknown";
+          LOG.warn("Skipping fare id={} fareCode={}: total price is null", fare.getId(), fareCode);
+          continue;
+        }
         BigDecimal originalTotalPrice;
         try {
           originalTotalPrice =
               flightPricingService.calculateTotalPrice(
                   fare.getTotalPrice(), query.adult(), query.child(), query.infant());
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | NullPointerException ex) {
           String fareCode = fare.getFareClass() != null ? fare.getFareClass().getCode() : "unknown";
           LOG.warn(
               "Skipping fare id={} fareCode={} due to pricing calculation failure",
@@ -130,10 +143,19 @@ public class FlightSearchFacadeService {
                 flightRankingService.buildFareRankKey(fare, preview, originalTotalPrice)));
       }
 
-      rankedFareOptions.sort(Comparator.comparing(RankedFareOption::rankKey));
+      rankedFareOptions = applyFareFilters(rankedFareOptions, query);
       if (rankedFareOptions.isEmpty()) {
         continue;
       }
+      FlightEntity flightEntity = firstFare.getFlight();
+      if (!passesTimeBuckets(flightEntity, query)) {
+        continue;
+      }
+      if (!passesConnectionFilter(flightEntity, query)) {
+        continue;
+      }
+
+      rankedFareOptions.sort(Comparator.comparing(RankedFareOption::rankKey));
 
       FlightSearchResult.FlightOptionView flightOption =
           new FlightSearchResult.FlightOptionView(
@@ -157,6 +179,58 @@ public class FlightSearchFacadeService {
         page.items().stream().map(FlightSearchPageItem::view).toList();
     return new DirectionResult(
         items, new FlightSearchResult.PageInfo(page.nextCursor(), page.hasMore(), page.limit()));
+  }
+
+  private List<RankedFareOption> applyFareFilters(
+      List<RankedFareOption> rankedFareOptions, FlightSearchQuery query) {
+    List<RankedFareOption> out = new ArrayList<>(rankedFareOptions);
+    if (!query.cabinClasses().isEmpty()) {
+      out.removeIf(
+          o -> {
+            String cabin = o.view().cabinClass();
+            try {
+              return !query.cabinClasses().contains(CabinClass.valueOf(cabin));
+            } catch (IllegalArgumentException ex) {
+              return true;
+            }
+          });
+    }
+    if (query.maxBudget() != null) {
+      BigDecimal max = query.maxBudget();
+      out.removeIf(o -> effectiveFarePrice(o.view()).compareTo(max) > 0);
+    }
+    return out;
+  }
+
+  private static BigDecimal effectiveFarePrice(FlightSearchResult.FareOptionView fare) {
+    if (fare.discountedTotalPrice() != null) {
+      return fare.discountedTotalPrice();
+    }
+    return fare.originalTotalPrice();
+  }
+
+  private boolean passesTimeBuckets(FlightEntity flight, FlightSearchQuery query) {
+    if (query.departureTimeBucket() != null
+        && !query.departureTimeBucket().matches(flight.getDepartureTime().toLocalTime())) {
+      return false;
+    }
+    if (query.arrivalTimeBucket() != null
+        && !query.arrivalTimeBucket().matches(flight.getArrivalTime().toLocalTime())) {
+      return false;
+    }
+    return true;
+  }
+
+  private boolean passesConnectionFilter(FlightEntity flight, FlightSearchQuery query) {
+    if (query.connectionFilter() == FlightConnectionFilter.ANY) {
+      return true;
+    }
+    return isDirectFlight(flight);
+  }
+
+  /** Current data model only includes single-leg flights; multi-segment search can narrow this. */
+  private boolean isDirectFlight(FlightEntity flight) {
+    return flight != null;
   }
 
   private String normalizeFareStatus(String status) {

@@ -10,14 +10,18 @@ public record FlightSearchResponse(
     List<FlightSearchItemResponse> outbound,
     List<FlightSearchItemResponse> inbound,
     PageInfoResponse outboundPageInfo,
-    PageInfoResponse inboundPageInfo) {
+    PageInfoResponse inboundPageInfo,
+    PriceRangeResponse outboundPriceRange,
+    PriceRangeResponse inboundPriceRange) {
 
   public static FlightSearchResponse from(FlightSearchResult result) {
     return new FlightSearchResponse(
         result.outbound().stream().map(FlightSearchItemResponse::from).toList(),
         result.inbound().stream().map(FlightSearchItemResponse::from).toList(),
         PageInfoResponse.from(result.outboundPageInfo()),
-        PageInfoResponse.from(result.inboundPageInfo()));
+        PageInfoResponse.from(result.inboundPageInfo()),
+        PriceRangeResponse.from(result.outboundPriceRange()),
+        PriceRangeResponse.from(result.inboundPriceRange()));
   }
 
   public record FlightSearchItemResponse(
@@ -80,6 +84,15 @@ public record FlightSearchResponse(
         return null;
       }
       return new PageInfoResponse(pageInfo.nextCursor(), pageInfo.hasMore(), pageInfo.limit());
+    }
+  }
+
+  public record PriceRangeResponse(BigDecimal minPrice, BigDecimal maxPrice, String currency) {
+    static PriceRangeResponse from(FlightSearchResult.PriceRange range) {
+      if (range == null) {
+        return null;
+      }
+      return new PriceRangeResponse(range.minPrice(), range.maxPrice(), range.currency());
     }
   }
 }

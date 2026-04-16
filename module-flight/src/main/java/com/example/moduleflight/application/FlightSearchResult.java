@@ -9,7 +9,52 @@ public record FlightSearchResult(
     List<FlightOptionView> outbound,
     List<FlightOptionView> inbound,
     PageInfo outboundPageInfo,
-    PageInfo inboundPageInfo) {
+    PageInfo inboundPageInfo,
+    PriceRange outboundPriceRange,
+    PriceRange inboundPriceRange) {
+
+  /**
+   * Min/max effective fare prices on the current result page (after pagination). Uses discounted
+   * price when present, otherwise original. Returns {@code null} when there is no priced fare.
+   */
+  public static PriceRange priceRangeFromFlights(List<FlightOptionView> flights) {
+    if (flights == null || flights.isEmpty()) {
+      return null;
+    }
+    BigDecimal min = null;
+    BigDecimal max = null;
+    String currency = null;
+    for (FlightOptionView flight : flights) {
+      for (FareOptionView fare : flight.fares()) {
+        BigDecimal effective = effectiveFarePrice(fare);
+        if (effective == null) {
+          continue;
+        }
+        if (currency == null) {
+          currency = flight.currency();
+        }
+        if (min == null || effective.compareTo(min) < 0) {
+          min = effective;
+        }
+        if (max == null || effective.compareTo(max) > 0) {
+          max = effective;
+        }
+      }
+    }
+    if (min == null) {
+      return null;
+    }
+    return new PriceRange(min, max, currency);
+  }
+
+  private static BigDecimal effectiveFarePrice(FareOptionView fare) {
+    if (fare.discountedTotalPrice() != null) {
+      return fare.discountedTotalPrice();
+    }
+    return fare.originalTotalPrice();
+  }
+
+  public record PriceRange(BigDecimal minPrice, BigDecimal maxPrice, String currency) {}
 
   public record FlightOptionView(
       Long flightId,

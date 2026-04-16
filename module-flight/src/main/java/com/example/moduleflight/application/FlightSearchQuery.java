@@ -1,6 +1,8 @@
 package com.example.moduleflight.application;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Set;
 
 public record FlightSearchQuery(
     FlightSearchTripType tripType,
@@ -15,4 +17,9 @@ public record FlightSearchQuery(
     String cursor,
     String outboundCursor,
     String inboundCursor,
-    int limit) {}
+    int limit,
+    Set<CabinClass> cabinClasses,
+    BigDecimal maxBudget,
+    TimeOfDayBucket departureTimeBucket,
+    TimeOfDayBucket arrivalTimeBucket,
+    FlightConnectionFilter connectionFilter) {}

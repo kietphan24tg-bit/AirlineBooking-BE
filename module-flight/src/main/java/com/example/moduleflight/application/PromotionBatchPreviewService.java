@@ -104,11 +104,12 @@ public class PromotionBatchPreviewService {
       return PromoPreview.mayApply("Promo available but fare class is sold out", originalPrice);
     }
 
-    BigDecimal discountedPrice = originalPrice.subtract(discountAmount).max(BigDecimal.ZERO);
+    BigDecimal clampedDiscount = discountAmount.min(originalPrice);
+    BigDecimal discountedPrice = originalPrice.subtract(clampedDiscount).max(BigDecimal.ZERO);
     Integer discountPercent =
         originalPrice.signum() == 0
             ? null
-            : discountAmount
+            : clampedDiscount
                 .multiply(BigDecimal.valueOf(100))
                 .divide(originalPrice, 0, RoundingMode.HALF_UP)
                 .intValue();
@@ -117,7 +118,7 @@ public class PromotionBatchPreviewService {
         "Promo applied successfully",
         originalPrice,
         discountedPrice,
-        discountAmount,
+        clampedDiscount,
         discountPercent);
   }
 

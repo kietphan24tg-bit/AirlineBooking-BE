@@ -3,9 +3,12 @@ package com.example.appbootstrap.controller.flight;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.common.exception.AppException;
+import com.example.moduleflight.application.CabinClass;
+import com.example.moduleflight.application.FlightConnectionFilter;
 import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
 import com.example.moduleflight.application.FlightSearchTripType;
+import com.example.moduleflight.application.TimeOfDayBucket;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,7 +16,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -57,7 +64,12 @@ public class FlightsController {
             request.cursor(),
             request.outboundCursor(),
             request.inboundCursor(),
-            request.effectiveLimit());
+            request.effectiveLimit(),
+            parseCabinClasses(request.cabinClasses()),
+            request.maxBudget(),
+            parseTimeBucket(request.departureTimeBucket()),
+            parseTimeBucket(request.arrivalTimeBucket()),
+            parseConnectionFilter(request.connectionFilter()));
     return FlightSearchResponse.from(flightSearchFacadeService.search(query));
   }
 
@@ -97,6 +109,65 @@ public class FlightsController {
       return FlightSearchTripType.valueOf(tripType.trim().toUpperCase(Locale.ROOT));
     } catch (IllegalArgumentException exception) {
       throw new AppException("INVALID_TRIP_TYPE", "tripType must be ONE_WAY or ROUND_TRIP", 400);
+    }
+  }
+
+  private Set<CabinClass> parseCabinClasses(List<String> cabinClasses) {
+    if (cabinClasses == null || cabinClasses.isEmpty()) {
+      return Collections.emptySet();
+    }
+    Set<CabinClass> out = HashSet.newHashSet(cabinClasses.size());
+    for (String raw : cabinClasses) {
+      if (raw == null || raw.isBlank()) {
+        continue;
+      }
+      try {
+        out.add(CabinClass.valueOf(raw.trim().toUpperCase(Locale.ROOT)));
+      } catch (IllegalArgumentException ex) {
+        throw new AppException(
+            "INVALID_CABIN_CLASS",
+            "cabinClasses must be ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST",
+            400);
+      }
+    }
+    return Set.copyOf(out);
+  }
+
+  /**
+   * @return {@code null} when the client omits the param, sends blank, or ANY — meaning no time
+   *     filter.
+   */
+  private TimeOfDayBucket parseTimeBucket(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return null;
+    }
+    String upper = raw.trim().toUpperCase(Locale.ROOT);
+    if ("ANY".equals(upper)) {
+      return null;
+    }
+    try {
+      TimeOfDayBucket bucket = TimeOfDayBucket.valueOf(upper);
+      if (bucket == TimeOfDayBucket.ANY) {
+        return null;
+      }
+      return bucket;
+    } catch (IllegalArgumentException ex) {
+      throw new AppException(
+          "INVALID_TIME_BUCKET",
+          "departureTimeBucket and arrivalTimeBucket must be MORNING, AFTERNOON, EVENING, or ANY",
+          400);
+    }
+  }
+
+  private FlightConnectionFilter parseConnectionFilter(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return FlightConnectionFilter.ANY;
+    }
+    try {
+      return FlightConnectionFilter.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ex) {
+      throw new AppException(
+          "INVALID_CONNECTION_FILTER", "connectionFilter must be ANY or DIRECT_ONLY", 400);
     }
   }
 }
