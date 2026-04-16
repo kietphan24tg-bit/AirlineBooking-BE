@@ -1,9 +1,11 @@
 package com.example.moduleflight.application;
 
 import com.example.moduleflight.entity.FareClassEntity;
+import com.example.moduleflight.entity.FareClassPriceEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.entity.TaxFeeEntity;
+import com.example.moduleflight.repository.FareClassPriceRepository;
 import com.example.moduleflight.repository.FareClassRepository;
 import com.example.moduleflight.repository.FlightFareRepository;
 import com.example.moduleflight.repository.TaxFeeRepository;
@@ -13,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,18 +29,25 @@ import org.springframework.util.StringUtils;
 public class FlightFareGenerationService {
 
   private static final Logger LOG = LoggerFactory.getLogger(FlightFareGenerationService.class);
+  private static final String GLOBAL_COUNTRY_CODE = "GL";
+  private static final String DEFAULT_CURRENCY = "VND";
+  private static final List<String> SUPPORTED_FARE_CODES =
+      List.of("ECONOMY", "PREMIUM", "BUSINESS", "FIRST");
 
   private final FareClassRepository fareClassRepository;
+  private final FareClassPriceRepository fareClassPriceRepository;
   private final TaxFeeRepository taxFeeRepository;
   private final FlightFareRepository flightFareRepository;
   private final ObjectMapper objectMapper;
 
   public FlightFareGenerationService(
       FareClassRepository fareClassRepository,
+      FareClassPriceRepository fareClassPriceRepository,
       TaxFeeRepository taxFeeRepository,
       FlightFareRepository flightFareRepository,
       ObjectMapper objectMapper) {
     this.fareClassRepository = fareClassRepository;
+    this.fareClassPriceRepository = fareClassPriceRepository;
     this.taxFeeRepository = taxFeeRepository;
     this.flightFareRepository = flightFareRepository;
     this.objectMapper = objectMapper;
@@ -49,17 +59,28 @@ public class FlightFareGenerationService {
       return;
     }
 
-    List<FareClassEntity> fares = fareClassRepository.findAll();
+    List<FareClassEntity> fares = fareClassRepository.findByCodeIn(SUPPORTED_FARE_CODES);
     if (fares.isEmpty()) {
       LOG.warn("Skip flight fare generation: no fare classes configured.");
       return;
     }
+    Map<String, FareClassEntity> fareByCode = new HashMap<>();
+    for (FareClassEntity fareClass : fares) {
+      fareByCode.put(normalize(fareClass.getCode()), fareClass);
+    }
+    String countryCode = resolveCountryCode(flight);
+    String currency = resolveCurrency(countryCode);
     List<TaxFeeEntity> taxes = taxFeeRepository.findByIsActiveTrueAndApplyTo("ADULT");
     OffsetDateTime now = OffsetDateTime.now();
     List<FlightFareEntity> toSave = new ArrayList<>();
 
-    for (FareClassEntity fareClass : fares) {
-      BigDecimal basePrice = resolveBasePrice(fareClass);
+    for (String fareCode : SUPPORTED_FARE_CODES) {
+      FareClassEntity fareClass = fareByCode.get(fareCode);
+      if (fareClass == null) {
+        LOG.warn("Skip fare generation for {} because fare class is not configured.", fareCode);
+        continue;
+      }
+      BigDecimal basePrice = resolveBasePrice(fareClass, currency, countryCode);
       TaxCalculation taxCalculation = calculateTax(basePrice, taxes);
       BigDecimal totalPrice = basePrice.add(taxCalculation.totalTaxAmount());
 
@@ -83,25 +104,92 @@ public class FlightFareGenerationService {
     flightFareRepository.saveAll(toSave);
   }
 
-  private BigDecimal resolveBasePrice(FareClassEntity fareClass) {
-    String code = fareClass.getCode() == null ? "" : fareClass.getCode().trim().toUpperCase();
+  private BigDecimal resolveBasePrice(FareClassEntity fareClass, String currency, String countryCode) {
+    if (StringUtils.hasText(countryCode)) {
+      BigDecimal countrySpecific = resolveBasePriceFromConfig(fareClass, currency, countryCode);
+      if (countrySpecific != null) {
+        return countrySpecific;
+      }
+    }
+
+    BigDecimal currencyGlobal = resolveBasePriceFromConfig(fareClass, currency, GLOBAL_COUNTRY_CODE);
+    if (currencyGlobal != null) {
+      return currencyGlobal;
+    }
+
+    BigDecimal defaultGlobal = resolveBasePriceFromConfig(fareClass, DEFAULT_CURRENCY, GLOBAL_COUNTRY_CODE);
+    if (defaultGlobal != null) {
+      return defaultGlobal;
+    }
+
+    String code = normalize(fareClass.getCode());
     return switch (code) {
-      case "ECONOMY_SAVER" -> new BigDecimal("1000000");
-      case "ECONOMY_FLEX" -> new BigDecimal("1300000");
-      case "BUSINESS" -> new BigDecimal("3000000");
+      case "ECONOMY" -> new BigDecimal("1200000");
+      case "PREMIUM" -> new BigDecimal("2900000");
+      case "BUSINESS" -> new BigDecimal("7300000");
+      case "FIRST" -> new BigDecimal("12300000");
       default -> resolveBasePriceByCabinClass(fareClass.getCabinClass());
     };
   }
 
+  private BigDecimal resolveBasePriceFromConfig(
+      FareClassEntity fareClass, String currency, String countryCode) {
+    return fareClassPriceRepository
+        .findByFareClassAndCurrencyAndCountryCode(fareClass, normalize(currency), normalize(countryCode))
+        .map(FareClassPriceEntity::getBasePrice)
+        .orElse(null);
+  }
+
+  private String resolveCountryCode(FlightEntity flight) {
+    if (flight.getDepartureAirport() == null || !StringUtils.hasText(flight.getDepartureAirport().getCountry())) {
+      return null;
+    }
+    String normalizedCountry = normalize(flight.getDepartureAirport().getCountry());
+    return switch (normalizedCountry) {
+      case "VIETNAM", "VIET_NAM" -> "VN";
+      case "UNITED_STATES", "UNITED_STATES_OF_AMERICA", "USA", "US" -> "US";
+      case "UNITED_KINGDOM", "UK", "GREAT_BRITAIN", "BRITAIN" -> "GB";
+      case "GERMANY", "DEUTSCHLAND" -> "DE";
+      case "JAPAN" -> "JP";
+      case "AUSTRALIA" -> "AU";
+      case "SINGAPORE" -> "SG";
+      default -> null;
+    };
+  }
+
+  private String resolveCurrency(String countryCode) {
+    if (!StringUtils.hasText(countryCode)) {
+      return DEFAULT_CURRENCY;
+    }
+    return switch (normalize(countryCode)) {
+      case "VN" -> "VND";
+      case "US" -> "USD";
+      case "GB" -> "GBP";
+      case "DE" -> "EUR";
+      case "JP" -> "JPY";
+      case "AU" -> "AUD";
+      case "SG" -> "SGD";
+      default -> DEFAULT_CURRENCY;
+    };
+  }
+
+  private String normalize(String value) {
+    if (!StringUtils.hasText(value)) {
+      return "";
+    }
+    return value.trim().toUpperCase().replace(' ', '_');
+  }
+
   private BigDecimal resolveBasePriceByCabinClass(String cabinClass) {
     if (!StringUtils.hasText(cabinClass)) {
-      return new BigDecimal("1000000");
+      return new BigDecimal("1200000");
     }
-    return switch (cabinClass.trim().toUpperCase()) {
-      case "ECONOMY" -> new BigDecimal("1100000");
-      case "PREMIUM_ECONOMY" -> new BigDecimal("1800000");
-      case "BUSINESS", "FIRST" -> new BigDecimal("3000000");
-      default -> new BigDecimal("1000000");
+    return switch (normalize(cabinClass)) {
+      case "ECONOMY" -> new BigDecimal("1200000");
+      case "PREMIUM_ECONOMY" -> new BigDecimal("2900000");
+      case "BUSINESS" -> new BigDecimal("7300000");
+      case "FIRST" -> new BigDecimal("12300000");
+      default -> new BigDecimal("1200000");
     };
   }
 
