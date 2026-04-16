@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -21,9 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -43,11 +44,13 @@ public class FlightsController {
   @Operation(
       summary = "Search flights",
       description = "Supports one-way and round-trip search with optional promo preview.")
+  @SecurityRequirements
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Search completed", content = @Content),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content)
   })
-  FlightSearchResponse searchFlights(@Valid @ModelAttribute FlightSearchQueryRequest request) {
+  FlightSearchResponse searchFlights(
+      @Valid @ParameterObject FlightSearchQueryRequest request) {
     validateBusinessRules(request);
     FlightSearchTripType tripType = parseTripType(request.tripType());
     FlightSearchQuery query =

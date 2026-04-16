@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +33,7 @@ public class AirportsController {
   @Operation(
       summary = "List all airports grouped by country",
       description = "Returns all airports as a map of country name to airport items.")
+  @SecurityRequirements
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -49,6 +51,7 @@ public class AirportsController {
           "Legacy-compatible grouped endpoint. Returns airports as a map of country name to"
               + " airport items. Optional query `country` filters to a single country (exact"
               + " match on stored country value).")
+  @SecurityRequirements
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
