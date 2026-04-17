@@ -1,6 +1,7 @@
 package com.example.modulepayment.application;
 
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
@@ -35,14 +36,17 @@ public class PaymentWebhookService {
   private final PaymentRepository paymentRepository;
   private final PaymentWebhookEventRepository paymentWebhookEventRepository;
   private final PayosWebhookSupport payosWebhookSupport;
+  private final FlightSeatRepository flightSeatRepository;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
       PaymentWebhookEventRepository paymentWebhookEventRepository,
-      PayosWebhookSupport payosWebhookSupport) {
+      PayosWebhookSupport payosWebhookSupport,
+      FlightSeatRepository flightSeatRepository) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
+    this.flightSeatRepository = flightSeatRepository;
   }
 
   @Transactional
@@ -139,6 +143,7 @@ public class PaymentWebhookService {
       payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
       booking.setStatus(BOOKING_STATUS_EXPIRED);
       booking.setUpdatedAt(now);
+      flightSeatRepository.releaseReservedForBooking(booking.getId());
       paymentRepository.save(payment);
       saveAudit(payment, booking, event, OUTCOME_REJECTED, "BOOKING_EXPIRED", "Booking expired");
       return;
@@ -151,6 +156,7 @@ public class PaymentWebhookService {
     }
     booking.setStatus(BOOKING_STATUS_CONFIRMED);
     booking.setUpdatedAt(now);
+    flightSeatRepository.bookReservedForBooking(booking.getId());
     paymentRepository.save(payment);
     saveAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
 

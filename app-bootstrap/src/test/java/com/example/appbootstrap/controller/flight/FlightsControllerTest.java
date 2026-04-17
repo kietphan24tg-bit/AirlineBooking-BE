@@ -120,8 +120,7 @@ class FlightsControllerTest {
   @Test
   void revalidateFare_delegatesToBookingRevalidateService() {
     RevalidateFareRequest request =
-        new RevalidateFareRequest(
-            11L, 101L, new BigDecimal("1500000"), "SAVE20", new PassengerSummaryRequest(1, 0, 0));
+        new RevalidateFareRequest(11L, 101L, "SAVE20", new PassengerSummaryRequest(1, 0, 0));
     RevalidateFareResponse expected =
         new RevalidateFareResponse(
             "RV_ABC123",

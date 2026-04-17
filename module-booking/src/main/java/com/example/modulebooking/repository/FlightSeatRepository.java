@@ -1,6 +1,7 @@
 package com.example.modulebooking.repository;
 
 import com.example.modulebooking.entity.FlightSeatEntity;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -25,8 +26,9 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
       value =
           """
           update flight_seats
-          set status = 'BOOKED',
-              booking_id = :bookingId
+          set status = 'RESERVED',
+              booking_id = :bookingId,
+              reserved_until = :reservedUntil
           where id in (
               select id
               from flight_seats
@@ -43,7 +45,50 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
       @Param("bookingId") Long bookingId,
       @Param("flightId") Long flightId,
       @Param("fareClassId") Long fareClassId,
-      @Param("quantity") int quantity);
+      @Param("quantity") int quantity,
+      @Param("reservedUntil") OffsetDateTime reservedUntil);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set status = 'BOOKED',
+              reserved_until = null
+          where booking_id = :bookingId
+            and status = 'RESERVED'
+          """,
+      nativeQuery = true)
+  int bookReservedForBooking(@Param("bookingId") Long bookingId);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set status = 'AVAILABLE',
+              booking_id = null,
+              reserved_until = null
+          where booking_id = :bookingId
+            and status = 'RESERVED'
+          """,
+      nativeQuery = true)
+  int releaseReservedForBooking(@Param("bookingId") Long bookingId);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set status = 'AVAILABLE',
+              booking_id = null,
+              reserved_until = null
+          where status = 'RESERVED'
+            and reserved_until is not null
+            and reserved_until < :now
+          """,
+      nativeQuery = true)
+  int releaseExpiredReservations(@Param("now") OffsetDateTime now);
 
   @Query(
       value =

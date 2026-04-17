@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
@@ -31,6 +32,7 @@ class PaymentWebhookServiceTest {
   @Mock private PaymentRepository paymentRepository;
   @Mock private PaymentWebhookEventRepository paymentWebhookEventRepository;
   @Mock private PayosWebhookSupport payosWebhookSupport;
+  @Mock private FlightSeatRepository flightSeatRepository;
 
   private PaymentWebhookService paymentWebhookService;
 
@@ -38,7 +40,10 @@ class PaymentWebhookServiceTest {
   void setUp() {
     paymentWebhookService =
         new PaymentWebhookService(
-            paymentRepository, paymentWebhookEventRepository, payosWebhookSupport);
+            paymentRepository,
+            paymentWebhookEventRepository,
+            payosWebhookSupport,
+            flightSeatRepository);
   }
 
   @Test
@@ -70,6 +75,7 @@ class PaymentWebhookServiceTest {
 
     assertEquals("SUCCESS", payment.getPaymentStatus());
     assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    verify(flightSeatRepository).bookReservedForBooking(10L);
     ArgumentCaptor<PaymentWebhookEventEntity> captor =
         ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
     verify(paymentWebhookEventRepository).save(captor.capture());

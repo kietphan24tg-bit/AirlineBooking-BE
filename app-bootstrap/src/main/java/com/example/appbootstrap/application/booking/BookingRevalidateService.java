@@ -6,15 +6,23 @@ import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.common.exception.AppException;
+import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.PromotionEntity;
+import com.example.modulebooking.repository.BookingContactRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PromotionRepository;
 import com.example.moduleflight.application.CountryCurrencyResolver;
 import com.example.moduleflight.application.FlightPricingService;
 import com.example.moduleflight.application.PromotionPreviewService;
 import com.example.moduleflight.application.PromotionPreviewService.PromoPreview;
+import com.example.moduleflight.entity.AirlineEntity;
+import com.example.moduleflight.entity.AirportEntity;
+import com.example.moduleflight.entity.FareClassEntity;
+import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.repository.FlightFareRepository;
 import com.example.moduleidentity.entity.UserEntity;
@@ -27,8 +35,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
@@ -45,7 +56,6 @@ public class BookingRevalidateService {
   private static final Logger LOG = LoggerFactory.getLogger(BookingRevalidateService.class);
   private static final Duration REVALIDATE_TTL = Duration.ofMinutes(15);
   private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(6);
-  private static final BigDecimal PRICE_THRESHOLD = new BigDecimal("0.01");
   private static final BigDecimal CHILD_RATE = new BigDecimal("0.75");
   private static final BigDecimal INFANT_RATE = new BigDecimal("0.10");
   private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -58,6 +68,8 @@ public class BookingRevalidateService {
   private final ObjectMapper objectMapper;
   private final UserRepository userRepository;
   private final BookingRepository bookingRepository;
+  private final BookingContactRepository bookingContactRepository;
+  private final PassengerRepository passengerRepository;
   private final PromotionRepository promotionRepository;
   private final FlightSeatRepository flightSeatRepository;
 
@@ -70,6 +82,8 @@ public class BookingRevalidateService {
       ObjectMapper objectMapper,
       UserRepository userRepository,
       BookingRepository bookingRepository,
+      BookingContactRepository bookingContactRepository,
+      PassengerRepository passengerRepository,
       PromotionRepository promotionRepository,
       FlightSeatRepository flightSeatRepository) {
     this.flightFareRepository = flightFareRepository;
@@ -80,6 +94,8 @@ public class BookingRevalidateService {
     this.objectMapper = objectMapper;
     this.userRepository = userRepository;
     this.bookingRepository = bookingRepository;
+    this.bookingContactRepository = bookingContactRepository;
+    this.passengerRepository = passengerRepository;
     this.promotionRepository = promotionRepository;
     this.flightSeatRepository = flightSeatRepository;
   }
@@ -104,14 +120,6 @@ public class BookingRevalidateService {
     }
 
     PricingBreakdown pricing = buildPricing(fare, request.passengerSummary());
-    if (request.expectedPrice() != null) {
-      BigDecimal delta = request.expectedPrice().subtract(pricing.originalTotalPrice()).abs();
-      if (delta.compareTo(PRICE_THRESHOLD) > 0) {
-        throw new AppException(
-            "PRICE_CHANGED", "Displayed price is stale. Please refresh fares and try again.", 409);
-      }
-    }
-
     PromoPreview preview =
         applyPromotion(
             request.promoCode(),
@@ -194,6 +202,9 @@ public class BookingRevalidateService {
   @Transactional
   public CreateBookingResponse createBooking(Long userId, CreateBookingRequest request) {
     validatePassengerSummary(request.passengerSummary());
+    List<NormalizedContact> contacts = normalizeContacts(request.contacts());
+    List<NormalizedPassenger> passengers = normalizePassengers(request.passengers());
+    validatePassengersMatchSummary(passengers, request.passengerSummary());
     String revalidateId = request.revalidateId().trim();
     RevalidateSnapshot snapshot = loadRevalidateSnapshot(revalidateId);
     if (!"ACTIVE".equals(snapshot.status())) {
@@ -211,21 +222,14 @@ public class BookingRevalidateService {
 
     String requestHash =
         hash(
-            snapshot.revalidateId()
-                + "|"
-                + snapshot.flightId()
-                + "|"
-                + snapshot.fareId()
-                + "|"
-                + canonical.adult()
-                + "|"
-                + canonical.child()
-                + "|"
-                + canonical.infant()
-                + "|"
-                + request.contactEmail().trim().toLowerCase(Locale.ROOT)
-                + "|"
-                + request.contactPhone().trim());
+            toJson(
+                new CreateBookingFingerprint(
+                    snapshot.revalidateId(),
+                    snapshot.flightId(),
+                    snapshot.fareId(),
+                    canonical,
+                    contacts,
+                    passengers)));
     IdempotencyResult idempotencyResult = acquireIdempotency(request.idempotencyKey(), requestHash);
     if (idempotencyResult.replay() != null) {
       return idempotencyResult.replay();
@@ -248,8 +252,9 @@ public class BookingRevalidateService {
       BookingEntity booking = new BookingEntity();
       booking.setUser(user);
       booking.setPnrCode(generatePnrCode());
-      booking.setContactEmail(request.contactEmail().trim().toLowerCase(Locale.ROOT));
-      booking.setContactPhone(request.contactPhone().trim());
+      PrimaryContactValues primaryContactValues = primaryContactValues(contacts);
+      booking.setContactEmail(primaryContactValues.email());
+      booking.setContactPhone(primaryContactValues.phone());
       booking.setTotalAmount(snapshot.pricing().discountedTotalPrice());
       booking.setCurrency(snapshot.pricing().currency());
       booking.setStatus("PENDING_PAYMENT");
@@ -264,9 +269,16 @@ public class BookingRevalidateService {
       }
       bookingRepository.saveAndFlush(booking);
 
+      List<BookingContactEntity> contactEntities = saveContacts(booking, contacts);
+      List<PassengerEntity> passengerEntities = savePassengers(booking, passengers);
+
       int updated =
           flightSeatRepository.reserveForBooking(
-              booking.getId(), snapshot.flightId(), snapshot.fareClassId(), requiredSeats);
+              booking.getId(),
+              snapshot.flightId(),
+              snapshot.fareClassId(),
+              requiredSeats,
+              booking.getPnrExpiresAt());
       if (updated < requiredSeats) {
         throw new AppException("FARE_SOLD_OUT", "Selected fare is sold out during booking", 409);
       }
@@ -274,17 +286,12 @@ public class BookingRevalidateService {
       deleteRevalidateSnapshot(snapshot.revalidateId());
 
       CreateBookingResponse response =
-          new CreateBookingResponse(
-              booking.getId(),
-              booking.getPnrCode(),
-              booking.getStatus(),
-              booking.getCurrency(),
-              booking.getTotalAmount(),
-              booking.getDiscountAmount());
+          toCreateBookingResponse(
+              booking, fare, snapshot, contactEntities, passengerEntities, updated);
       markIdempotencySuccess(request.idempotencyKey(), requestHash, response);
       LOG.info(
           "booking created bookingId={} userId={} revalidateId={} fareId={} flightId={} seats={}",
-          response.bookingId(),
+          response.booking().bookingId(),
           userId,
           snapshot.revalidateId(),
           snapshot.fareId(),
@@ -314,6 +321,298 @@ public class BookingRevalidateService {
       throw new AppException(
           "INVALID_PASSENGER_BREAKDOWN", "Total passengers must not exceed 9", 400);
     }
+  }
+
+  private List<NormalizedContact> normalizeContacts(
+      List<CreateBookingRequest.BookingContactRequest> contacts) {
+    if (contacts == null || contacts.isEmpty()) {
+      throw new AppException("CONTACT_REQUIRED", "At least one contact is required", 400);
+    }
+    List<NormalizedContact> normalized = new ArrayList<>(contacts.size());
+    int primaryCount = 0;
+    for (CreateBookingRequest.BookingContactRequest contact : contacts) {
+      String email = normalizeEmail(contact.email());
+      String phone = normalizeText(contact.phone());
+      if (!StringUtils.hasText(email) && !StringUtils.hasText(phone)) {
+        throw new AppException("CONTACT_REQUIRED", "Each contact must include email or phone", 400);
+      }
+      boolean primary = Boolean.TRUE.equals(contact.primary());
+      if (primary) {
+        primaryCount++;
+      }
+      normalized.add(new NormalizedContact(email, phone, primary));
+    }
+    if (primaryCount > 1) {
+      throw new AppException("INVALID_CONTACTS", "Only one primary contact is allowed", 400);
+    }
+    if (primaryCount == 0) {
+      NormalizedContact first = normalized.getFirst();
+      normalized.set(0, new NormalizedContact(first.email(), first.phone(), true));
+    }
+    return List.copyOf(normalized);
+  }
+
+  private List<NormalizedPassenger> normalizePassengers(
+      List<CreateBookingRequest.BookingPassengerRequest> passengers) {
+    if (passengers == null || passengers.isEmpty()) {
+      throw new AppException("PASSENGER_REQUIRED", "At least one passenger is required", 400);
+    }
+    List<NormalizedPassenger> normalized = new ArrayList<>(passengers.size());
+    for (CreateBookingRequest.BookingPassengerRequest passenger : passengers) {
+      String passengerType = normalizeCode(passenger.passengerType());
+      String gender = normalizeCode(passenger.gender());
+      String identifyType = normalizeCode(passenger.identifyType());
+      validatePassengerCodes(passengerType, gender, identifyType);
+      normalized.add(
+          new NormalizedPassenger(
+              normalizeRequiredText(passenger.firstName(), "firstName"),
+              normalizeRequiredText(passenger.lastName(), "lastName"),
+              passenger.dateOfBirth(),
+              gender,
+              normalizeRequiredText(passenger.nationality(), "nationality"),
+              passengerType,
+              identifyType,
+              normalizeRequiredText(passenger.identifyNumber(), "identifyNumber"),
+              passenger.expiryDate()));
+    }
+    return List.copyOf(normalized);
+  }
+
+  private void validatePassengerCodes(String passengerType, String gender, String identifyType) {
+    if (!"ADULT".equals(passengerType)
+        && !"CHILD".equals(passengerType)
+        && !"INFANT".equals(passengerType)) {
+      throw new AppException(
+          "INVALID_PASSENGER_TYPE", "passengerType must be ADULT, CHILD, or INFANT", 400);
+    }
+    if (!"MALE".equals(gender) && !"FEMALE".equals(gender) && !"OTHER".equals(gender)) {
+      throw new AppException("INVALID_GENDER", "gender must be MALE, FEMALE, or OTHER", 400);
+    }
+    if (!"ID_CARD".equals(identifyType) && !"PASSPORT".equals(identifyType)) {
+      throw new AppException(
+          "INVALID_IDENTIFY_TYPE", "identifyType must be ID_CARD or PASSPORT", 400);
+    }
+  }
+
+  private void validatePassengersMatchSummary(
+      List<NormalizedPassenger> passengers, PassengerSummaryRequest summary) {
+    if (passengers.size() != summary.totalPassengers()) {
+      throw new AppException(
+          "PASSENGER_COUNT_MISMATCH", "passengers size must match passengerSummary total", 400);
+    }
+    long adult = passengers.stream().filter(p -> "ADULT".equals(p.passengerType())).count();
+    long child = passengers.stream().filter(p -> "CHILD".equals(p.passengerType())).count();
+    long infant = passengers.stream().filter(p -> "INFANT".equals(p.passengerType())).count();
+    if (adult != summary.adult() || child != summary.child() || infant != summary.infant()) {
+      throw new AppException(
+          "PASSENGER_COUNT_MISMATCH", "passengerType counts must match passengerSummary", 400);
+    }
+  }
+
+  private String normalizeEmail(String value) {
+    String normalized = normalizeText(value);
+    return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+  }
+
+  private String normalizeCode(String value) {
+    return normalizeRequiredText(value, "code").toUpperCase(Locale.ROOT);
+  }
+
+  private String normalizeRequiredText(String value, String fieldName) {
+    String normalized = normalizeText(value);
+    if (!StringUtils.hasText(normalized)) {
+      throw new AppException("VALIDATION_FAILED", fieldName + " is required", 400);
+    }
+    return normalized;
+  }
+
+  private String normalizeText(String value) {
+    if (!StringUtils.hasText(value)) {
+      return null;
+    }
+    return value.trim();
+  }
+
+  private PrimaryContactValues primaryContactValues(List<NormalizedContact> contacts) {
+    NormalizedContact primary =
+        contacts.stream()
+            .filter(NormalizedContact::primary)
+            .findFirst()
+            .orElse(contacts.getFirst());
+    String email =
+        StringUtils.hasText(primary.email())
+            ? primary.email()
+            : contacts.stream()
+                .map(NormalizedContact::email)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
+    String phone =
+        StringUtils.hasText(primary.phone())
+            ? primary.phone()
+            : contacts.stream()
+                .map(NormalizedContact::phone)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
+    if (!StringUtils.hasText(email) || !StringUtils.hasText(phone)) {
+      throw new AppException(
+          "CONTACT_REQUIRED",
+          "contacts must include at least one email and one phone for booking contact",
+          400);
+    }
+    return new PrimaryContactValues(email, phone);
+  }
+
+  private List<BookingContactEntity> saveContacts(
+      BookingEntity booking, List<NormalizedContact> contacts) {
+    OffsetDateTime now = OffsetDateTime.now();
+    List<BookingContactEntity> entities = new ArrayList<>(contacts.size());
+    for (NormalizedContact contact : contacts) {
+      BookingContactEntity entity = new BookingContactEntity();
+      entity.setBooking(booking);
+      entity.setEmail(contact.email());
+      entity.setPhone(contact.phone());
+      entity.setPrimary(contact.primary());
+      entity.setCreatedAt(now);
+      entity.setUpdatedAt(now);
+      entities.add(entity);
+    }
+    return bookingContactRepository.saveAll(entities);
+  }
+
+  private List<PassengerEntity> savePassengers(
+      BookingEntity booking, List<NormalizedPassenger> passengers) {
+    OffsetDateTime now = OffsetDateTime.now();
+    List<PassengerEntity> entities = new ArrayList<>(passengers.size());
+    for (NormalizedPassenger passenger : passengers) {
+      PassengerEntity entity = new PassengerEntity();
+      entity.setBooking(booking);
+      entity.setFirstName(passenger.firstName());
+      entity.setLastName(passenger.lastName());
+      entity.setDateOfBirth(passenger.dateOfBirth());
+      entity.setGender(passenger.gender());
+      entity.setNationality(passenger.nationality());
+      entity.setPassengerType(passenger.passengerType());
+      entity.setIdentifyType(passenger.identifyType());
+      entity.setIdentifyNumber(passenger.identifyNumber());
+      entity.setExpiryDate(passenger.expiryDate());
+      entity.setCreatedAt(now);
+      entity.setUpdatedAt(now);
+      entities.add(entity);
+    }
+    return passengerRepository.saveAll(entities);
+  }
+
+  private CreateBookingResponse toCreateBookingResponse(
+      BookingEntity booking,
+      FlightFareEntity fare,
+      RevalidateSnapshot snapshot,
+      List<BookingContactEntity> contacts,
+      List<PassengerEntity> passengers,
+      int reservedSeatCount) {
+    FlightEntity flight = fare.getFlight();
+    FareClassEntity fareClass = fare.getFareClass();
+    AirlineEntity airline = flight.getAirline();
+    AirportEntity departureAirport = flight.getDepartureAirport();
+    AirportEntity arrivalAirport = flight.getArrivalAirport();
+    PricingSnapshot pricing = snapshot.pricing();
+    return new CreateBookingResponse(
+        new CreateBookingResponse.BookingResponse(
+            booking.getId(),
+            booking.getPnrCode(),
+            booking.getStatus(),
+            booking.getPnrExpiresAt(),
+            booking.getCreatedAt()),
+        new CreateBookingResponse.FlightResponse(
+            flight.getId(),
+            flight.getFlightNumber(),
+            flight.getFlightDate(),
+            flight.getStatus(),
+            new CreateBookingResponse.AirlineResponse(
+                airline.getId(), airline.getCode(), airline.getName(), airline.getLogoUrl()),
+            new CreateBookingResponse.FlightEndpointResponse(
+                departureAirport.getId(),
+                departureAirport.getCode(),
+                departureAirport.getName(),
+                departureAirport.getCity(),
+                departureAirport.getCountry(),
+                departureAirport.getTimeZone(),
+                flight.getDepartureTerminal(),
+                flight.getDepartureGate(),
+                flight.getDepartureTime()),
+            new CreateBookingResponse.FlightEndpointResponse(
+                arrivalAirport.getId(),
+                arrivalAirport.getCode(),
+                arrivalAirport.getName(),
+                arrivalAirport.getCity(),
+                arrivalAirport.getCountry(),
+                arrivalAirport.getTimeZone(),
+                flight.getArrivalTerminal(),
+                flight.getArrivalGate(),
+                flight.getArrivalTime())),
+        new CreateBookingResponse.FareResponse(
+            fare.getId(),
+            fareClass.getId(),
+            fare.getStatus(),
+            fareClass.getCode(),
+            fareClass.getName(),
+            fareClass.getCabinClass(),
+            fare.getBasePrice(),
+            fare.getTotalTaxAmount(),
+            fare.getTotalPrice(),
+            pricing.currency(),
+            fareClass.getBaggageCheckinKg(),
+            fareClass.getBaggageHandKg(),
+            fareClass.isRefundable(),
+            fareClass.isChangeable(),
+            fareClass.getChangeFee(),
+            fareClass.getRefundFee()),
+        new CreateBookingResponse.PricingResponse(
+            pricing.currency(),
+            pricing.baseFare(),
+            pricing.taxes(),
+            pricing.fees(),
+            pricing.originalTotalPrice(),
+            pricing.discountAmount(),
+            pricing.discountPercent(),
+            pricing.discountedTotalPrice()),
+        new CreateBookingResponse.PromotionResponse(
+            snapshot.promoCode(),
+            snapshot.promotionId(),
+            pricing.discountAmount(),
+            pricing.discountPercent()),
+        contacts.stream()
+            .map(
+                contact ->
+                    new CreateBookingResponse.ContactResponse(
+                        contact.getId(),
+                        contact.getEmail(),
+                        contact.getPhone(),
+                        contact.isPrimary()))
+            .toList(),
+        new CreateBookingResponse.PassengerSummaryResponse(
+            snapshot.passengerSummary().adult(),
+            snapshot.passengerSummary().child(),
+            snapshot.passengerSummary().infant()),
+        passengers.stream()
+            .map(
+                passenger ->
+                    new CreateBookingResponse.PassengerResponse(
+                        passenger.getId(),
+                        passenger.getFirstName(),
+                        passenger.getLastName(),
+                        passenger.getDateOfBirth(),
+                        passenger.getGender(),
+                        passenger.getNationality(),
+                        passenger.getPassengerType(),
+                        passenger.getIdentifyType(),
+                        passenger.getIdentifyNumber(),
+                        passenger.getExpiryDate()))
+            .toList(),
+        new CreateBookingResponse.SeatReservationResponse(
+            reservedSeatCount, "RESERVED", booking.getPnrExpiresAt()),
+        new CreateBookingResponse.NextActionResponse("CREATE_PAYMENT", "/api/payments"));
   }
 
   private FlightFareEntity requireFareForFlight(Long fareId, Long flightId) {
@@ -470,7 +769,8 @@ public class BookingRevalidateService {
   private void markIdempotencySuccess(
       String idempotencyKey, String requestHash, CreateBookingResponse response) {
     IdempotencyPayload payload =
-        new IdempotencyPayload("SUCCESS", requestHash, response.bookingId(), null, response);
+        new IdempotencyPayload(
+            "SUCCESS", requestHash, response.booking().bookingId(), null, response);
     writeValue("idem:booking:" + idempotencyKey.trim(), payload, IDEMPOTENCY_TTL);
   }
 
@@ -526,6 +826,29 @@ public class BookingRevalidateService {
       return adult + child;
     }
   }
+
+  private record NormalizedContact(String email, String phone, boolean primary) {}
+
+  private record PrimaryContactValues(String email, String phone) {}
+
+  private record NormalizedPassenger(
+      String firstName,
+      String lastName,
+      LocalDate dateOfBirth,
+      String gender,
+      String nationality,
+      String passengerType,
+      String identifyType,
+      String identifyNumber,
+      LocalDate expiryDate) {}
+
+  private record CreateBookingFingerprint(
+      String revalidateId,
+      Long flightId,
+      Long fareId,
+      PassengerSummary passengerSummary,
+      List<NormalizedContact> contacts,
+      List<NormalizedPassenger> passengers) {}
 
   private record PricingSnapshot(
       String currency,
