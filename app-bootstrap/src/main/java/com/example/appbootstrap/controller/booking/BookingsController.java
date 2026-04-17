@@ -3,8 +3,6 @@ package com.example.appbootstrap.controller.booking;
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
-import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,27 +28,6 @@ public class BookingsController {
 
   public BookingsController(BookingRevalidateService bookingRevalidateService) {
     this.bookingRevalidateService = bookingRevalidateService;
-  }
-
-  @PostMapping("/flights/revalidate-fare")
-  @Operation(
-      summary = "Revalidate selected fare",
-      description =
-          "Checks fare/availability/promotion, computes authoritative price, and returns revalidateId.")
-  @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Fare revalidated", content = @Content),
-    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(
-        responseCode = "404",
-        description = "Flight or fare not found",
-        content = @Content),
-    @ApiResponse(
-        responseCode = "409",
-        description = "Fare sold out or price changed",
-        content = @Content)
-  })
-  RevalidateFareResponse revalidateFare(@Valid @RequestBody RevalidateFareRequest request) {
-    return bookingRevalidateService.revalidate(request);
   }
 
   @PostMapping("/bookings")

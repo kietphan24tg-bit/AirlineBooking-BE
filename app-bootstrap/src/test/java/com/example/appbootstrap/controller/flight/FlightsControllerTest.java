@@ -8,6 +8,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.appbootstrap.application.booking.BookingRevalidateService;
+import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.common.exception.AppException;
@@ -36,12 +40,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class FlightsControllerTest {
 
   @Mock private FlightSearchFacadeService flightSearchFacadeService;
+  @Mock private BookingRevalidateService bookingRevalidateService;
 
   private FlightsController controller;
 
   @BeforeEach
   void setUp() {
-    controller = new FlightsController(flightSearchFacadeService);
+    controller = new FlightsController(flightSearchFacadeService, bookingRevalidateService);
   }
 
   @Test
@@ -110,6 +115,36 @@ class FlightsControllerTest {
     assertEquals(new BigDecimal("1200000"), response.outboundPriceRange().maxPrice());
     assertEquals("VND", response.outboundPriceRange().currency());
     assertNull(response.inboundPriceRange());
+  }
+
+  @Test
+  void revalidateFare_delegatesToBookingRevalidateService() {
+    RevalidateFareRequest request =
+        new RevalidateFareRequest(
+            11L, 101L, new BigDecimal("1500000"), "SAVE20", new PassengerSummaryRequest(1, 0, 0));
+    RevalidateFareResponse expected =
+        new RevalidateFareResponse(
+            "RV_ABC123",
+            900,
+            11L,
+            101L,
+            "SAVE20",
+            new RevalidateFareResponse.PassengerSummaryResponse(1, 0, 0),
+            new RevalidateFareResponse.PricingResponse(
+                "VND",
+                new BigDecimal("1200000"),
+                new BigDecimal("300000"),
+                BigDecimal.ZERO,
+                new BigDecimal("1500000"),
+                BigDecimal.ZERO,
+                null,
+                new BigDecimal("1500000")));
+    when(bookingRevalidateService.revalidate(request)).thenReturn(expected);
+
+    RevalidateFareResponse response = controller.revalidateFare(request);
+
+    assertEquals(expected, response);
+    verify(bookingRevalidateService).revalidate(request);
   }
 
   @Test

@@ -1,5 +1,8 @@
 package com.example.appbootstrap.controller.flight;
 
+import com.example.appbootstrap.application.booking.BookingRevalidateService;
+import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.common.exception.AppException;
@@ -25,6 +28,8 @@ import java.util.Set;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,9 +40,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class FlightsController {
 
   private final FlightSearchFacadeService flightSearchFacadeService;
+  private final BookingRevalidateService bookingRevalidateService;
 
-  public FlightsController(FlightSearchFacadeService flightSearchFacadeService) {
+  public FlightsController(
+      FlightSearchFacadeService flightSearchFacadeService,
+      BookingRevalidateService bookingRevalidateService) {
     this.flightSearchFacadeService = flightSearchFacadeService;
+    this.bookingRevalidateService = bookingRevalidateService;
   }
 
   @GetMapping("/search")
@@ -73,6 +82,28 @@ public class FlightsController {
             parseTimeBucket(request.arrivalTimeBucket()),
             parseConnectionFilter(request.connectionFilter()));
     return FlightSearchResponse.from(flightSearchFacadeService.search(query));
+  }
+
+  @PostMapping("/revalidate-fare")
+  @Operation(
+      summary = "Revalidate selected fare",
+      description =
+          "Checks fare/availability/promotion, computes authoritative price, and returns revalidateId.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Fare revalidated", content = @Content),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Flight or fare not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Fare sold out or price changed",
+        content = @Content)
+  })
+  RevalidateFareResponse revalidateFare(@Valid @RequestBody RevalidateFareRequest request) {
+    return bookingRevalidateService.revalidate(request);
   }
 
   private void validateBusinessRules(FlightSearchQueryRequest request) {
