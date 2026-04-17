@@ -41,6 +41,8 @@ import org.springframework.test.web.servlet.MockMvc;
       "app.rate-limit.password-reset.email-limit=100",
       "app.rate-limit.password-reset.client-limit=100",
       "app.rate-limit.password-reset.pair-limit=1",
+      "app.rate-limit.password-reset-confirm.window=PT15M",
+      "app.rate-limit.password-reset-confirm.client-limit=1",
       "app.rate-limit.refresh.window=PT5M",
       "app.rate-limit.refresh.user-limit=1",
       "app.rate-limit.refresh.client-limit=1"
@@ -153,6 +155,39 @@ class AuthControllerRateLimitIntegrationTest {
                 .content("{\"email\":\"reset-limit@example.com\"}"))
         .andExpect(status().isTooManyRequests())
         .andExpect(jsonPath("$.error.code").value("TOO_MANY_PASSWORD_RESET_REQUESTS"));
+  }
+
+  @Test
+  void shouldReturn429WhenPasswordResetConfirmAttemptsExceedThreshold() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/password-reset/confirm")
+                .header("X-Forwarded-For", "203.0.113.21")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "otp":"123456",
+                      "newPassword":"newSecret123"
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("RESET_OTP_INVALID"));
+
+    mockMvc
+        .perform(
+            post("/api/auth/password-reset/confirm")
+                .header("X-Forwarded-For", "203.0.113.21")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "otp":"654321",
+                      "newPassword":"newSecret123"
+                    }
+                    """))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.error.code").value("TOO_MANY_PASSWORD_RESET_CONFIRM_ATTEMPTS"));
   }
 
   @Test

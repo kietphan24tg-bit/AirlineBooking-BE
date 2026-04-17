@@ -12,6 +12,8 @@ public interface PasswordResetTokenRepository
 
   Optional<PasswordResetTokenEntity> findByTokenHash(String tokenHash);
 
+  boolean existsByTokenHash(String tokenHash);
+
   void deleteByUser_Id(Long userId);
 
   long deleteByExpiresAtBefore(OffsetDateTime cutoff);

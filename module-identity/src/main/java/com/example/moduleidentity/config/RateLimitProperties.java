@@ -10,6 +10,7 @@ public class RateLimitProperties {
   private boolean failOpen = true;
   private AuthWindow login = new AuthWindow(Duration.ofMinutes(10), 5, 20, 5);
   private AuthWindow passwordReset = new AuthWindow(Duration.ofMinutes(15), 3, 10, 3);
+  private RefreshWindow passwordResetConfirm = new RefreshWindow(Duration.ofMinutes(15), 0, 10);
   private RefreshWindow refresh = new RefreshWindow(Duration.ofMinutes(5), 20, 60);
 
   public boolean isEnabled() {
@@ -42,6 +43,14 @@ public class RateLimitProperties {
 
   public void setPasswordReset(AuthWindow passwordReset) {
     this.passwordReset = passwordReset;
+  }
+
+  public RefreshWindow getPasswordResetConfirm() {
+    return passwordResetConfirm;
+  }
+
+  public void setPasswordResetConfirm(RefreshWindow passwordResetConfirm) {
+    this.passwordResetConfirm = passwordResetConfirm;
   }
 
   public RefreshWindow getRefresh() {

@@ -1,6 +1,7 @@
 package com.example.appbootstrap.controller.identity;
 
 import com.example.appbootstrap.api.ApiSuccessMessage;
+import com.example.appbootstrap.application.identity.PasswordResetEmailService;
 import com.example.appbootstrap.config.AuthCookieProperties;
 import com.example.appbootstrap.controller.identity.dto.AuthTokenResponse;
 import com.example.appbootstrap.controller.identity.dto.AuthenticatedUserSummary;
@@ -41,14 +42,17 @@ public class AuthController {
 
   private final AuthService authService;
   private final PasswordResetService passwordResetService;
+  private final PasswordResetEmailService passwordResetEmailService;
   private final AuthCookieProperties authCookieProperties;
 
   public AuthController(
       AuthService authService,
       PasswordResetService passwordResetService,
+      PasswordResetEmailService passwordResetEmailService,
       AuthCookieProperties authCookieProperties) {
     this.authService = authService;
     this.passwordResetService = passwordResetService;
+    this.passwordResetEmailService = passwordResetEmailService;
     this.authCookieProperties = authCookieProperties;
   }
 
@@ -144,11 +148,11 @@ public class AuthController {
   }
 
   @PostMapping("/password-reset/request")
-  @ApiSuccessMessage("If the email exists, a password reset link will be sent")
+  @ApiSuccessMessage("If the email exists, a password reset code will be sent")
   @Operation(
       summary = "Request password reset",
       description =
-          "Always returns a generic success message. The reset token is delivered out-of-band, typically by email.")
+          "Always returns a generic success message. The reset OTP is delivered out-of-band, typically by email.")
   @SecurityRequirements
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Request accepted"),
@@ -159,7 +163,8 @@ public class AuthController {
         content = @Content)
   })
   Void requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
-    passwordResetService.requestPasswordReset(request.email());
+    String otp = passwordResetService.requestPasswordReset(request.email());
+    passwordResetEmailService.sendResetOtp(request.email(), otp);
     return null;
   }
 
@@ -167,17 +172,17 @@ public class AuthController {
   @ApiSuccessMessage("Password reset successful")
   @Operation(
       summary = "Confirm password reset",
-      description = "Consumes a reset token and updates the password")
+      description = "Consumes a reset OTP and updates the password")
   @SecurityRequirements
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Password reset successful"),
     @ApiResponse(
         responseCode = "400",
-        description = "Validation failed or token invalid",
+        description = "Validation failed or OTP invalid",
         content = @Content)
   })
   Void confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
-    passwordResetService.resetPassword(request.token(), request.newPassword());
+    passwordResetService.resetPassword(request.otp(), request.newPassword());
     return null;
   }
 

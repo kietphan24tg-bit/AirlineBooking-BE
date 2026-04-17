@@ -7,6 +7,7 @@ import com.example.appbootstrap.config.CorsProperties;
 import com.example.appbootstrap.config.JwtProperties;
 import com.example.appbootstrap.config.LoggingProperties;
 import com.example.appbootstrap.config.MailProperties;
+import com.example.appbootstrap.config.PasswordResetProperties;
 import com.example.appbootstrap.config.SwaggerProperties;
 import com.example.moduleflight.config.AirlineImportProperties;
 import com.example.moduleflight.config.AirportImportProperties;
@@ -32,6 +33,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   BookingProperties.class,
   PaymentProperties.class,
   MailProperties.class,
+  PasswordResetProperties.class,
   LoggingProperties.class,
   SwaggerProperties.class,
   RateLimitProperties.class,

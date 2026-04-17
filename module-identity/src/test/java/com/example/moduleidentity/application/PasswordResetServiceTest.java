@@ -1,5 +1,6 @@
 package com.example.moduleidentity.application;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
@@ -22,6 +23,7 @@ import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -78,6 +80,29 @@ class PasswordResetServiceTest {
   }
 
   @Test
+  void shouldCreateSixDigitOtpWhenRequestingPasswordReset() {
+    UserEntity user = new UserEntity();
+    user.setId(7L);
+    user.setEmail("user@example.com");
+    user.setRole(Role.USER);
+
+    when(userRepository.findByEmail("user@example.com")).thenReturn(java.util.Optional.of(user));
+    when(tokenHashingService.hashToken(org.mockito.ArgumentMatchers.anyString()))
+        .thenAnswer(invocation -> "hash-" + invocation.getArgument(0, String.class));
+    when(passwordResetTokenRepository.existsByTokenHash(org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(false);
+
+    String otp = passwordResetService.requestPasswordReset("user@example.com", "ip-1");
+
+    assertTrue(otp.matches("\\d{6}"));
+    verify(passwordResetTokenRepository).deleteByUser_Id(7L);
+    ArgumentCaptor<PasswordResetTokenEntity> tokenCaptor =
+        ArgumentCaptor.forClass(PasswordResetTokenEntity.class);
+    verify(passwordResetTokenRepository).save(tokenCaptor.capture());
+    assertEquals("hash-" + otp, tokenCaptor.getValue().getTokenHash());
+  }
+
+  @Test
   void shouldInvalidateUserTokensAndRevokeRefreshSessionsWhenResettingPassword() {
     UserEntity user = new UserEntity();
     user.setId(7L);
@@ -89,12 +114,12 @@ class PasswordResetServiceTest {
     token.setUsed(false);
     token.setExpiresAt(OffsetDateTime.now().plusMinutes(5));
 
-    when(tokenHashingService.hashToken("raw-token")).thenReturn("hashed");
+    when(tokenHashingService.hashToken("123456")).thenReturn("hashed");
     when(passwordResetTokenRepository.findByTokenHash("hashed"))
         .thenReturn(java.util.Optional.of(token));
     when(passwordEncoder.encode("new-secret")).thenReturn("encoded-secret");
 
-    passwordResetService.resetPassword("raw-token", "new-secret");
+    passwordResetService.resetPassword("123456", "new-secret");
 
     verify(userSecurityStateService).invalidateTokens(user);
     verify(refreshTokenSessionService).revokeAllActiveByUserId(7L);
@@ -114,12 +139,22 @@ class PasswordResetServiceTest {
   }
 
   @Test
-  void shouldRejectBlankResetTokenBeforeHashing() {
+  void shouldRejectBlankResetOtpBeforeHashing() {
     AppException exception =
         assertThrows(
             AppException.class, () -> passwordResetService.resetPassword(" ", "new-secret"));
 
-    org.junit.jupiter.api.Assertions.assertEquals("RESET_TOKEN_REQUIRED", exception.getCode());
+    assertEquals("RESET_OTP_REQUIRED", exception.getCode());
+    verify(tokenHashingService, never()).hashToken(org.mockito.ArgumentMatchers.anyString());
+  }
+
+  @Test
+  void shouldRejectInvalidResetOtpFormatBeforeHashing() {
+    AppException exception =
+        assertThrows(
+            AppException.class, () -> passwordResetService.resetPassword("12345A", "new-secret"));
+
+    assertEquals("RESET_OTP_INVALID", exception.getCode());
     verify(tokenHashingService, never()).hashToken(org.mockito.ArgumentMatchers.anyString());
   }
 
@@ -127,10 +162,9 @@ class PasswordResetServiceTest {
   void shouldRejectShortPasswordBeforeEncoding() {
     AppException exception =
         assertThrows(
-            AppException.class, () -> passwordResetService.resetPassword("raw-token", "short"));
+            AppException.class, () -> passwordResetService.resetPassword("123456", "short"));
 
-    org.junit.jupiter.api.Assertions.assertEquals(
-        "NEW_PASSWORD_INVALID_LENGTH", exception.getCode());
+    assertEquals("NEW_PASSWORD_INVALID_LENGTH", exception.getCode());
     verify(passwordEncoder, never()).encode(org.mockito.ArgumentMatchers.anyString());
   }
 }

@@ -106,6 +106,8 @@ app:
             base-url: ${PAYOS_BASE_URL:https://api-merchant.payos.vn}
     mail:
         from: ${APP_MAIL_FROM:noreply@airline-booking.local}
+    password-reset:
+        email-enabled: ${APP_PASSWORD_RESET_EMAIL_ENABLED:true}
     logging:
         request-id-header: ${APP_REQUEST_ID_HEADER:X-Request-Id}
         json-enabled: ${APP_LOG_JSON_ENABLED:false}
@@ -128,6 +130,9 @@ app:
             email-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_EMAIL_LIMIT:3}
             client-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_CLIENT_LIMIT:10}
             pair-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_PAIR_LIMIT:3}
+        password-reset-confirm:
+            window: ${APP_RATE_LIMIT_PASSWORD_RESET_CONFIRM_WINDOW:15m}
+            client-limit: ${APP_RATE_LIMIT_PASSWORD_RESET_CONFIRM_CLIENT_LIMIT:10}
         refresh:
             window: ${APP_RATE_LIMIT_REFRESH_WINDOW:5m}
             user-limit: ${APP_RATE_LIMIT_REFRESH_USER_LIMIT:20}

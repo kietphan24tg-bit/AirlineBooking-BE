@@ -10,6 +10,7 @@ import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.port.ClientKeyResolver;
 import com.example.moduleidentity.repository.PasswordResetTokenRepository;
 import com.example.moduleidentity.repository.UserRepository;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,10 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PasswordResetService {
 
-  private static final int RAW_TOKEN_BYTES = 32; // 256-bit
+  private static final int OTP_BOUND = 1_000_000;
+  private static final int OTP_RETRY_LIMIT = 5;
   private static final long EXPIRATION_MINUTES = 15;
   private static final int PASSWORD_MIN_LENGTH = 8;
   private static final int PASSWORD_MAX_LENGTH = 128;
+  private static final String OTP_PATTERN = "\\d{6}";
 
   private final UserRepository userRepository;
   private final PasswordResetTokenRepository passwordResetTokenRepository;
@@ -32,6 +35,7 @@ public class PasswordResetService {
   private final UserSecurityStateService userSecurityStateService;
   private final AuthRateLimiter authRateLimiter;
   private final ClientKeyResolver clientKeyResolver;
+  private final SecureRandom secureRandom = new SecureRandom();
 
   public PasswordResetService(
       UserRepository userRepository,
@@ -53,14 +57,14 @@ public class PasswordResetService {
   }
 
   /**
-   * Generate a password reset token for the given email.
+   * Generate a password reset OTP for the given email.
    *
    * <p>Flow:
    *
    * <ul>
    *   <li>If email not found: do nothing but still return normally (prevent user enumeration).
-   *   <li>If found: delete previous tokens, create new token with 15 minutes TTL, store hash in DB.
-   *   <li>Return raw token so controller can include it in reset link sent via email.
+   *   <li>If found: delete previous OTPs, create new OTP with 15 minutes TTL, store hash in DB.
+   *   <li>Return raw OTP so controller can deliver it via email.
    * </ul>
    */
   @Transactional
@@ -80,12 +84,11 @@ public class PasswordResetService {
       return null;
     }
 
-    // Remove existing tokens for this user
+    // Remove existing OTPs for this user
     passwordResetTokenRepository.deleteByUser_Id(user.getId());
 
-    // Generate new token
-    String rawToken = tokenHashingService.generateUrlSafeToken(RAW_TOKEN_BYTES);
-    String tokenHash = tokenHashingService.hashToken(rawToken);
+    String otp = generateUniqueOtp();
+    String tokenHash = tokenHashingService.hashToken(otp);
     OffsetDateTime now = OffsetDateTime.now();
 
     PasswordResetTokenEntity entity = new PasswordResetTokenEntity();
@@ -97,24 +100,25 @@ public class PasswordResetService {
 
     passwordResetTokenRepository.save(entity);
 
-    return rawToken;
+    return otp;
   }
 
   @Transactional
-  public void resetPassword(String rawToken, String newPassword) {
-    validateResetPasswordInput(rawToken, newPassword);
-    String tokenHash = tokenHashingService.hashToken(rawToken);
+  public void resetPassword(String otp, String newPassword) {
+    validateResetPasswordInput(otp, newPassword);
+    authRateLimiter.consumePasswordResetConfirmAttempt(
+        normalizeClientKey(null, "password-reset-confirm"));
+    String tokenHash = tokenHashingService.hashToken(otp);
     PasswordResetTokenEntity token =
         passwordResetTokenRepository
             .findByTokenHash(tokenHash)
             .orElseThrow(
                 () ->
                     new AppException(
-                        "RESET_TOKEN_INVALID", "Password reset token is invalid or expired", 400));
+                        "RESET_OTP_INVALID", "Password reset OTP is invalid or expired", 400));
 
     if (token.isUsed() || !token.getExpiresAt().isAfter(OffsetDateTime.now())) {
-      throw new AppException(
-          "RESET_TOKEN_INVALID", "Password reset token is invalid or expired", 400);
+      throw new AppException("RESET_OTP_INVALID", "Password reset OTP is invalid or expired", 400);
     }
 
     UserEntity user = token.getUser();
@@ -130,9 +134,23 @@ public class PasswordResetService {
     refreshTokenSessionService.revokeAllActiveByUserId(user.getId());
   }
 
-  private void validateResetPasswordInput(String rawToken, String newPassword) {
-    if (rawToken == null || rawToken.isBlank()) {
-      throw new AppException("RESET_TOKEN_REQUIRED", "Reset token is required", 400);
+  private String generateUniqueOtp() {
+    for (int attempt = 0; attempt < OTP_RETRY_LIMIT; attempt++) {
+      String otp = "%06d".formatted(secureRandom.nextInt(OTP_BOUND));
+      if (!passwordResetTokenRepository.existsByTokenHash(tokenHashingService.hashToken(otp))) {
+        return otp;
+      }
+    }
+    throw new AppException(
+        "RESET_OTP_GENERATION_FAILED", "Unable to generate password reset OTP", 500);
+  }
+
+  private void validateResetPasswordInput(String otp, String newPassword) {
+    if (otp == null || otp.isBlank()) {
+      throw new AppException("RESET_OTP_REQUIRED", "Reset OTP is required", 400);
+    }
+    if (!otp.matches(OTP_PATTERN)) {
+      throw new AppException("RESET_OTP_INVALID", "Reset OTP must be 6 digits", 400);
     }
     if (newPassword == null || newPassword.isBlank()) {
       throw new AppException("NEW_PASSWORD_REQUIRED", "New password is required", 400);

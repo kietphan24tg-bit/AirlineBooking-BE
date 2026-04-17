@@ -93,6 +93,21 @@ public class AuthRateLimiter {
         "Too many password reset requests. Please try again later");
   }
 
+  public void consumePasswordResetConfirmAttempt(String clientKey) {
+    RateLimitProperties.RefreshWindow rule = rateLimitProperties.getPasswordResetConfirm();
+    consume(
+        "password-reset-confirm",
+        List.of(
+            candidate(
+                "password-reset-confirm",
+                "client",
+                clientKey,
+                rule.getWindow(),
+                rule.getClientLimit())),
+        "TOO_MANY_PASSWORD_RESET_CONFIRM_ATTEMPTS",
+        "Too many password reset confirmation attempts. Please try again later");
+  }
+
   public void consumeRefreshClientAttempt(String clientKey) {
     RateLimitProperties.RefreshWindow rule = rateLimitProperties.getRefresh();
     consume(

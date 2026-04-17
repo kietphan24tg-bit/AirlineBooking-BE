@@ -274,16 +274,16 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data").doesNotExist())
         .andExpect(
-            jsonPath("$.message").value("If the email exists, a password reset link will be sent"));
+            jsonPath("$.message").value("If the email exists, a password reset code will be sent"));
   }
 
   @Test
-  void shouldResetPasswordWithValidTokenAndRejectInvalidToken() throws Exception {
+  void shouldResetPasswordWithValidOtpAndRejectInvalidOtp() throws Exception {
     UserEntity user = saveUser("user@example.com", "secret123");
 
     PasswordResetTokenEntity token = new PasswordResetTokenEntity();
     token.setUser(user);
-    token.setTokenHash(tokenHashingService.hashToken("reset-token"));
+    token.setTokenHash(tokenHashingService.hashToken("123456"));
     token.setCreatedAt(OffsetDateTime.now());
     token.setExpiresAt(OffsetDateTime.now().plusMinutes(5));
     token.setUsed(false);
@@ -296,7 +296,7 @@ class AuthControllerIntegrationTest {
                 .content(
                     """
                     {
-                      "token":"reset-token",
+                      "otp":"123456",
                       "newPassword":"newSecret123"
                     }
                     """))
@@ -313,19 +313,19 @@ class AuthControllerIntegrationTest {
                 .content(
                     """
                     {
-                      "token":"unknown-token",
+                      "otp":"654321",
                       "newPassword":"newSecret123"
                     }
                     """))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error.code").value("RESET_TOKEN_INVALID"));
+        .andExpect(jsonPath("$.error.code").value("RESET_OTP_INVALID"));
   }
 
   @Test
-  void shouldRejectUsedPasswordResetToken() throws Exception {
+  void shouldRejectUsedPasswordResetOtp() throws Exception {
     UserEntity user = saveUser("used-token@example.com", "secret123");
 
-    PasswordResetTokenEntity token = passwordResetToken(user, "used-reset-token");
+    PasswordResetTokenEntity token = passwordResetToken(user, "123456");
     token.setUsed(true);
     token.setUsedAt(OffsetDateTime.now());
     passwordResetTokenRepository.save(token);
@@ -337,19 +337,19 @@ class AuthControllerIntegrationTest {
                 .content(
                     """
                     {
-                      "token":"used-reset-token",
+                      "otp":"123456",
                       "newPassword":"newSecret123"
                     }
                     """))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error.code").value("RESET_TOKEN_INVALID"));
+        .andExpect(jsonPath("$.error.code").value("RESET_OTP_INVALID"));
   }
 
   @Test
-  void shouldRejectExpiredPasswordResetToken() throws Exception {
+  void shouldRejectExpiredPasswordResetOtp() throws Exception {
     UserEntity user = saveUser("expired-token@example.com", "secret123");
 
-    PasswordResetTokenEntity token = passwordResetToken(user, "expired-reset-token");
+    PasswordResetTokenEntity token = passwordResetToken(user, "123456");
     token.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
     passwordResetTokenRepository.save(token);
 
@@ -360,12 +360,12 @@ class AuthControllerIntegrationTest {
                 .content(
                     """
                     {
-                      "token":"expired-reset-token",
+                      "otp":"123456",
                       "newPassword":"newSecret123"
                     }
                     """))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error.code").value("RESET_TOKEN_INVALID"));
+        .andExpect(jsonPath("$.error.code").value("RESET_OTP_INVALID"));
   }
 
   @Test
@@ -376,7 +376,7 @@ class AuthControllerIntegrationTest {
     createRefreshSession(
         user, jwtService.generateRefreshToken(user.getEmail(), user.getId()), false);
 
-    PasswordResetTokenEntity token = passwordResetToken(user, "reset-revoke-token");
+    PasswordResetTokenEntity token = passwordResetToken(user, "123456");
     passwordResetTokenRepository.save(token);
 
     mockMvc
@@ -386,7 +386,7 @@ class AuthControllerIntegrationTest {
                 .content(
                     """
                     {
-                      "token":"reset-revoke-token",
+                      "otp":"123456",
                       "newPassword":"newSecret123"
                     }
                     """))
@@ -444,10 +444,10 @@ class AuthControllerIntegrationTest {
         .perform(
             post("/api/auth/password-reset/confirm")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"\",\"newPassword\":\"\"}"))
+                .content("{\"otp\":\"\",\"newPassword\":\"\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
-        .andExpect(jsonPath("$.error.details.token").isNotEmpty())
+        .andExpect(jsonPath("$.error.details.otp").isNotEmpty())
         .andExpect(jsonPath("$.error.details.newPassword").isNotEmpty());
   }
 
@@ -792,6 +792,11 @@ class AuthControllerIntegrationTest {
             jsonPath("$.paths['/api/auth/password-reset/request'].post.description")
                 .value(org.hamcrest.Matchers.containsString("generic success message")))
         .andExpect(
+            jsonPath("$.components.schemas.PasswordResetConfirmRequest.properties.otp").exists())
+        .andExpect(
+            jsonPath("$.components.schemas.PasswordResetConfirmRequest.properties.token")
+                .doesNotExist())
+        .andExpect(
             jsonPath("$.paths['/api/auth/register'].post.summary").value("Register a new account"))
         .andExpect(jsonPath("$.paths['/api/users/me']").exists())
         .andExpect(jsonPath("$.paths['/api/users/me/password']").exists())
@@ -830,7 +835,7 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data").doesNotExist())
         .andExpect(
-            jsonPath("$.message").value("If the email exists, a password reset link will be sent"));
+            jsonPath("$.message").value("If the email exists, a password reset code will be sent"));
   }
 
   @Test
