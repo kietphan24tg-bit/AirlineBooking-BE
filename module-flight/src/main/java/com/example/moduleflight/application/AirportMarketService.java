@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -22,15 +24,16 @@ import org.springframework.util.StringUtils;
 @Service
 public class AirportMarketService {
 
+  private static final Logger log = LoggerFactory.getLogger(AirportMarketService.class);
+
   private static final int[] RECENT_DECAY_SCORES = {90, 40, 20};
   private static final int RECENT_SEARCH_COUNT_BOOST_CAP = 5;
   private static final int RECENT_MARKET_SCORE_CAP = 150;
   private static final int USER_PROFILE_SCORE = 75;
-  private static final int GEOIP_SCORE = 60;
-  private static final int ACCEPT_LANGUAGE_REGION_SCORE = 50;
+  private static final int ACCEPT_LANGUAGE_REGION_SCORE = 25;
   private static final int TIMEZONE_SCORE = 40;
   private static final int ACCEPT_LANGUAGE_ONLY_SCORE = 35;
-  private static final int SITE_LOCALE_SCORE = 30;
+  private static final int SITE_LOCALE_SCORE = 55;
   private static final int DEFAULT_SCORE = 1;
   private static final int RECENT_MARKET_LIMIT = 8;
   private static final Map<String, String> LANGUAGE_MARKETS =
@@ -60,12 +63,15 @@ public class AirportMarketService {
   }
 
   public String detectMarket(AirportMarketContext context) {
-    return strongestMarket(buildSignals(context));
+    AirportMarketContext safeContext = safeContext(context);
+    List<AirportMarketSignal> signals = buildSignals(safeContext);
+    String market = strongestMarket(signals);
+    logDetection(safeContext, signals, market);
+    return market;
   }
 
   public List<AirportMarketSignal> buildSignals(AirportMarketContext context) {
-    AirportMarketContext safeContext =
-        context == null ? new AirportMarketContext(null, null, null, null, null) : context;
+    AirportMarketContext safeContext = safeContext(context);
     List<AirportMarketSignal> signals = new ArrayList<>();
     signals.addAll(recentSignals(safeContext.userId()));
     userProfileMarket(safeContext.userId())
@@ -78,7 +84,8 @@ public class AirportMarketService {
         .ifPresent(
             market ->
                 signals.add(
-                    new AirportMarketSignal(market, AirportMarketSignalSource.GEOIP, GEOIP_SCORE)));
+                    new AirportMarketSignal(
+                        market, AirportMarketSignalSource.GEOIP, properties.geoipScore())));
     signals.addAll(acceptLanguageSignals(safeContext.acceptLanguage()));
     marketFromTimezone(safeContext.timezone())
         .ifPresent(
@@ -99,6 +106,27 @@ public class AirportMarketService {
                     new AirportMarketSignal(
                         market, AirportMarketSignalSource.DEFAULT, DEFAULT_SCORE)));
     return signals;
+  }
+
+  private AirportMarketContext safeContext(AirportMarketContext context) {
+    return context == null ? new AirportMarketContext(null, null, null, null, null) : context;
+  }
+
+  private void logDetection(
+      AirportMarketContext context, List<AirportMarketSignal> signals, String market) {
+    if (!log.isDebugEnabled()) {
+      return;
+    }
+    log.debug(
+        "Airport market detection inputs: userPresent={}, acceptLanguage={}, timezone={},"
+            + " siteLocale={}, geoIpCountry={}",
+        context.userId() != null,
+        context.acceptLanguage(),
+        context.timezone(),
+        context.siteLocale(),
+        context.geoIpCountry());
+    log.debug("Airport market detection signals: {}", signals);
+    log.debug("Airport market detection result: {}", market);
   }
 
   public String countryNameFromMarket(String market) {

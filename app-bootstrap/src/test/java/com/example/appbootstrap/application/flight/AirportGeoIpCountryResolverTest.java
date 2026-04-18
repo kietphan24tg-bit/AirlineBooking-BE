@@ -15,7 +15,14 @@ class AirportGeoIpCountryResolverTest {
 
   private final AirportGeoIpCountryResolver resolver =
       new AirportGeoIpCountryResolver(
-          new AirportMarketProperties("VN", List.of("CF-IPCountry", "X-App-Country")));
+          new AirportMarketProperties(
+              "VN",
+              List.of(
+                  "CF-IPCountry",
+                  "X-Vercel-IP-Country",
+                  "CloudFront-Viewer-Country",
+                  "X-App-Country"),
+              null));
 
   @AfterEach
   void tearDown() {
@@ -26,15 +33,30 @@ class AirportGeoIpCountryResolverTest {
   void resolveCountry_readsFirstValidConfiguredHeader() {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("CF-IPCountry", "ca");
+    request.addHeader("X-Vercel-IP-Country", "us");
     RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
     assertEquals("CA", resolver.resolveCountry());
   }
 
   @Test
+  void resolveCountry_usesLaterValidHeaderWhenEarlierHeadersAreInvalid() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("CF-IPCountry", "XX");
+    request.addHeader("X-Vercel-IP-Country", "bad");
+    request.addHeader("CloudFront-Viewer-Country", " ");
+    request.addHeader("X-App-Country", "vn");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+    assertEquals("VN", resolver.resolveCountry());
+  }
+
+  @Test
   void resolveCountry_ignoresMalformedAndUnknownHeaders() {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("CF-IPCountry", "XX");
+    request.addHeader("X-Vercel-IP-Country", "bad");
+    request.addHeader("CloudFront-Viewer-Country", " ");
     request.addHeader("X-App-Country", "bad");
     RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 

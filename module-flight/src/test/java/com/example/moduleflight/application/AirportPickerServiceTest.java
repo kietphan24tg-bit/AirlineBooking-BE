@@ -36,7 +36,9 @@ class AirportPickerServiceTest {
             airportRepository,
             userRecentAirportRepository,
             new AirportMarketService(
-                userRecentAirportRepository, new AirportMarketProperties("VN", null), List.of()));
+                userRecentAirportRepository,
+                new AirportMarketProperties("VN", null, null),
+                List.of()));
   }
 
   @Test
@@ -76,7 +78,7 @@ class AirportPickerServiceTest {
         .thenReturn(List.of(airport(20L, "YYZ", "Pearson", "Toronto", "Canada", "CA")));
 
     AirportPickerResult result =
-        service.picker(null, "en-CA,en;q=0.9", "Asia/Ho_Chi_Minh", null, null, null, null, null);
+        service.picker(null, "en-CA,en;q=0.9", null, null, null, null, null, null);
 
     assertEquals("CA", result.market());
     assertEquals("YYZ", result.suggested().getFirst().code());

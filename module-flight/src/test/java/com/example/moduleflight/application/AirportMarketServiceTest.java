@@ -31,7 +31,7 @@ class AirportMarketServiceTest {
     service =
         new AirportMarketService(
             userRecentAirportRepository,
-            new AirportMarketProperties("VN", null),
+            new AirportMarketProperties("VN", null, null),
             List.of(userMarketProfileProvider));
   }
 
@@ -127,12 +127,52 @@ class AirportMarketServiceTest {
   }
 
   @Test
-  void detectMarket_acceptLanguageRegionBeatsTimezone() {
+  void detectMarket_timezoneBeatsAcceptLanguageRegion() {
     String market =
         service.detectMarket(
             new AirportMarketContext(null, "zh-HK,zh;q=0.9", "Asia/Singapore", null, null));
 
-    assertEquals("HK", market);
+    assertEquals("SG", market);
+  }
+
+  @Test
+  void detectMarket_englishUnitedStatesDoesNotBeatBangkokTimezone() {
+    String market =
+        service.detectMarket(
+            new AirportMarketContext(null, "en-US,en;q=0.9", "Asia/Bangkok", null, null));
+
+    assertEquals("TH", market);
+  }
+
+  @Test
+  void detectMarket_siteLocaleVietnamBeatsEnglishUnitedStatesAndBangkokTimezone() {
+    String market =
+        service.detectMarket(
+            new AirportMarketContext(null, "en-US,en;q=0.9", "Asia/Bangkok", "vi-VN", null));
+
+    assertEquals("VN", market);
+  }
+
+  @Test
+  void detectMarket_geoIpVietnamBeatsEnglishUnitedStates() {
+    String market =
+        service.detectMarket(new AirportMarketContext(null, "en-US,en;q=0.9", null, null, "VN"));
+
+    assertEquals("VN", market);
+  }
+
+  @Test
+  void detectMarket_geoIpScoreIsConfigurable() {
+    AirportMarketService lowGeoIpScore =
+        new AirportMarketService(
+            userRecentAirportRepository,
+            new AirportMarketProperties("VN", null, 20),
+            List.of(userMarketProfileProvider));
+
+    String market =
+        lowGeoIpScore.detectMarket(new AirportMarketContext(null, null, null, "vi-VN", "US"));
+
+    assertEquals("VN", market);
   }
 
   @Test
@@ -160,7 +200,7 @@ class AirportMarketServiceTest {
     AirportMarketService customDefault =
         new AirportMarketService(
             userRecentAirportRepository,
-            new AirportMarketProperties("SG", null),
+            new AirportMarketProperties("SG", null, null),
             List.of(userMarketProfileProvider));
 
     String market =

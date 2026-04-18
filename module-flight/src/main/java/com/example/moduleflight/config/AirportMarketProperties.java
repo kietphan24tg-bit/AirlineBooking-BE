@@ -6,11 +6,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
 
 @ConfigurationProperties(prefix = "app.airport-market")
-public record AirportMarketProperties(String defaultMarket, List<String> proxyCountryHeaders) {
+public record AirportMarketProperties(
+    String defaultMarket, List<String> proxyCountryHeaders, Integer geoipScore) {
 
   private static final String DEFAULT_MARKET = "VN";
+  private static final int DEFAULT_GEOIP_SCORE = 60;
   private static final List<String> DEFAULT_PROXY_COUNTRY_HEADERS =
-      List.of("CF-IPCountry", "CloudFront-Viewer-Country", "X-Vercel-IP-Country", "X-App-Country");
+      List.of("CF-IPCountry", "X-Vercel-IP-Country", "CloudFront-Viewer-Country", "X-App-Country");
 
   public AirportMarketProperties {
     defaultMarket = normalizeMarket(defaultMarket);
@@ -18,6 +20,7 @@ public record AirportMarketProperties(String defaultMarket, List<String> proxyCo
         proxyCountryHeaders == null || proxyCountryHeaders.isEmpty()
             ? DEFAULT_PROXY_COUNTRY_HEADERS
             : List.copyOf(proxyCountryHeaders);
+    geoipScore = geoipScore == null || geoipScore < 0 ? DEFAULT_GEOIP_SCORE : geoipScore;
   }
 
   private static String normalizeMarket(String raw) {

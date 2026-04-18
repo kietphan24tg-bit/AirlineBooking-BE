@@ -71,7 +71,8 @@ app:
         fallback-time-zone: ${APP_AIRPORT_IMPORT_FALLBACK_TIME_ZONE:UTC}
     airport-market:
         default-market: ${APP_AIRPORT_MARKET_DEFAULT_MARKET:VN}
-        proxy-country-headers: ${APP_AIRPORT_MARKET_PROXY_COUNTRY_HEADERS:CF-IPCountry,CloudFront-Viewer-Country,X-Vercel-IP-Country,X-App-Country}
+        proxy-country-headers: ${APP_AIRPORT_MARKET_PROXY_COUNTRY_HEADERS:CF-IPCountry,X-Vercel-IP-Country,CloudFront-Viewer-Country,X-App-Country}
+        geoip-score: ${APP_AIRPORT_MARKET_GEOIP_SCORE:60}
     airline-import:
         enabled: ${APP_AIRLINE_IMPORT_ENABLED:false}
         run-on-startup: ${APP_AIRLINE_IMPORT_RUN_ON_STARTUP:false}
