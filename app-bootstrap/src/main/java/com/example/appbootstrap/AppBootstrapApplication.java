@@ -11,6 +11,7 @@ import com.example.appbootstrap.config.PasswordResetProperties;
 import com.example.appbootstrap.config.SwaggerProperties;
 import com.example.moduleflight.config.AirlineImportProperties;
 import com.example.moduleflight.config.AirportImportProperties;
+import com.example.moduleflight.config.AirportMarketProperties;
 import com.example.moduleflight.config.FlightImportProperties;
 import com.example.moduleidentity.config.RateLimitProperties;
 import com.example.modulepayment.config.PaymentProperties;
@@ -37,6 +38,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   LoggingProperties.class,
   SwaggerProperties.class,
   RateLimitProperties.class,
+  AirportMarketProperties.class,
   AirportImportProperties.class,
   AirlineImportProperties.class,
   FlightImportProperties.class

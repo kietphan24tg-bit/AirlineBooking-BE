@@ -165,6 +165,7 @@ public class AirportImportService {
   TransformResult transform(AirportsApiPageResponse page) {
     List<AirportData> data = page.data() == null ? List.of() : page.data();
     Map<String, String> countryNamesById = resolveCountryNamesById(page);
+    Map<String, String> countryCodesById = resolveCountryCodesById(page);
     Map<String, String> regionNamesById = resolveRegionNamesById(page);
     Set<String> allowedTypes = parseAllowedTypes();
 
@@ -177,7 +178,8 @@ public class AirportImportService {
 
     for (AirportData airportData : data) {
       Optional<AirportCandidate> candidate =
-          toCandidate(airportData, countryNamesById, regionNamesById, allowedTypes);
+          toCandidate(
+              airportData, countryNamesById, countryCodesById, regionNamesById, allowedTypes);
       if (candidate.isEmpty()) {
         skipped++;
         recordSkip(skipBreakdown, resolveSkipReason(airportData, allowedTypes));
@@ -209,6 +211,7 @@ public class AirportImportService {
   Optional<AirportCandidate> toCandidate(
       AirportData airportData,
       Map<String, String> countryNamesById,
+      Map<String, String> countryCodesById,
       Map<String, String> regionNamesById,
       Set<String> allowedTypes) {
     AirportAttributes attributes = airportData == null ? null : airportData.attributes();
@@ -227,6 +230,8 @@ public class AirportImportService {
     }
 
     String relationshipCountry = resolveCountryNameFromRelationship(airportData, countryNamesById);
+    String relationshipCountryCode =
+        resolveCountryCodeFromRelationship(airportData, countryCodesById);
     String relationshipRegion = resolveRegionNameFromRelationship(airportData, regionNamesById);
     ValueWithFallback countryValue =
         resolveCountry(attributes.country(), relationshipCountry, properties.fallbackCountry());
@@ -241,6 +246,7 @@ public class AirportImportService {
             attributes.name().trim(),
             cityValue.value(),
             countryValue.value(),
+            normalizeCountryCode(relationshipCountryCode),
             timeZoneValue.value(),
             cityValue.usedFallback(),
             countryValue.usedFallback(),
@@ -276,6 +282,7 @@ public class AirportImportService {
         created.setName(candidate.name());
         created.setCity(candidate.city());
         created.setCountry(candidate.country());
+        created.setCountryCode(candidate.countryCode());
         created.setTimeZone(candidate.timeZone());
         created.setCreatedAt(now);
         created.setUpdatedAt(now);
@@ -288,6 +295,8 @@ public class AirportImportService {
         existing.setCountry(
             pickPreferableValue(
                 candidate.country(), existing.getCountry(), properties.fallbackCountry()));
+        existing.setCountryCode(
+            pickPreferableCountryCode(candidate.countryCode(), existing.getCountryCode()));
         existing.setTimeZone(
             pickPreferableValue(
                 candidate.timeZone(), existing.getTimeZone(), properties.fallbackTimeZone()));
@@ -329,6 +338,13 @@ public class AirportImportService {
     return candidate;
   }
 
+  private String pickPreferableCountryCode(String candidate, String existing) {
+    if (!isBlank(candidate)) {
+      return candidate;
+    }
+    return existing;
+  }
+
   private boolean equalsIgnoreCaseTrim(String first, String second) {
     if (first == null && second == null) {
       return true;
@@ -352,6 +368,27 @@ public class AirportImportService {
           && includedResource.attributes() != null
           && !isBlank(includedResource.attributes().name())) {
         byId.put(includedResource.id(), includedResource.attributes().name().trim());
+      }
+    }
+    return byId;
+  }
+
+  private Map<String, String> resolveCountryCodesById(AirportsApiPageResponse page) {
+    Map<String, String> byId = new HashMap<>();
+    if (page.included() == null) {
+      return byId;
+    }
+    for (IncludedResource includedResource : page.included()) {
+      if (includedResource == null || isBlank(includedResource.id())) {
+        continue;
+      }
+      if ("countries".equals(includedResource.type())
+          && includedResource.attributes() != null
+          && !isBlank(includedResource.attributes().code())) {
+        String countryCode = normalizeCountryCode(includedResource.attributes().code());
+        if (!isBlank(countryCode)) {
+          byId.put(includedResource.id(), countryCode);
+        }
       }
     }
     return byId;
@@ -385,6 +422,18 @@ public class AirportImportService {
       return null;
     }
     return countryNamesById.get(relationshipData.id());
+  }
+
+  private String resolveCountryCodeFromRelationship(
+      AirportData airportData, Map<String, String> countryCodesById) {
+    RelationshipData relationshipData =
+        airportData.relationships() == null || airportData.relationships().country() == null
+            ? null
+            : airportData.relationships().country().data();
+    if (relationshipData == null || isBlank(relationshipData.id())) {
+      return null;
+    }
+    return countryCodesById.get(relationshipData.id());
   }
 
   private String resolveRegionNameFromRelationship(
@@ -485,6 +534,14 @@ public class AirportImportService {
     return value == null || value.isBlank();
   }
 
+  private String normalizeCountryCode(String raw) {
+    if (isBlank(raw)) {
+      return null;
+    }
+    String normalized = raw.trim().toUpperCase(Locale.ROOT);
+    return normalized.length() == 2 ? normalized : null;
+  }
+
   private String firstNotBlank(String... values) {
     for (String value : values) {
       if (value != null && !value.isBlank()) {
@@ -499,6 +556,7 @@ public class AirportImportService {
       String name,
       String city,
       String country,
+      String countryCode,
       String timeZone,
       boolean usedFallbackCity,
       boolean usedFallbackCountry,

@@ -34,6 +34,9 @@ public class AirportEntity {
   @Column(nullable = false, length = 150)
   private String country;
 
+  @Column(name = "country_code", length = 2)
+  private String countryCode;
+
   @Column(name = "time_zone", nullable = false, length = 100)
   private String timeZone;
 

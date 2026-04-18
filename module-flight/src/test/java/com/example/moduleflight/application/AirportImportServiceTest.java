@@ -124,6 +124,7 @@ class AirportImportServiceTest {
     existingHan.setName("Old Name");
     existingHan.setCity("Old City");
     existingHan.setCountry("Old Country");
+    existingHan.setCountryCode("VN");
     existingHan.setTimeZone("Old/TZ");
     existingHan.setCreatedAt(OffsetDateTime.now().minusDays(3));
     existingHan.setUpdatedAt(OffsetDateTime.now().minusDays(2));
@@ -154,6 +155,7 @@ class AirportImportServiceTest {
         firstSave.stream().filter(item -> "HAN".equals(item.getCode())).findFirst().orElseThrow();
     assertEquals("UNKNOWN", hanNew.getCity());
     assertEquals("UNKNOWN", hanNew.getCountry());
+    assertEquals(null, hanNew.getCountryCode());
     assertEquals("UTC", hanNew.getTimeZone());
 
     List<AirportEntity> secondSave = allSaves.get(1);
@@ -162,6 +164,7 @@ class AirportImportServiceTest {
     assertEquals("Noi Bai International", hanUpdated.getName());
     assertEquals("Ha Noi", hanUpdated.getCity());
     assertEquals("Vietnam", hanUpdated.getCountry());
+    assertEquals("VN", hanUpdated.getCountryCode());
     assertEquals("Asia/Ho_Chi_Minh", hanUpdated.getTimeZone());
   }
 
@@ -230,6 +233,7 @@ class AirportImportServiceTest {
     verify(airportRepository).saveAll(saveCaptor.capture());
     AirportEntity saved = saveCaptor.getValue().get(0);
     assertEquals("United States", saved.getCountry());
+    assertEquals("US", saved.getCountryCode());
     assertEquals("California", saved.getCity());
   }
 

@@ -11,4 +11,6 @@ public interface AirportGroupedProjection {
   String getCity();
 
   String getCountry();
+
+  String getCountryCode();
 }
