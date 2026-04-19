@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +22,9 @@ import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
 import com.example.moduleflight.application.FlightSearchResult;
 import com.example.moduleflight.application.TimeOfDayBucket;
+import com.example.moduleflight.application.UserRecentAirportService;
+import com.example.moduleidentity.application.security.AppUserPrincipal;
+import com.example.moduleidentity.entity.Role;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -41,12 +45,15 @@ class FlightsControllerTest {
 
   @Mock private FlightSearchFacadeService flightSearchFacadeService;
   @Mock private BookingRevalidateService bookingRevalidateService;
+  @Mock private UserRecentAirportService userRecentAirportService;
 
   private FlightsController controller;
 
   @BeforeEach
   void setUp() {
-    controller = new FlightsController(flightSearchFacadeService, bookingRevalidateService);
+    controller =
+        new FlightsController(
+            flightSearchFacadeService, bookingRevalidateService, userRecentAirportService);
   }
 
   @Test
@@ -87,6 +94,7 @@ class FlightsControllerTest {
 
     FlightSearchResponse response =
         controller.searchFlights(
+            null,
             new FlightSearchQueryRequest(
                 "ONE_WAY",
                 "SGN",
@@ -115,6 +123,7 @@ class FlightsControllerTest {
     assertEquals(new BigDecimal("1200000"), response.outboundPriceRange().maxPrice());
     assertEquals("VND", response.outboundPriceRange().currency());
     assertNull(response.inboundPriceRange());
+    verify(userRecentAirportService, never()).recordSearch(any(), any(), any());
   }
 
   @Test
@@ -159,6 +168,7 @@ class FlightsControllerTest {
                 null));
 
     controller.searchFlights(
+        null,
         new FlightSearchQueryRequest(
             "ONE_WAY",
             "SGN",
@@ -190,12 +200,50 @@ class FlightsControllerTest {
   }
 
   @Test
+  void searchFlights_recordsRecentAirportsForAuthenticatedUser() {
+    when(flightSearchFacadeService.search(any()))
+        .thenReturn(
+            new FlightSearchResult(
+                List.of(),
+                List.of(),
+                new FlightSearchResult.PageInfo(null, false, 20),
+                new FlightSearchResult.PageInfo(null, false, 20),
+                null,
+                null));
+
+    controller.searchFlights(
+        new AppUserPrincipal(42L, "user@example.com", "secret", Role.USER, null),
+        new FlightSearchQueryRequest(
+            "ONE_WAY",
+            "SGN",
+            "HAN",
+            LocalDate.parse("2026-05-01"),
+            null,
+            1,
+            0,
+            0,
+            null,
+            null,
+            null,
+            null,
+            20,
+            null,
+            null,
+            null,
+            null,
+            null));
+
+    verify(userRecentAirportService).recordSearch(42L, "SGN", "HAN");
+  }
+
+  @Test
   void searchFlights_rejectsInvalidCabinClass() {
     AppException exception =
         assertThrows(
             AppException.class,
             () ->
                 controller.searchFlights(
+                    null,
                     new FlightSearchQueryRequest(
                         "ONE_WAY",
                         "SGN",
@@ -226,6 +274,7 @@ class FlightsControllerTest {
             AppException.class,
             () ->
                 controller.searchFlights(
+                    null,
                     new FlightSearchQueryRequest(
                         "ONE_WAY",
                         "SGN",
@@ -256,6 +305,7 @@ class FlightsControllerTest {
             AppException.class,
             () ->
                 controller.searchFlights(
+                    null,
                     new FlightSearchQueryRequest(
                         "ONE_WAY",
                         "SGN",
@@ -314,6 +364,7 @@ class FlightsControllerTest {
             AppException.class,
             () ->
                 controller.searchFlights(
+                    null,
                     new FlightSearchQueryRequest(
                         "ONE_WAY",
                         "SGN",
@@ -344,6 +395,7 @@ class FlightsControllerTest {
             AppException.class,
             () ->
                 controller.searchFlights(
+                    null,
                     new FlightSearchQueryRequest(
                         "ONE_WAY",
                         "SGN",

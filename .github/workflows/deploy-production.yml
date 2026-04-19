@@ -76,21 +76,18 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_REPOSITORY }}:${{ inputs.image_tag }}
 
-      - name: Trigger Railway redeploy (production)
+      - name: Trigger Render deploy (production)
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           set -e
-          test -n "$RAILWAY_TOKEN"
-          test -n "${{ secrets.RAILWAY_SERVICE_ID }}"
-          npm i -g @railway/cli
-          railway redeploy --service "${{ secrets.RAILWAY_SERVICE_ID }}" --yes
+          test -n "$RENDER_DEPLOY_HOOK_URL"
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
 
-      - name: Explain Railway production behavior
+      - name: Explain Render production deploy
         run: |
           echo "Production image pushed to Docker Hub."
-          echo "Redeploy was triggered via Railway CLI (recommended)."
-          echo "Optional: also enable image auto-updates on the Railway service if you want a fallback."
+          echo "Deploy was triggered via Render Deploy Hook (see Settings → Deploy Hook on the Render service)."
 
       - name: Upload reports on failure
         if: failure()

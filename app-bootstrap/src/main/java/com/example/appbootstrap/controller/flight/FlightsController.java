@@ -12,6 +12,8 @@ import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
 import com.example.moduleflight.application.FlightSearchTripType;
 import com.example.moduleflight.application.TimeOfDayBucket;
+import com.example.moduleflight.application.UserRecentAirportService;
+import com.example.moduleidentity.application.security.AppUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,12 +44,15 @@ public class FlightsController {
 
   private final FlightSearchFacadeService flightSearchFacadeService;
   private final BookingRevalidateService bookingRevalidateService;
+  private final UserRecentAirportService userRecentAirportService;
 
   public FlightsController(
       FlightSearchFacadeService flightSearchFacadeService,
-      BookingRevalidateService bookingRevalidateService) {
+      BookingRevalidateService bookingRevalidateService,
+      UserRecentAirportService userRecentAirportService) {
     this.flightSearchFacadeService = flightSearchFacadeService;
     this.bookingRevalidateService = bookingRevalidateService;
+    this.userRecentAirportService = userRecentAirportService;
   }
 
   @GetMapping("/search")
@@ -58,7 +64,9 @@ public class FlightsController {
     @ApiResponse(responseCode = "200", description = "Search completed", content = @Content),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content)
   })
-  FlightSearchResponse searchFlights(@Valid @ParameterObject FlightSearchQueryRequest request) {
+  FlightSearchResponse searchFlights(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @Valid @ParameterObject FlightSearchQueryRequest request) {
     validateBusinessRules(request);
     FlightSearchTripType tripType = parseTripType(request.tripType());
     FlightSearchQuery query =
@@ -81,7 +89,12 @@ public class FlightsController {
             parseTimeBucket(request.departureTimeBucket()),
             parseTimeBucket(request.arrivalTimeBucket()),
             parseConnectionFilter(request.connectionFilter()));
-    return FlightSearchResponse.from(flightSearchFacadeService.search(query));
+    FlightSearchResponse response =
+        FlightSearchResponse.from(flightSearchFacadeService.search(query));
+    if (principal != null) {
+      userRecentAirportService.recordSearch(principal.getUserId(), request.from(), request.to());
+    }
+    return response;
   }
 
   @PostMapping("/revalidate-fare")
