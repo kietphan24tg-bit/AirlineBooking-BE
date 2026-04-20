@@ -26,6 +26,7 @@ public class FlightSearchFacadeService {
   private final FlightRankingService flightRankingService;
   private final FlightPaginationService flightPaginationService;
   private final CountryCurrencyResolver countryCurrencyResolver;
+  private final FlightSearchFallbackService flightSearchFallbackService;
 
   public FlightSearchFacadeService(
       FlightQueryService flightQueryService,
@@ -33,16 +34,18 @@ public class FlightSearchFacadeService {
       PromotionBatchPreviewService promotionBatchPreviewService,
       FlightRankingService flightRankingService,
       FlightPaginationService flightPaginationService,
-      CountryCurrencyResolver countryCurrencyResolver) {
+      CountryCurrencyResolver countryCurrencyResolver,
+      FlightSearchFallbackService flightSearchFallbackService) {
     this.flightQueryService = flightQueryService;
     this.flightPricingService = flightPricingService;
     this.promotionBatchPreviewService = promotionBatchPreviewService;
     this.flightRankingService = flightRankingService;
     this.flightPaginationService = flightPaginationService;
     this.countryCurrencyResolver = countryCurrencyResolver;
+    this.flightSearchFallbackService = flightSearchFallbackService;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public FlightSearchResult search(FlightSearchQuery query) {
     PromotionContext promotionContext = promotionBatchPreviewService.loadContext(query.promoCode());
 
@@ -89,6 +92,10 @@ public class FlightSearchFacadeService {
       PromotionContext promotionContext) {
     List<List<FlightFareEntity>> groupedFlights =
         flightQueryService.findByRouteAndDate(fromCode, toCode, date);
+    if (groupedFlights.isEmpty()
+        && flightSearchFallbackService.materializeIfEmpty(fromCode, toCode, date)) {
+      groupedFlights = flightQueryService.findByRouteAndDate(fromCode, toCode, date);
+    }
     List<FlightSearchPageItem> rankedOptions = new ArrayList<>();
 
     for (List<FlightFareEntity> fares : groupedFlights) {

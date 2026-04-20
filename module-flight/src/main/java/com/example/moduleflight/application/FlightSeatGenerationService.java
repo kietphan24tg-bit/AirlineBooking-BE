@@ -28,6 +28,25 @@ import org.springframework.util.StringUtils;
 public class FlightSeatGenerationService {
 
   private static final Logger LOG = LoggerFactory.getLogger(FlightSeatGenerationService.class);
+  /** Smaller batches reduce lock time and avoid remote DB statement timeouts on large cabins. */
+  private static final int FLIGHT_SEAT_UPSERT_BATCH_SIZE = 300;
+
+  private static final String UPSERT_FLIGHT_SEAT_SQL =
+      """
+      insert into flight_seats (flight_id, seat_number, seat_class_id, seat_type_id, status, created_at)
+      values (
+        ?,
+        ?,
+        ?,
+        ?,
+        'AVAILABLE',
+        ?
+      )
+      on conflict (flight_id, seat_number) do update
+      set seat_class_id = excluded.seat_class_id,
+          seat_type_id = excluded.seat_type_id
+      where flight_seats.status = 'AVAILABLE'
+      """;
 
   private final AircraftLayoutRepository aircraftLayoutRepository;
   private final AircraftLayoutZoneRepository aircraftLayoutZoneRepository;
@@ -79,6 +98,7 @@ public class FlightSeatGenerationService {
     Map<String, Long> seatTypeIdByCode = loadSeatTypeIds();
     Timestamp createdAt = Timestamp.from(OffsetDateTime.now().toInstant());
     Set<String> generatedSeatNumbers = new LinkedHashSet<>();
+    List<Object[]> seatsToUpsert = new ArrayList<>();
 
     for (int row = 1; row <= totalRows; row++) {
       for (int i = 0; i < columns.size(); i++) {
@@ -103,37 +123,19 @@ public class FlightSeatGenerationService {
               column);
           continue;
         }
-        upsertFlightSeat(flight.getId(), seatNumber, seatClassId, seatTypeId, createdAt);
+        seatsToUpsert.add(
+            new Object[] {flight.getId(), seatNumber, seatClassId, seatTypeId, createdAt});
         generatedSeatNumbers.add(seatNumber);
       }
     }
 
+    if (!seatsToUpsert.isEmpty()) {
+      for (int i = 0; i < seatsToUpsert.size(); i += FLIGHT_SEAT_UPSERT_BATCH_SIZE) {
+        int end = Math.min(i + FLIGHT_SEAT_UPSERT_BATCH_SIZE, seatsToUpsert.size());
+        jdbcTemplate.batchUpdate(UPSERT_FLIGHT_SEAT_SQL, seatsToUpsert.subList(i, end));
+      }
+    }
     markRemovedAvailableSeatsUnavailable(flight.getId(), generatedSeatNumbers);
-  }
-
-  private void upsertFlightSeat(
-      Long flightId, String seatNumber, Long seatClassId, Long seatTypeId, Timestamp createdAt) {
-    jdbcTemplate.update(
-        """
-        insert into flight_seats (flight_id, seat_number, seat_class_id, seat_type_id, status, created_at)
-        values (
-          ?,
-          ?,
-          ?,
-          ?,
-          'AVAILABLE',
-          ?
-        )
-        on conflict (flight_id, seat_number) do update
-        set seat_class_id = excluded.seat_class_id,
-            seat_type_id = excluded.seat_type_id
-        where flight_seats.status = 'AVAILABLE'
-        """,
-        flightId,
-        seatNumber,
-        seatClassId,
-        seatTypeId,
-        createdAt);
   }
 
   private static List<String> parseColumns(String rawColumns) {

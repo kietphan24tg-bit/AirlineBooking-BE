@@ -43,6 +43,7 @@ class FlightSearchServiceTest {
   @Mock private FlightRankingService flightRankingService;
   @Mock private FlightPaginationService flightPaginationService;
   @Mock private CountryCurrencyResolver countryCurrencyResolver;
+  @Mock private FlightSearchFallbackService flightSearchFallbackService;
 
   private FlightSearchFacadeService service;
 
@@ -55,7 +56,8 @@ class FlightSearchServiceTest {
             promotionBatchPreviewService,
             flightRankingService,
             flightPaginationService,
-            countryCurrencyResolver);
+            countryCurrencyResolver,
+            flightSearchFallbackService);
   }
 
   @Test

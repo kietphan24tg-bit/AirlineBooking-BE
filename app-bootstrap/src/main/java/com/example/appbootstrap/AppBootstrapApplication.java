@@ -12,7 +12,11 @@ import com.example.appbootstrap.config.SwaggerProperties;
 import com.example.moduleflight.config.AirlineImportProperties;
 import com.example.moduleflight.config.AirportImportProperties;
 import com.example.moduleflight.config.AirportMarketProperties;
+import com.example.moduleflight.config.FlightCoverageProperties;
 import com.example.moduleflight.config.FlightImportProperties;
+import com.example.moduleflight.config.FlightMaintenanceProperties;
+import com.example.moduleflight.config.FlightMockDataProperties;
+import com.example.moduleflight.config.FlightSearchFallbackProperties;
 import com.example.moduleidentity.config.RateLimitProperties;
 import com.example.modulepayment.config.PaymentProperties;
 import org.springframework.boot.SpringApplication;
@@ -41,7 +45,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   AirportMarketProperties.class,
   AirportImportProperties.class,
   AirlineImportProperties.class,
-  FlightImportProperties.class
+  FlightImportProperties.class,
+  FlightMaintenanceProperties.class,
+  FlightCoverageProperties.class,
+  FlightMockDataProperties.class,
+  FlightSearchFallbackProperties.class
 })
 public class AppBootstrapApplication {
 

@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import com.example.moduleflight.domain.FlightSource;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -74,6 +75,10 @@ public class FlightEntity {
 
   @Column(nullable = false, length = 20)
   private String status;
+
+  /** AIRLABS, COVERAGE, MOCK — see {@link FlightSource}. */
+  @Column(name = "flight_source", nullable = false, length = 20)
+  private String flightSource = FlightSource.AIRLABS;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;

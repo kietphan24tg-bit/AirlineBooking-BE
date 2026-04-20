@@ -7,8 +7,12 @@ spring:
     hikari:
       maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:3}
       minimum-idle: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:0}
+      # Supabase / pooler can cancel long statements; flight seat upserts may be large.
+      connection-init-sql: ${SPRING_DATASOURCE_HIKARI_CONNECTION_INIT_SQL:SET statement_timeout TO '15min'}
       data-source-properties:
         prepareThreshold: ${SPRING_DATASOURCE_PREPARE_THRESHOLD:0}
+        # JDBC driver socket timeout (seconds), should exceed worst-case statement time
+        socketTimeout: ${SPRING_DATASOURCE_SOCKET_TIMEOUT_SECONDS:900}
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
@@ -42,6 +46,12 @@ logging:
     org.hibernate.SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:WARN}
     org.hibernate.orm.jdbc.bind: ${LOGGING_LEVEL_HIBERNATE_BIND:WARN}
     org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
+
+# Local dev often has no Redis; readiness stays UP without a running broker.
+management:
+  health:
+    redis:
+      enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
 
 app:
   logging:

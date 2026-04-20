@@ -97,6 +97,33 @@ app:
         max-retries: ${APP_FLIGHT_IMPORT_MAX_RETRIES:2}
         airline-iata-codes: ${APP_FLIGHT_IMPORT_AIRLINE_IATA_CODES:VN,VJ,QH}
         days-ahead: ${APP_FLIGHT_IMPORT_DAYS_AHEAD:7}
+    flight-maintenance:
+        cron: ${APP_FLIGHT_MAINTENANCE_CRON:0 30 2 * * *}
+        run-on-startup: ${APP_FLIGHT_MAINTENANCE_RUN_ON_STARTUP:false}
+        cleanup-enabled: ${APP_FLIGHT_MAINTENANCE_CLEANUP_ENABLED:true}
+    flight-coverage:
+        enabled: ${APP_FLIGHT_COVERAGE_ENABLED:true}
+        rolling-days: ${APP_FLIGHT_COVERAGE_ROLLING_DAYS:14}
+        start-date-offset-days: ${APP_FLIGHT_COVERAGE_START_DATE_OFFSET_DAYS:1}
+        include-airport-country-codes: ${APP_FLIGHT_COVERAGE_INCLUDE_AIRPORT_COUNTRY_CODES:VN}
+        max-flights-per-run: ${APP_FLIGHT_COVERAGE_MAX_FLIGHTS_PER_RUN:8000}
+        excluded-airline-codes: ${APP_FLIGHT_COVERAGE_EXCLUDED_AIRLINE_CODES:}
+        excluded-airline-country-codes: ${APP_FLIGHT_COVERAGE_EXCLUDED_AIRLINE_COUNTRY_CODES:}
+        excluded-airport-country-codes: ${APP_FLIGHT_COVERAGE_EXCLUDED_AIRPORT_COUNTRY_CODES:}
+    flight-search-fallback:
+        enabled: ${APP_FLIGHT_SEARCH_FALLBACK_ENABLED:true}
+    flight-mock:
+        enabled: ${APP_FLIGHT_MOCK_ENABLED:false}
+        run-on-startup: ${APP_FLIGHT_MOCK_RUN_ON_STARTUP:false}
+        cron: ${APP_FLIGHT_MOCK_CRON:0 0 4 * * *}
+        force-when-tickets-exist: ${APP_FLIGHT_MOCK_FORCE_WHEN_TICKETS_EXIST:false}
+        target-flight-count: ${APP_FLIGHT_MOCK_TARGET_FLIGHT_COUNT:0}
+        flights-per-aircraft: ${APP_FLIGHT_MOCK_FLIGHTS_PER_AIRCRAFT:3}
+        days-span: ${APP_FLIGHT_MOCK_DAYS_SPAN:14}
+        start-date-offset-days: ${APP_FLIGHT_MOCK_START_DATE_OFFSET_DAYS:1}
+        excluded-airline-codes: ${APP_FLIGHT_MOCK_EXCLUDED_AIRLINE_CODES:VN,VJ,QH}
+        excluded-airline-country-codes: ${APP_FLIGHT_MOCK_EXCLUDED_AIRLINE_COUNTRY_CODES:VN}
+        excluded-airport-country-codes: ${APP_FLIGHT_MOCK_EXCLUDED_AIRPORT_COUNTRY_CODES:}
     payment:
         provider: ${APP_PAYMENT_PROVIDER:payos}
         # Unused for PayOS (webhook HMAC uses payos.checksum-key). Retained for existing env binding.

@@ -39,6 +39,13 @@ dependencies {
 }
 
 tasks.named('bootRun', BootRun) {
+    // Optional: tune bootRun heap when the dev machine has very little commit charge / page file.
+    // Override in gradle.properties, e.g. bootRunJvmArgs=-Xmx512m
+    def bootJvm = findProperty('bootRunJvmArgs')?.toString()
+    if (bootJvm?.trim()) {
+        jvmArgs = bootJvm.trim().split(/\s+/).toList()
+    }
+
     def envFile = rootProject.file('.env')
 
     if (envFile.exists()) {

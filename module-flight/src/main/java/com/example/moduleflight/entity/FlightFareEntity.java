@@ -14,6 +14,8 @@ import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "flight_fares")
@@ -38,6 +40,7 @@ public class FlightFareEntity {
   private BigDecimal basePrice;
 
   @Column(name = "tax_breakdown", columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   private String taxBreakdown;
 
   @Column(name = "total_tax_amount", nullable = false, precision = 18, scale = 2)
