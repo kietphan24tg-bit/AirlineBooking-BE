@@ -62,7 +62,8 @@ public record FlightSearchResponse(
       BigDecimal discountAmount,
       Integer discountPercent,
       String promoStatus,
-      String promoMessage) {
+      String promoMessage,
+      FareClassBenefitsResponse fareClassBenefits) {
     public static FareOptionResponse from(FlightSearchResult.FareOptionView view) {
       return new FareOptionResponse(
           view.fareId(),
@@ -74,7 +75,51 @@ public record FlightSearchResponse(
           view.discountAmount(),
           view.discountPercent(),
           view.promoStatus(),
-          view.promoMessage());
+          view.promoMessage(),
+          FareClassBenefitsResponse.from(view.fareClassBenefits()));
+    }
+  }
+
+  public record FareClassBenefitsResponse(
+      Long fareClassId,
+      String fareClassName,
+      String fareClassCode,
+      Integer baggageCheckinKg,
+      Integer baggageHandKg,
+      BigDecimal changeFee,
+      BigDecimal refundFee,
+      boolean refundable,
+      boolean changeable,
+      boolean priorityCheckin,
+      boolean priorityBoarding,
+      BigDecimal mileageRate,
+      boolean loungeAccess,
+      boolean seatSelection,
+      String mealType,
+      boolean wifiIncluded,
+      boolean fastTrackSecurity) {
+    static FareClassBenefitsResponse from(FlightSearchResult.FareClassBenefitsView view) {
+      if (view == null) {
+        return null;
+      }
+      return new FareClassBenefitsResponse(
+          view.fareClassId(),
+          view.fareClassName(),
+          view.fareClassCode(),
+          view.baggageCheckinKg(),
+          view.baggageHandKg(),
+          view.changeFee(),
+          view.refundFee(),
+          view.refundable(),
+          view.changeable(),
+          view.priorityCheckin(),
+          view.priorityBoarding(),
+          view.mileageRate(),
+          view.loungeAccess(),
+          view.seatSelection(),
+          view.mealType(),
+          view.wifiIncluded(),
+          view.fastTrackSecurity());
     }
   }
 

@@ -143,7 +143,8 @@ public class FlightSearchFacadeService {
                 "APPLIED".equals(preview.status()) ? preview.discountAmount() : BigDecimal.ZERO,
                 "APPLIED".equals(preview.status()) ? preview.discountPercent() : null,
                 preview.status(),
-                preview.message());
+                preview.message(),
+                FlightSearchResult.FareClassBenefitsView.fromEntity(fare.getFareClass()));
         rankedFareOptions.add(
             new RankedFareOption(
                 fareOption,

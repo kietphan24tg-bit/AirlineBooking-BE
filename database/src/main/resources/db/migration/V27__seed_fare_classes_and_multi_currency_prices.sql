@@ -3,7 +3,8 @@ insert into fare_classes (
     baggage_checkin_kg, baggage_hand_kg,
     change_fee, refund_fee,
     is_refundable, is_changeable, is_priority_checkin, is_priority_boarding,
-    mileage_rate, description, created_at, updated_at
+    mileage_rate, lounge_access, seat_selection, meal_type, wifi_included, fast_track_security,
+    created_at, updated_at
 )
 values
     (
@@ -11,7 +12,7 @@ values
         0, 7,
         300000, 700000,
         false, true, false, false,
-        1.00, '1 carry-on bag; basic snacks and beverage; standard seating.',
+        1.00, false, false, 'STANDARD', false, false,
         current_timestamp, current_timestamp
     ),
     (
@@ -19,7 +20,7 @@ values
         46, 10,
         150000, 350000,
         true, true, false, true,
-        1.35, '2 checked bags; premium meals; seat selection; priority boarding.',
+        1.35, false, true, 'PREMIUM', true, false,
         current_timestamp, current_timestamp
     ),
     (
@@ -27,7 +28,7 @@ values
         90, 14,
         0, 150000,
         true, true, true, true,
-        1.80, '3 checked bags; gourmet dining; lie-flat seats; lounge access; premium amenities kit.',
+        1.80, true, true, 'GOURMET', true, true,
         current_timestamp, current_timestamp
     ),
     (
@@ -35,7 +36,7 @@ values
         999, 18,
         0, 0,
         true, true, true, true,
-        2.30, 'Unlimited luggage; Michelin-star cuisine; private suites; premium lounge; concierge; spa and shower.',
+        2.30, true, true, 'GOURMET', true, true,
         current_timestamp, current_timestamp
     )
 on conflict (code) do update
@@ -51,7 +52,11 @@ set
     is_priority_checkin = excluded.is_priority_checkin,
     is_priority_boarding = excluded.is_priority_boarding,
     mileage_rate = excluded.mileage_rate,
-    description = excluded.description,
+    lounge_access = excluded.lounge_access,
+    seat_selection = excluded.seat_selection,
+    meal_type = excluded.meal_type,
+    wifi_included = excluded.wifi_included,
+    fast_track_security = excluded.fast_track_security,
     updated_at = current_timestamp;
 
 create table if not exists fare_class_prices (

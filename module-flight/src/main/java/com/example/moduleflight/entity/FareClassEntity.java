@@ -59,8 +59,20 @@ public class FareClassEntity {
   @Column(name = "mileage_rate", nullable = false, precision = 8, scale = 2)
   private BigDecimal mileageRate;
 
-  @Column(columnDefinition = "text")
-  private String description;
+  @Column(name = "lounge_access", nullable = false)
+  private boolean loungeAccess;
+
+  @Column(name = "seat_selection", nullable = false)
+  private boolean seatSelection;
+
+  @Column(name = "meal_type", nullable = false, length = 30)
+  private String mealType;
+
+  @Column(name = "wifi_included", nullable = false)
+  private boolean wifiIncluded;
+
+  @Column(name = "fast_track_security", nullable = false)
+  private boolean fastTrackSecurity;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;

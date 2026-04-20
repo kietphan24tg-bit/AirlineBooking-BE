@@ -48,7 +48,8 @@ class FlightSearchResultTest {
             BigDecimal.ZERO,
             25,
             "APPLIED",
-            "ok");
+            "ok",
+            null);
     FlightSearchResult.FareOptionView expensive =
         new FlightSearchResult.FareOptionView(
             2L,
@@ -60,7 +61,8 @@ class FlightSearchResultTest {
             BigDecimal.ZERO,
             null,
             "NOT_APPLICABLE",
-            "");
+            "",
+            null);
     FlightSearchResult.FlightOptionView view =
         new FlightSearchResult.FlightOptionView(
             10L,

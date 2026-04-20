@@ -50,7 +50,13 @@ create table fare_classes (
     is_priority_checkin boolean not null default false,
     is_priority_boarding boolean not null default false,
     mileage_rate numeric(8, 2) not null default 0,
-    description text,
+    lounge_access boolean not null default false,
+    seat_selection boolean not null default false,
+    meal_type varchar(30) not null default 'NONE',
+    wifi_included boolean not null default false,
+    fast_track_security boolean not null default false,
+    constraint chk_fare_classes_meal_type
+        check (meal_type in ('NONE', 'STANDARD', 'PREMIUM', 'GOURMET')),
     created_at timestamp with time zone not null default current_timestamp,
     updated_at timestamp with time zone not null default current_timestamp
 );

@@ -1,5 +1,6 @@
 package com.example.moduleflight.application;
 
+import com.example.moduleflight.entity.FareClassEntity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -79,7 +80,56 @@ public record FlightSearchResult(
       BigDecimal discountAmount,
       Integer discountPercent,
       String promoStatus,
-      String promoMessage) {}
+      String promoMessage,
+      FareClassBenefitsView fareClassBenefits) {}
+
+  /**
+   * Structured fare-class policy from {@code fare_classes} for UI (i18n can format labels from
+   * these fields).
+   */
+  public record FareClassBenefitsView(
+      Long fareClassId,
+      String fareClassName,
+      String fareClassCode,
+      Integer baggageCheckinKg,
+      Integer baggageHandKg,
+      BigDecimal changeFee,
+      BigDecimal refundFee,
+      boolean refundable,
+      boolean changeable,
+      boolean priorityCheckin,
+      boolean priorityBoarding,
+      BigDecimal mileageRate,
+      boolean loungeAccess,
+      boolean seatSelection,
+      String mealType,
+      boolean wifiIncluded,
+      boolean fastTrackSecurity) {
+
+    public static FareClassBenefitsView fromEntity(FareClassEntity fc) {
+      if (fc == null) {
+        return null;
+      }
+      return new FareClassBenefitsView(
+          fc.getId(),
+          fc.getName(),
+          fc.getCode(),
+          fc.getBaggageCheckinKg(),
+          fc.getBaggageHandKg(),
+          fc.getChangeFee(),
+          fc.getRefundFee(),
+          fc.isRefundable(),
+          fc.isChangeable(),
+          fc.isPriorityCheckin(),
+          fc.isPriorityBoarding(),
+          fc.getMileageRate(),
+          fc.isLoungeAccess(),
+          fc.isSeatSelection(),
+          fc.getMealType(),
+          fc.isWifiIncluded(),
+          fc.isFastTrackSecurity());
+    }
+  }
 
   public record PageInfo(String nextCursor, boolean hasMore, int limit) {}
 }

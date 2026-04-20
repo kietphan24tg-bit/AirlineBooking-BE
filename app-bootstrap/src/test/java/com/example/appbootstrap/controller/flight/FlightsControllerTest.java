@@ -84,7 +84,25 @@ class FlightsControllerTest {
                                 new BigDecimal("300000"),
                                 20,
                                 "APPLIED",
-                                "Promo applied successfully")))),
+                                "Promo applied successfully",
+                                new FlightSearchResult.FareClassBenefitsView(
+                                    1L,
+                                    "Economy",
+                                    "ECONOMY",
+                                    20,
+                                    7,
+                                    new BigDecimal("300000"),
+                                    new BigDecimal("700000"),
+                                    false,
+                                    true,
+                                    false,
+                                    false,
+                                    new BigDecimal("1.00"),
+                                    false,
+                                    true,
+                                    "STANDARD",
+                                    false,
+                                    false))))),
                 List.of(),
                 new FlightSearchResult.PageInfo("nextOutbound", true, 20),
                 new FlightSearchResult.PageInfo(null, false, 20),
@@ -123,6 +141,16 @@ class FlightsControllerTest {
     assertEquals(new BigDecimal("1200000"), response.outboundPriceRange().maxPrice());
     assertEquals("VND", response.outboundPriceRange().currency());
     assertNull(response.inboundPriceRange());
+    assertEquals("STANDARD", response.outbound().getFirst().fares().getFirst().fareClassBenefits().mealType());
+    assertEquals(
+        false, response.outbound().getFirst().fares().getFirst().fareClassBenefits().loungeAccess());
+    assertEquals(
+        true, response.outbound().getFirst().fares().getFirst().fareClassBenefits().seatSelection());
+    assertEquals(
+        false, response.outbound().getFirst().fares().getFirst().fareClassBenefits().wifiIncluded());
+    assertEquals(
+        false,
+        response.outbound().getFirst().fares().getFirst().fareClassBenefits().fastTrackSecurity());
     verify(userRecentAirportService, never()).recordSearch(any(), any(), any());
   }
 
