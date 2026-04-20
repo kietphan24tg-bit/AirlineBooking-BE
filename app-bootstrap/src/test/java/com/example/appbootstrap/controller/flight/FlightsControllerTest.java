@@ -142,7 +142,8 @@ class FlightsControllerTest {
     assertEquals("VND", response.outboundPriceRange().currency());
     assertNull(response.inboundPriceRange());
     assertEquals(
-        "STANDARD", response.outbound().getFirst().fares().getFirst().fareClassBenefits().mealType());
+        "STANDARD",
+        response.outbound().getFirst().fares().getFirst().fareClassBenefits().mealType());
     assertEquals(
         false,
         response.outbound().getFirst().fares().getFirst().fareClassBenefits().loungeAccess());
