@@ -39,6 +39,9 @@ logging:
     org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
 
 app:
+  flyway:
+    # Reconcile checksums when scripts were changed after apply (avoids deploy failure on Render).
+    repair-before-migrate: ${APP_FLYWAY_REPAIR_BEFORE_MIGRATE:true}
   logging:
     json-enabled: ${APP_LOG_JSON_ENABLED:true}
 
