@@ -11,7 +11,8 @@ spring:
             timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
 
 server:
-    port: ${SERVER_PORT:8080}
+    # Render/Heroku set PORT; local tooling often uses SERVER_PORT.
+    port: ${PORT:${SERVER_PORT:8080}}
     forward-headers-strategy: framework
 
 springdoc:
