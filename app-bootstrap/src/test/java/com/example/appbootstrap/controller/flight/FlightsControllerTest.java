@@ -141,13 +141,17 @@ class FlightsControllerTest {
     assertEquals(new BigDecimal("1200000"), response.outboundPriceRange().maxPrice());
     assertEquals("VND", response.outboundPriceRange().currency());
     assertNull(response.inboundPriceRange());
-    assertEquals("STANDARD", response.outbound().getFirst().fares().getFirst().fareClassBenefits().mealType());
     assertEquals(
-        false, response.outbound().getFirst().fares().getFirst().fareClassBenefits().loungeAccess());
+        "STANDARD", response.outbound().getFirst().fares().getFirst().fareClassBenefits().mealType());
     assertEquals(
-        true, response.outbound().getFirst().fares().getFirst().fareClassBenefits().seatSelection());
+        false,
+        response.outbound().getFirst().fares().getFirst().fareClassBenefits().loungeAccess());
     assertEquals(
-        false, response.outbound().getFirst().fares().getFirst().fareClassBenefits().wifiIncluded());
+        true,
+        response.outbound().getFirst().fares().getFirst().fareClassBenefits().seatSelection());
+    assertEquals(
+        false,
+        response.outbound().getFirst().fares().getFirst().fareClassBenefits().wifiIncluded());
     assertEquals(
         false,
         response.outbound().getFirst().fares().getFirst().fareClassBenefits().fastTrackSecurity());
