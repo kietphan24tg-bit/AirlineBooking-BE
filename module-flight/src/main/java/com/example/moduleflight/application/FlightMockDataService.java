@@ -1,4 +1,5 @@
 package com.example.moduleflight.application;
+
 import com.example.moduleflight.config.FlightMockDataProperties;
 import com.example.moduleflight.domain.FlightSource;
 import com.example.moduleflight.entity.AircraftEntity;
@@ -97,19 +98,23 @@ public class FlightMockDataService {
     List<AirportEntity> airportPool = loadAirportPool();
 
     if (aircraftPool.isEmpty()) {
-      throw new IllegalStateException("Flight mock reseed requires at least one aircraft with layout.");
+      throw new IllegalStateException(
+          "Flight mock reseed requires at least one aircraft with layout.");
     }
     if (airlinePool.isEmpty()) {
-      throw new IllegalStateException("Flight mock reseed requires at least one global airline candidate.");
+      throw new IllegalStateException(
+          "Flight mock reseed requires at least one global airline candidate.");
     }
     if (airportPool.size() < 2) {
-      throw new IllegalStateException("Flight mock reseed requires at least two airport candidates.");
+      throw new IllegalStateException(
+          "Flight mock reseed requires at least two airport candidates.");
     }
 
     long currentFlights = flightRepository.count();
     int targetFlightCount = resolveTargetFlightCount(aircraftPool.size());
     LOG.info(
-        "Flight mock reseed started: currentFlights={}, targetFlights={}, aircraftWithLayout={}, airlineCandidates={}, airportCandidates={}",
+        "Flight mock reseed started: currentFlights={}, targetFlights={}, aircraftWithLayout={}, "
+            + "airlineCandidates={}, airportCandidates={}",
         currentFlights,
         targetFlightCount,
         aircraftPool.size(),
@@ -128,7 +133,8 @@ public class FlightMockDataService {
       flightSeatGenerationService.generateForFlight(flight);
       flightFareGenerationService.generateFaresForFlight(flight);
       processedFlights++;
-      if (processedFlights % PROGRESS_LOG_INTERVAL == 0 || processedFlights == savedFlights.size()) {
+      if (processedFlights % PROGRESS_LOG_INTERVAL == 0
+          || processedFlights == savedFlights.size()) {
         LOG.info(
             "Flight mock reseed progress: processedFlights={}, totalFlights={}",
             processedFlights,
@@ -164,16 +170,18 @@ public class FlightMockDataService {
     Set<String> excludedCodes = parseUppercaseCsv(properties.excludedAirlineCodes());
     Set<String> excludedCountryCodes = parseUppercaseCsv(properties.excludedAirlineCountryCodes());
     return airlineRepository.findAll().stream()
-        .filter(airline -> airline != null && AIRLINE_IATA_PATTERN.matcher(normalizeText(airline.getCode())).matches())
-        .filter(airline -> !excludedCodes.contains(normalizeText(airline.getCode())))
         .filter(
             airline ->
-                !excludedCountryCodes.contains(normalizeText(airline.getCountryCode())))
+                airline != null
+                    && AIRLINE_IATA_PATTERN.matcher(normalizeText(airline.getCode())).matches())
+        .filter(airline -> !excludedCodes.contains(normalizeText(airline.getCode())))
+        .filter(airline -> !excludedCountryCodes.contains(normalizeText(airline.getCountryCode())))
         .sorted(
             java.util.Comparator.comparing(
                     (AirlineEntity airline) -> normalizeText(airline.getCountryCode()),
                     String::compareToIgnoreCase)
-                .thenComparing(airline -> normalizeText(airline.getCode()), String::compareToIgnoreCase))
+                .thenComparing(
+                    airline -> normalizeText(airline.getCode()), String::compareToIgnoreCase))
         .collect(Collectors.toList());
   }
 
@@ -187,14 +195,15 @@ public class FlightMockDataService {
                         && AIRPORT_IATA_PATTERN.matcher(normalizeText(airport.getCode())).matches())
             .filter(airport -> StringUtils.hasText(airport.getTimeZone()))
             .filter(
-                airport ->
-                    !excludedCountryCodes.contains(normalizeText(airport.getCountryCode())))
+                airport -> !excludedCountryCodes.contains(normalizeText(airport.getCountryCode())))
             .sorted(
                 java.util.Comparator.comparing(
                         (AirportEntity airport) -> normalizeText(airport.getCountryCode()),
                         String::compareToIgnoreCase)
-                    .thenComparing(airport -> normalizeText(airport.getCity()), String::compareToIgnoreCase)
-                    .thenComparing(airport -> normalizeText(airport.getCode()), String::compareToIgnoreCase))
+                    .thenComparing(
+                        airport -> normalizeText(airport.getCity()), String::compareToIgnoreCase)
+                    .thenComparing(
+                        airport -> normalizeText(airport.getCode()), String::compareToIgnoreCase))
             .collect(Collectors.toList());
 
     Map<String, Integer> pickedPerCountry = new LinkedHashMap<>();
@@ -238,7 +247,8 @@ public class FlightMockDataService {
       AirlineEntity airline = airlinePool.get(index % airlinePool.size());
       AirportEntity departureAirport = airportPool.get(index % airportPool.size());
       AirportEntity arrivalAirport =
-          selectArrivalAirport(airportPool, (index + arrivalOffset) % airportPool.size(), departureAirport);
+          selectArrivalAirport(
+              airportPool, (index + arrivalOffset) % airportPool.size(), departureAirport);
 
       LocalDate flightDate = startDate.plusDays(index % daySpan);
       int departureHour = 6 + (index % 12);
@@ -247,15 +257,15 @@ public class FlightMockDataService {
       int durationMinutes = (index % 3) * 20;
 
       OffsetDateTime departureTime =
-          departureOffsetDateTime(departureAirport, flightDate, LocalTime.of(departureHour, departureMinute));
+          departureOffsetDateTime(
+              departureAirport, flightDate, LocalTime.of(departureHour, departureMinute));
       OffsetDateTime arrivalTime =
           arrivalOffsetDateTime(arrivalAirport, departureTime, durationHours, durationMinutes);
 
       FlightEntity flight = new FlightEntity();
       flight.setAirline(airline);
       flight.setFlightNumber(
-          normalizeText(airline.getCode())
-              + String.format(Locale.ROOT, "%05d", 10000 + index));
+          normalizeText(airline.getCode()) + String.format(Locale.ROOT, "%05d", 10000 + index));
       flight.setFlightDate(flightDate);
       flight.setAircraft(aircraft);
       flight.setDepartureAirport(departureAirport);
@@ -293,7 +303,8 @@ public class FlightMockDataService {
         return candidate;
       }
     }
-    throw new IllegalStateException("Flight mock reseed could not select a distinct arrival airport.");
+    throw new IllegalStateException(
+        "Flight mock reseed could not select a distinct arrival airport.");
   }
 
   private OffsetDateTime departureOffsetDateTime(
@@ -367,11 +378,7 @@ public class FlightMockDataService {
       return "none";
     }
     return rows.stream()
-        .map(
-            row ->
-                String.valueOf(row.get("key"))
-                    + "="
-                    + String.valueOf(row.get("total")))
+        .map(row -> String.valueOf(row.get("key")) + "=" + String.valueOf(row.get("total")))
         .collect(Collectors.joining(", "));
   }
 

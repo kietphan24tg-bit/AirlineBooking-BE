@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
- * Maps ICAO type designators (e.g. B738, A21N) to internal {@link AircraftEntity} rows when
- * {@code aircraft_icao_mappings} has no exact row.
+ * Maps ICAO type designators (e.g. B738, A21N) to internal {@link AircraftEntity} rows when {@code
+ * aircraft_icao_mappings} has no exact row.
  */
 @Service
 public class AircraftIcaoFallbackService {

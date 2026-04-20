@@ -4,6 +4,4 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.flight-maintenance")
 public record FlightMaintenanceProperties(
-    String cron,
-    boolean runOnStartup,
-    boolean cleanupEnabled) {}
+    String cron, boolean runOnStartup, boolean cleanupEnabled) {}

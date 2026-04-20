@@ -28,6 +28,7 @@ import org.springframework.util.StringUtils;
 public class FlightSeatGenerationService {
 
   private static final Logger LOG = LoggerFactory.getLogger(FlightSeatGenerationService.class);
+
   /** Smaller batches reduce lock time and avoid remote DB statement timeouts on large cabins. */
   private static final int FLIGHT_SEAT_UPSERT_BATCH_SIZE = 300;
 

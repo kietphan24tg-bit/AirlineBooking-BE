@@ -110,7 +110,8 @@ public class FlightSearchFallbackService {
     List<AircraftEntity> aircraftPool = loadAircraftPool();
     List<AirlineEntity> airlinePool = loadAirlinePool();
     if (aircraftPool.isEmpty() || airlinePool.isEmpty()) {
-      LOG.warn("Flight search fallback skipped: need aircraft with layout and at least one airline.");
+      LOG.warn(
+          "Flight search fallback skipped: need aircraft with layout and at least one airline.");
       return false;
     }
 
@@ -168,7 +169,11 @@ public class FlightSearchFallbackService {
       return true;
     }
 
-    LOG.warn("Flight search fallback: could not allocate a unique flight number for {} {} on {}", from, to, flightDate);
+    LOG.warn(
+        "Flight search fallback: could not allocate a unique flight number for {} {} on {}",
+        from,
+        to,
+        flightDate);
     return false;
   }
 
@@ -210,7 +215,8 @@ public class FlightSearchFallbackService {
     var excludedCodes = parseCsvUpper(coverageProperties.excludedAirlineCodes());
     var excludedCountries = parseCsvUpper(coverageProperties.excludedAirlineCountryCodes());
     return airlineRepository.findAll().stream()
-        .filter(a -> a != null && AIRLINE_IATA_PATTERN.matcher(normalizeText(a.getCode())).matches())
+        .filter(
+            a -> a != null && AIRLINE_IATA_PATTERN.matcher(normalizeText(a.getCode())).matches())
         .filter(a -> !excludedCodes.contains(normalizeText(a.getCode())))
         .filter(a -> !excludedCountries.contains(normalizeText(a.getCountryCode())))
         .sorted(

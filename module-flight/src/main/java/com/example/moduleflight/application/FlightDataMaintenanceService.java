@@ -35,7 +35,9 @@ public class FlightDataMaintenanceService {
     this.flightMockDataProperties = flightMockDataProperties;
   }
 
-  /** One maintenance cycle: optional cleanup, then optional coverage (cleanup first frees old rows). */
+  /**
+   * One maintenance cycle: optional cleanup, then optional coverage (cleanup first frees old rows).
+   */
   public void runScheduledMaintenance() {
     if (flightMockDataProperties.enabled()) {
       LOG.debug("Flight maintenance: coverage skipped because flight-mock is enabled.");

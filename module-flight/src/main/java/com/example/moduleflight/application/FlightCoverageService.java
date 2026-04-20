@@ -141,7 +141,8 @@ public class FlightCoverageService {
 
           OffsetDateTime departureTime =
               departureAt(dep, flightDate, LocalTime.of(departureHour, departureMinute));
-          OffsetDateTime arrivalTime = arrivalAt(arr, departureTime, durationHours, durationMinutes);
+          OffsetDateTime arrivalTime =
+              arrivalAt(arr, departureTime, durationHours, durationMinutes);
 
           FlightEntity flight = new FlightEntity();
           flight.setAirline(airline);
@@ -202,7 +203,8 @@ public class FlightCoverageService {
     var excludedCodes = parseCsvUpper(properties.excludedAirlineCodes());
     var excludedCountries = parseCsvUpper(properties.excludedAirlineCountryCodes());
     return airlineRepository.findAll().stream()
-        .filter(a -> a != null && AIRLINE_IATA_PATTERN.matcher(normalizeText(a.getCode())).matches())
+        .filter(
+            a -> a != null && AIRLINE_IATA_PATTERN.matcher(normalizeText(a.getCode())).matches())
         .filter(a -> !excludedCodes.contains(normalizeText(a.getCode())))
         .filter(a -> !excludedCountries.contains(normalizeText(a.getCountryCode())))
         .sorted(
@@ -220,7 +222,8 @@ public class FlightCoverageService {
     var excludedCountries = parseCsvUpper(properties.excludedAirportCountryCodes());
     Map<Long, AirportEntity> byId = new LinkedHashMap<>();
     for (String countryCode : includedCountries) {
-      for (AirportEntity ap : airportRepository.findByCountryCodeIgnoreCaseOrderByCityNameCode(countryCode)) {
+      for (AirportEntity ap :
+          airportRepository.findByCountryCodeIgnoreCaseOrderByCityNameCode(countryCode)) {
         if (ap == null
             || !AIRPORT_IATA_PATTERN.matcher(normalizeText(ap.getCode())).matches()
             || !StringUtils.hasText(ap.getTimeZone())) {

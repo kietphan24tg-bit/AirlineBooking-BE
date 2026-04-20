@@ -231,7 +231,8 @@ public class FlightImportService {
       }
       candidates.add(candidate.candidate());
     }
-    return new TransformResult(candidates, skipDiagnostics.total(), skipDiagnostics, aircraftDiagnostics);
+    return new TransformResult(
+        candidates, skipDiagnostics.total(), skipDiagnostics, aircraftDiagnostics);
   }
 
   private CandidateResult toCandidate(

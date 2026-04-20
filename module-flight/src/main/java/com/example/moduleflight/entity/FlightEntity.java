@@ -1,5 +1,6 @@
 package com.example.moduleflight.entity;
 
+import com.example.moduleflight.domain.FlightSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -10,7 +11,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import com.example.moduleflight.domain.FlightSource;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
