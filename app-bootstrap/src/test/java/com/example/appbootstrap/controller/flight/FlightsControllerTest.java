@@ -21,6 +21,7 @@ import com.example.moduleflight.application.FlightConnectionFilter;
 import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
 import com.example.moduleflight.application.FlightSearchResult;
+import com.example.moduleflight.application.FlightSortBy;
 import com.example.moduleflight.application.TimeOfDayBucket;
 import com.example.moduleflight.application.UserRecentAirportService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -79,6 +80,7 @@ class FlightsControllerTest {
                                 "ECONOMY",
                                 "ECONOMY",
                                 "AVAILABLE",
+                                true,
                                 new BigDecimal("1500000"),
                                 new BigDecimal("1200000"),
                                 new BigDecimal("300000"),
@@ -131,11 +133,13 @@ class FlightsControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null));
 
     assertEquals(1, response.outbound().size());
     assertEquals("VN123", response.outbound().getFirst().flightNumber());
     assertEquals("APPLIED", response.outbound().getFirst().fares().getFirst().promoStatus());
+    assertEquals(true, response.outbound().getFirst().fares().getFirst().selectable());
     assertEquals(true, response.outboundPageInfo().hasMore());
     assertEquals(new BigDecimal("1200000"), response.outboundPriceRange().minPrice());
     assertEquals(new BigDecimal("1200000"), response.outboundPriceRange().maxPrice());
@@ -220,7 +224,8 @@ class FlightsControllerTest {
             new BigDecimal("2000000"),
             "MORNING",
             "EVENING",
-            "DIRECT_ONLY"));
+            "DIRECT_ONLY",
+            "CHEAPEST"));
 
     ArgumentCaptor<FlightSearchQuery> captor = ArgumentCaptor.forClass(FlightSearchQuery.class);
     verify(flightSearchFacadeService).search(captor.capture());
@@ -230,6 +235,47 @@ class FlightsControllerTest {
     assertEquals(TimeOfDayBucket.MORNING, q.departureTimeBucket());
     assertEquals(TimeOfDayBucket.EVENING, q.arrivalTimeBucket());
     assertEquals(FlightConnectionFilter.DIRECT_ONLY, q.connectionFilter());
+    assertEquals(FlightSortBy.CHEAPEST, q.sortBy());
+  }
+
+  @Test
+  void searchFlights_defaultsSortByToRecommended() {
+    when(flightSearchFacadeService.search(any()))
+        .thenReturn(
+            new FlightSearchResult(
+                List.of(),
+                List.of(),
+                new FlightSearchResult.PageInfo(null, false, 20),
+                new FlightSearchResult.PageInfo(null, false, 20),
+                null,
+                null));
+
+    controller.searchFlights(
+        null,
+        new FlightSearchQueryRequest(
+            "ONE_WAY",
+            "SGN",
+            "HAN",
+            LocalDate.parse("2026-05-01"),
+            null,
+            1,
+            0,
+            0,
+            null,
+            null,
+            null,
+            null,
+            20,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null));
+
+    ArgumentCaptor<FlightSearchQuery> captor = ArgumentCaptor.forClass(FlightSearchQuery.class);
+    verify(flightSearchFacadeService).search(captor.capture());
+    assertEquals(FlightSortBy.RECOMMENDED, captor.getValue().sortBy());
   }
 
   @Test
@@ -260,6 +306,7 @@ class FlightsControllerTest {
             null,
             null,
             20,
+            null,
             null,
             null,
             null,
@@ -295,6 +342,7 @@ class FlightsControllerTest {
                         null,
                         null,
                         null,
+                        null,
                         null)));
 
     assertEquals("INVALID_CABIN_CLASS", exception.getCode());
@@ -325,6 +373,7 @@ class FlightsControllerTest {
                         null,
                         null,
                         "NIGHT",
+                        null,
                         null,
                         null)));
 
@@ -357,9 +406,42 @@ class FlightsControllerTest {
                         null,
                         null,
                         null,
-                        "NONSTOP")));
+                        "NONSTOP",
+                        null)));
 
     assertEquals("INVALID_CONNECTION_FILTER", exception.getCode());
+  }
+
+  @Test
+  void searchFlights_rejectsInvalidSortBy() {
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                controller.searchFlights(
+                    null,
+                    new FlightSearchQueryRequest(
+                        "ONE_WAY",
+                        "SGN",
+                        "HAN",
+                        LocalDate.parse("2026-05-01"),
+                        null,
+                        1,
+                        0,
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        20,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "BEST")));
+
+    assertEquals("INVALID_SORT_BY", exception.getCode());
   }
 
   @Test
@@ -383,6 +465,7 @@ class FlightsControllerTest {
               20,
               null,
               BigDecimal.ZERO,
+              null,
               null,
               null,
               null);
@@ -416,6 +499,7 @@ class FlightsControllerTest {
                         null,
                         null,
                         null,
+                        null,
                         null)));
 
     assertEquals("INVALID_ROUTE", exception.getCode());
@@ -443,6 +527,7 @@ class FlightsControllerTest {
                         null,
                         null,
                         20,
+                        null,
                         null,
                         null,
                         null,

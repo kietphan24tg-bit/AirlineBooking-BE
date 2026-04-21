@@ -87,21 +87,13 @@ class FlightSearchServiceTest {
                 new BigDecimal("1200000"),
                 new BigDecimal("300000"),
                 20));
-    when(flightRankingService.buildFareRankKey(any(), any(), any()))
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
         .thenReturn(
-            new FlightRankKey(
-                0,
-                new BigDecimal("1200000"),
-                OffsetDateTime.parse("2026-05-01T02:00:00Z"),
-                1001L,
-                1L))
+            recommendedKey(
+                0, new BigDecimal("1200000"), OffsetDateTime.parse("2026-05-01T02:00:00Z"), 1001L, 1L))
         .thenReturn(
-            new FlightRankKey(
-                0,
-                new BigDecimal("1200000"),
-                OffsetDateTime.parse("2026-05-01T02:00:00Z"),
-                1002L,
-                2L));
+            recommendedKey(
+                0, new BigDecimal("1200000"), OffsetDateTime.parse("2026-05-01T02:00:00Z"), 1002L, 2L));
     when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenReturn(
             new FlightPaginationService.PageResult<>(
@@ -119,7 +111,7 @@ class FlightSearchServiceTest {
                             OffsetDateTime.parse("2026-05-01T04:00:00Z"),
                             "VND",
                             List.of()),
-                        new FlightRankKey(
+                        recommendedKey(
                             0,
                             new BigDecimal("1200000"),
                             OffsetDateTime.parse("2026-05-01T02:00:00Z"),
@@ -144,7 +136,7 @@ class FlightSearchServiceTest {
                             OffsetDateTime.parse("2026-05-10T04:00:00Z"),
                             "VND",
                             List.of()),
-                        new FlightRankKey(
+                        recommendedKey(
                             0,
                             new BigDecimal("1200000"),
                             OffsetDateTime.parse("2026-05-10T02:00:00Z"),
@@ -174,7 +166,8 @@ class FlightSearchServiceTest {
                 null,
                 null,
                 null,
-                FlightConnectionFilter.ANY));
+                FlightConnectionFilter.ANY,
+                FlightSortBy.RECOMMENDED));
 
     assertEquals(1, result.outbound().size());
     assertEquals(1, result.inbound().size());
@@ -198,9 +191,9 @@ class FlightSearchServiceTest {
         .thenReturn(PromoPreview.notApplicable("n", new BigDecimal("1000000")))
         .thenReturn(PromoPreview.notApplicable("n", new BigDecimal("5000000")));
     OffsetDateTime dep = group.getFirst().getFlight().getDepartureTime();
-    when(flightRankingService.buildFareRankKey(any(), any(), any()))
-        .thenReturn(new FlightRankKey(2, new BigDecimal("1000000"), dep, 100L, 1L))
-        .thenReturn(new FlightRankKey(2, new BigDecimal("5000000"), dep, 100L, 2L));
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
+        .thenReturn(recommendedKey(2, new BigDecimal("1000000"), dep, 100L, 1L))
+        .thenReturn(recommendedKey(2, new BigDecimal("5000000"), dep, 100L, 2L));
     when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenAnswer(
             inv ->
@@ -235,9 +228,9 @@ class FlightSearchServiceTest {
                 new BigDecimal("2000000"),
                 new BigDecimal("1000000"),
                 33));
-    when(flightRankingService.buildFareRankKey(any(), any(), any()))
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
         .thenReturn(
-            new FlightRankKey(
+            recommendedKey(
                 0, new BigDecimal("2000000"), fare.getFlight().getDepartureTime(), 1001L, 1L));
     when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenAnswer(
@@ -248,13 +241,16 @@ class FlightSearchServiceTest {
     FlightSearchResult within =
         service.search(baseQueryBuilder().maxBudget(new BigDecimal("2500000")).build());
     assertEquals(1, within.outbound().size());
+    assertEquals(true, within.outbound().getFirst().fares().getFirst().selectable());
     assertEquals(
         new BigDecimal("2000000"),
         within.outbound().getFirst().fares().getFirst().discountedTotalPrice());
 
     FlightSearchResult excluded =
         service.search(baseQueryBuilder().maxBudget(new BigDecimal("1500000")).build());
-    assertEquals(0, excluded.outbound().size());
+    assertEquals(1, excluded.outbound().size());
+    assertEquals(1, excluded.outbound().getFirst().fares().size());
+    assertEquals(false, excluded.outbound().getFirst().fares().getFirst().selectable());
   }
 
   @Test
@@ -281,12 +277,12 @@ class FlightSearchServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), anyBoolean()))
         .thenReturn(PromoPreview.notApplicable("n", new BigDecimal("1000000")));
-    when(flightRankingService.buildFareRankKey(any(), any(), any()))
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
         .thenReturn(
-            new FlightRankKey(
+            recommendedKey(
                 2, new BigDecimal("1000000"), morning.getFlight().getDepartureTime(), 100L, 1L))
         .thenReturn(
-            new FlightRankKey(
+            recommendedKey(
                 2, new BigDecimal("1000000"), afternoon.getFlight().getDepartureTime(), 101L, 2L));
     when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenAnswer(
@@ -322,9 +318,9 @@ class FlightSearchServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), anyBoolean()))
         .thenReturn(PromoPreview.notApplicable("n", new BigDecimal("1000000")));
-    when(flightRankingService.buildFareRankKey(any(), any(), any()))
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
         .thenReturn(
-            new FlightRankKey(
+            recommendedKey(
                 2, new BigDecimal("1000000"), flight.getFlight().getDepartureTime(), 200L, 1L));
     when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenAnswer(
@@ -342,7 +338,7 @@ class FlightSearchServiceTest {
   }
 
   @Test
-  void search_combinedFilters_reduceRowsBeforePagination() {
+  void search_combinedFilters_keepFlightsButPreferSelectableFaresForPaginationOrder() {
     FlightFareEntity cheap = fare(1L, 301L, "V1", "AVAILABLE", "ECONOMY", "Vietnam");
     cheap.setTotalPrice(new BigDecimal("1000000"));
     FlightFareEntity expensive = fare(2L, 302L, "V2", "AVAILABLE", "ECONOMY", "Vietnam");
@@ -359,16 +355,12 @@ class FlightSearchServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), anyBoolean()))
         .thenReturn(PromoPreview.notApplicable("n", new BigDecimal("1000000")));
-    when(flightRankingService.buildFareRankKey(any(), any(), any()))
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
         .thenAnswer(
             inv -> {
-              FlightFareEntity f = inv.getArgument(0, FlightFareEntity.class);
-              return new FlightRankKey(
-                  2,
-                  f.getTotalPrice(),
-                  f.getFlight().getDepartureTime(),
-                  f.getFlight().getId(),
-                  f.getId());
+              FlightFareEntity f = inv.getArgument(1, FlightFareEntity.class);
+              return recommendedKey(
+                  2, f.getTotalPrice(), f.getFlight().getDepartureTime(), f.getFlight().getId(), f.getId());
             });
 
     FlightPaginationService realPagination = new FlightPaginationService();
@@ -397,14 +389,15 @@ class FlightSearchServiceTest {
             new BigDecimal("2000000"),
             null,
             null,
-            FlightConnectionFilter.ANY);
+            FlightConnectionFilter.ANY,
+            FlightSortBy.RECOMMENDED);
 
     service.search(query);
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<FlightSearchPageItem>> captor = ArgumentCaptor.forClass(List.class);
     verify(flightPaginationService).paginate(captor.capture(), eq(1), isNull());
-    assertEquals(2, captor.getValue().size());
+    assertEquals(3, captor.getValue().size());
     assertTrue(
         captor.getValue().getFirst().rankKey().compareTo(captor.getValue().get(1).rankKey()) < 0);
   }
@@ -418,6 +411,7 @@ class FlightSearchServiceTest {
     private BigDecimal maxBudget;
     private TimeOfDayBucket departureTimeBucket;
     private TimeOfDayBucket arrivalTimeBucket;
+    private FlightSortBy sortBy = FlightSortBy.RECOMMENDED;
 
     FlightSearchQueryBuilder cabinClasses(Set<CabinClass> cabinClasses) {
       this.cabinClasses = cabinClasses;
@@ -436,6 +430,11 @@ class FlightSearchServiceTest {
 
     FlightSearchQueryBuilder arrivalTimeBucket(TimeOfDayBucket arrivalTimeBucket) {
       this.arrivalTimeBucket = arrivalTimeBucket;
+      return this;
+    }
+
+    FlightSearchQueryBuilder sortBy(FlightSortBy sortBy) {
+      this.sortBy = sortBy;
       return this;
     }
 
@@ -458,8 +457,15 @@ class FlightSearchServiceTest {
           maxBudget,
           departureTimeBucket,
           arrivalTimeBucket,
-          FlightConnectionFilter.ANY);
+          FlightConnectionFilter.ANY,
+          sortBy);
     }
+  }
+
+  private static FlightRankKey recommendedKey(
+      int promoRank, BigDecimal effectivePrice, OffsetDateTime departure, long flightId, long fareId) {
+    return new FlightRankKey(
+        FlightSortBy.RECOMMENDED, BigDecimal.valueOf(promoRank), effectivePrice, null, departure, flightId, fareId);
   }
 
   private static List<FlightFareEntity> economyAndBusinessOnSameFlight() {

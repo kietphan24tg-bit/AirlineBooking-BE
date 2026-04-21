@@ -24,10 +24,22 @@ class FlightPaginationServiceTest {
   void paginate_supportsVersionedCursorV1() {
     FlightRankKey key1 =
         new FlightRankKey(
-            0, new BigDecimal("100"), OffsetDateTime.parse("2026-05-01T00:00:00Z"), 1L, 1L);
+            FlightSortBy.RECOMMENDED,
+            BigDecimal.ZERO,
+            new BigDecimal("100"),
+            null,
+            OffsetDateTime.parse("2026-05-01T00:00:00Z"),
+            1L,
+            1L);
     FlightRankKey key2 =
         new FlightRankKey(
-            0, new BigDecimal("200"), OffsetDateTime.parse("2026-05-01T01:00:00Z"), 2L, 2L);
+            FlightSortBy.RECOMMENDED,
+            BigDecimal.ZERO,
+            new BigDecimal("200"),
+            null,
+            OffsetDateTime.parse("2026-05-01T01:00:00Z"),
+            2L,
+            2L);
     var firstPage =
         service.paginate(List.of(new RankedItem("A", key1), new RankedItem("B", key2)), 1, null);
     assertEquals(1, firstPage.items().size());
@@ -41,6 +53,76 @@ class FlightPaginationServiceTest {
             firstPage.nextCursor());
     assertEquals(1, secondPage.items().size());
     assertEquals("B", secondPage.items().getFirst().name());
+  }
+
+  @Test
+  void paginate_resetsToFirstPageWhenCursorNoLongerMatchesCurrentResultSet() {
+    FlightRankKey key1 =
+        new FlightRankKey(
+            FlightSortBy.RECOMMENDED,
+            BigDecimal.ZERO,
+            new BigDecimal("100"),
+            null,
+            OffsetDateTime.parse("2026-05-01T00:00:00Z"),
+            1L,
+            1L);
+    FlightRankKey key2 =
+        new FlightRankKey(
+            FlightSortBy.RECOMMENDED,
+            BigDecimal.ZERO,
+            new BigDecimal("200"),
+            null,
+            OffsetDateTime.parse("2026-05-01T01:00:00Z"),
+            2L,
+            2L);
+    FlightRankKey staleKey =
+        new FlightRankKey(
+            FlightSortBy.RECOMMENDED,
+            BigDecimal.ZERO,
+            new BigDecimal("900"),
+            null,
+            OffsetDateTime.parse("2026-05-01T09:00:00Z"),
+            9L,
+            9L);
+
+    var page =
+        service.paginate(
+            List.of(new RankedItem("A", key1), new RankedItem("B", key2)),
+            1,
+            service.encodeCursor(staleKey));
+
+    assertEquals(1, page.items().size());
+    assertEquals("A", page.items().getFirst().name());
+    assertNotNull(page.nextCursor());
+  }
+
+  @Test
+  void paginate_resetsToFirstPageWhenCursorUsesDifferentSortMode() {
+    FlightRankKey recommendedKey =
+        new FlightRankKey(
+            FlightSortBy.RECOMMENDED,
+            BigDecimal.ZERO,
+            new BigDecimal("100"),
+            null,
+            OffsetDateTime.parse("2026-05-01T00:00:00Z"),
+            1L,
+            1L);
+    FlightRankKey cheapestCursor =
+        new FlightRankKey(
+            FlightSortBy.CHEAPEST,
+            new BigDecimal("10"),
+            null,
+            null,
+            OffsetDateTime.parse("2026-05-01T00:00:00Z"),
+            2L,
+            2L);
+
+    var page =
+        service.paginate(
+            List.of(new RankedItem("A", recommendedKey)), 1, service.encodeCursor(cheapestCursor));
+
+    assertEquals(1, page.items().size());
+    assertEquals("A", page.items().getFirst().name());
   }
 
   @Test

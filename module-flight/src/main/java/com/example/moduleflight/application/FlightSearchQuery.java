@@ -22,4 +22,5 @@ public record FlightSearchQuery(
     BigDecimal maxBudget,
     TimeOfDayBucket departureTimeBucket,
     TimeOfDayBucket arrivalTimeBucket,
-    FlightConnectionFilter connectionFilter) {}
+    FlightConnectionFilter connectionFilter,
+    FlightSortBy sortBy) {}

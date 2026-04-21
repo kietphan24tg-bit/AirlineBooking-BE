@@ -75,6 +75,7 @@ public record FlightSearchResult(
       String fareCode,
       String cabinClass,
       String fareStatus,
+      boolean selectable,
       BigDecimal originalTotalPrice,
       BigDecimal discountedTotalPrice,
       BigDecimal discountAmount,

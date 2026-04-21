@@ -56,7 +56,12 @@ public record FlightSearchQueryRequest(
     @Schema(
             description = "ANY (default) or DIRECT_ONLY — single-leg flights only for now.",
             example = "ANY")
-        String connectionFilter) {
+        String connectionFilter,
+    @Schema(
+            description =
+                "RECOMMENDED (default), CHEAPEST, FASTEST, or BEST_EXPERIENCE for sorting returned flights.",
+            example = "CHEAPEST")
+        String sortBy) {
   public int effectiveLimit() {
     return limit == null ? 20 : limit;
   }

@@ -138,6 +138,7 @@ public class FlightSearchFacadeService {
                 fare.getFareClass().getCode(),
                 fare.getFareClass().getCabinClass(),
                 normalizeFareStatus(fare.getStatus()),
+                isFareSelectable(query, preview, originalTotalPrice),
                 originalTotalPrice,
                 "APPLIED".equals(preview.status()) ? preview.discountedPrice() : null,
                 "APPLIED".equals(preview.status()) ? preview.discountAmount() : BigDecimal.ZERO,
@@ -148,7 +149,8 @@ public class FlightSearchFacadeService {
         rankedFareOptions.add(
             new RankedFareOption(
                 fareOption,
-                flightRankingService.buildFareRankKey(fare, preview, originalTotalPrice)));
+                flightRankingService.buildFareRankKey(
+                    query.sortBy(), fare, preview, originalTotalPrice)));
       }
 
       rankedFareOptions = applyFareFilters(rankedFareOptions, query);
@@ -163,7 +165,14 @@ public class FlightSearchFacadeService {
         continue;
       }
 
+      List<RankedFareOption> selectableFareOptions =
+          rankedFareOptions.stream().filter(option -> option.view().selectable()).toList();
+      List<RankedFareOption> representativeFareOptions =
+          selectableFareOptions.isEmpty() ? rankedFareOptions : selectableFareOptions;
+
       rankedFareOptions.sort(Comparator.comparing(RankedFareOption::rankKey));
+      RankedFareOption representativeFare =
+          representativeFareOptions.stream().min(Comparator.comparing(RankedFareOption::rankKey)).orElseThrow();
 
       FlightSearchResult.FlightOptionView flightOption =
           new FlightSearchResult.FlightOptionView(
@@ -178,7 +187,7 @@ public class FlightSearchFacadeService {
               firstFare.getFlight().getArrivalTime(),
               currency,
               rankedFareOptions.stream().map(RankedFareOption::view).toList());
-      rankedOptions.add(new RankedFlightRow(flightOption, rankedFareOptions.getFirst().rankKey()));
+      rankedOptions.add(new RankedFlightRow(flightOption, representativeFare.rankKey()));
     }
 
     PageResult<? extends FlightSearchPageItem> page =
@@ -203,11 +212,22 @@ public class FlightSearchFacadeService {
             }
           });
     }
-    if (query.maxBudget() != null) {
-      BigDecimal max = query.maxBudget();
-      out.removeIf(o -> effectiveFarePrice(o.view()).compareTo(max) > 0);
-    }
     return out;
+  }
+
+  private boolean isFareSelectable(
+      FlightSearchQuery query, PromoPreview preview, BigDecimal originalTotalPrice) {
+    if (query.maxBudget() == null) {
+      return true;
+    }
+    BigDecimal effectivePrice =
+        preview != null && preview.discountedPrice() != null
+            ? preview.discountedPrice()
+            : originalTotalPrice;
+    if (effectivePrice == null) {
+      return false;
+    }
+    return effectivePrice.compareTo(query.maxBudget()) <= 0;
   }
 
   private static BigDecimal effectiveFarePrice(FlightSearchResult.FareOptionView fare) {

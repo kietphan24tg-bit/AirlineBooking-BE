@@ -10,6 +10,7 @@ import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FlightConnectionFilter;
 import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
+import com.example.moduleflight.application.FlightSortBy;
 import com.example.moduleflight.application.FlightSearchTripType;
 import com.example.moduleflight.application.TimeOfDayBucket;
 import com.example.moduleflight.application.UserRecentAirportService;
@@ -88,7 +89,8 @@ public class FlightsController {
             request.maxBudget(),
             parseTimeBucket(request.departureTimeBucket()),
             parseTimeBucket(request.arrivalTimeBucket()),
-            parseConnectionFilter(request.connectionFilter()));
+            parseConnectionFilter(request.connectionFilter()),
+            parseSortBy(request.sortBy()));
     FlightSearchResponse response =
         FlightSearchResponse.from(flightSearchFacadeService.search(query));
     if (principal != null) {
@@ -214,6 +216,20 @@ public class FlightsController {
     } catch (IllegalArgumentException ex) {
       throw new AppException(
           "INVALID_CONNECTION_FILTER", "connectionFilter must be ANY or DIRECT_ONLY", 400);
+    }
+  }
+
+  private FlightSortBy parseSortBy(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return FlightSortBy.RECOMMENDED;
+    }
+    try {
+      return FlightSortBy.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ex) {
+      throw new AppException(
+          "INVALID_SORT_BY",
+          "sortBy must be RECOMMENDED, CHEAPEST, FASTEST, or BEST_EXPERIENCE",
+          400);
     }
   }
 }
