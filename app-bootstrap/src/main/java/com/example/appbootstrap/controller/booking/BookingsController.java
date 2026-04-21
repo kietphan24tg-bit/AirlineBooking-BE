@@ -35,7 +35,9 @@ public class BookingsController {
   @Operation(
       summary = "Create booking with revalidate session",
       description =
-          "Consumes an active revalidateId, checks fare version and seat availability again, then creates booking.")
+          "Consumes an active revalidateId, validates passenger ages against flightDate, "
+              + "checks fare version and seat availability again, then reserves seats "
+              + "for adults and children while infants remain without seats.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Booking created", content = @Content),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),

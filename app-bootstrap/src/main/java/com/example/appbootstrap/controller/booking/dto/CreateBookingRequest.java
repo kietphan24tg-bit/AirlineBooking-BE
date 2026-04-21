@@ -1,5 +1,6 @@
 package com.example.appbootstrap.controller.booking.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -9,7 +10,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record CreateBookingRequest(
-    @NotBlank(message = "revalidateId is required") String revalidateId,
+    @Schema(
+            description = "Active revalidateId returned by /api/flights/revalidate-fare.",
+            example = "RV_ABC123DEF456")
+        @NotBlank(message = "revalidateId is required") String revalidateId,
     @NotBlank(message = "idempotencyKey is required") String idempotencyKey,
     @NotNull(message = "passengerSummary is required") @Valid PassengerSummaryRequest passengerSummary,
     @NotEmpty(message = "contacts is required") List<@Valid BookingContactRequest> contacts,
@@ -26,7 +30,10 @@ public record CreateBookingRequest(
       @NotNull(message = "dateOfBirth is required") LocalDate dateOfBirth,
       @NotBlank(message = "gender is required") String gender,
       @NotBlank(message = "nationality is required") String nationality,
-      @NotBlank(message = "passengerType is required") String passengerType,
+      @Schema(
+              description =
+                  "Passenger type. Must match age on flightDate: ADULT >= 12, CHILD = 2-11, INFANT < 2.")
+          @NotBlank(message = "passengerType is required") String passengerType,
       @NotBlank(message = "identifyType is required") String identifyType,
       @NotBlank(message = "identifyNumber is required") String identifyNumber,
       LocalDate expiryDate) {}

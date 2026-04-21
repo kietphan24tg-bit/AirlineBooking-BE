@@ -1,10 +1,12 @@
 package com.example.appbootstrap.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +14,7 @@ import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
+import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.PassengerEntity;
@@ -86,54 +89,8 @@ class BookingRevalidateServiceTest {
 
   @Test
   void createBooking_savesContactsPassengersAndReturnsFullSummary() {
-    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
-    when(flightSeatRepository.countAvailableSeats(11L, 5L)).thenReturn(1L);
-    when(flightPricingService.calculateTotalPrice(new BigDecimal("1500000.00"), 1, 0, 0))
-        .thenReturn(new BigDecimal("1500000.00"));
-    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
-    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
-    when(promotionPreviewService.preview(null, new BigDecimal("1500000.00"), "VND", "VN", true))
-        .thenReturn(
-            PromotionPreviewService.PromoPreview.notApplicable(
-                "No promo code provided", new BigDecimal("1500000.00")));
-
-    var revalidated =
-        service.revalidate(
-            new RevalidateFareRequest(11L, 101L, null, new PassengerSummaryRequest(1, 0, 0)));
-    ArgumentCaptor<String> snapshotCaptor = ArgumentCaptor.forClass(String.class);
-    verify(valueOperations)
-        .set(eq("revalidate:" + revalidated.revalidateId()), snapshotCaptor.capture(), any());
-    when(valueOperations.get("revalidate:" + revalidated.revalidateId()))
-        .thenReturn(snapshotCaptor.getValue());
-    when(valueOperations.setIfAbsent(eq("idem:booking:idem-1"), any(), any())).thenReturn(true);
-
-    UserEntity user = new UserEntity();
-    user.setId(7L);
-    when(userRepository.findById(7L)).thenReturn(Optional.of(user));
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class)))
-        .thenAnswer(
-            invocation -> {
-              BookingEntity booking = invocation.getArgument(0, BookingEntity.class);
-              booking.setId(123L);
-              return booking;
-            });
-    when(bookingContactRepository.saveAll(any()))
-        .thenAnswer(
-            invocation -> {
-              List<BookingContactEntity> contacts = invocation.getArgument(0);
-              contacts.getFirst().setId(1L);
-              return contacts;
-            });
-    when(passengerRepository.saveAll(any()))
-        .thenAnswer(
-            invocation -> {
-              List<PassengerEntity> passengers = invocation.getArgument(0);
-              passengers.getFirst().setId(10L);
-              return passengers;
-            });
-    when(flightSeatRepository.reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any()))
-        .thenReturn(1);
+    var revalidated = stubRevalidate(new PassengerSummaryRequest(1, 0, 0), 1L, "1500000.00");
+    stubBookingPersistence(revalidated.revalidateId(), "idem-1", 123L, 1);
 
     CreateBookingResponse response =
         service.createBooking(
@@ -171,6 +128,254 @@ class BookingRevalidateServiceTest {
     assertEquals(1, response.seatReservation().reservedSeatCount());
     assertEquals("CREATE_PAYMENT", response.nextAction().type());
     verify(flightSeatRepository).reserveForBooking(eq(123L), eq(11L), eq(5L), eq(1), any());
+  }
+
+  @Test
+  void createBooking_childAndInfantApplyPricingRulesAndReserveOnlySeatedPassengers() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 1, 1);
+    var revalidated = stubRevalidate(summary, 2L, "2775000.00");
+    stubBookingPersistence(revalidated.revalidateId(), "idem-2", 124L, 2);
+
+    CreateBookingResponse response =
+        service.createBooking(
+            7L,
+            new CreateBookingRequest(
+                revalidated.revalidateId(),
+                "idem-2",
+                summary,
+                List.of(
+                    new CreateBookingRequest.BookingContactRequest(
+                        "USER@EXAMPLE.COM", "0900000000", true)),
+                List.of(
+                    new CreateBookingRequest.BookingPassengerRequest(
+                        "AN",
+                        "NGUYEN",
+                        LocalDate.parse("1990-01-01"),
+                        "male",
+                        "VN",
+                        "adult",
+                        "passport",
+                        "B1234567",
+                        LocalDate.parse("2030-01-01")),
+                    new CreateBookingRequest.BookingPassengerRequest(
+                        "BINH",
+                        "NGUYEN",
+                        LocalDate.parse("2018-05-01"),
+                        "female",
+                        "VN",
+                        "child",
+                        "passport",
+                        "C1234567",
+                        LocalDate.parse("2030-01-01")),
+                    new CreateBookingRequest.BookingPassengerRequest(
+                        "CUONG",
+                        "NGUYEN",
+                        LocalDate.parse("2025-06-01"),
+                        "male",
+                        "VN",
+                        "infant",
+                        "passport",
+                        "I1234567",
+                        LocalDate.parse("2030-01-01")))));
+
+    assertEquals(new BigDecimal("2775000.00"), response.pricing().originalTotalPrice());
+    assertEquals(2, response.seatReservation().reservedSeatCount());
+    verify(flightPricingService).calculateTotalPrice(new BigDecimal("1500000.00"), 1, 1, 1);
+    verify(flightSeatRepository).countAvailableSeats(11L, 5L);
+    verify(flightSeatRepository).reserveForBooking(eq(124L), eq(11L), eq(5L), eq(2), any());
+  }
+
+  @Test
+  void createBooking_rejectsChildYoungerThanTwo() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 1, 0);
+    var revalidated = stubRevalidate(summary, 2L, "2625000.00");
+    stubRevalidateSnapshotAccess(revalidated.revalidateId(), "idem-child-age");
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> {
+              CreateBookingRequest request =
+                  new CreateBookingRequest(
+                      revalidated.revalidateId(),
+                      "idem-child-age",
+                      summary,
+                      List.of(
+                          new CreateBookingRequest.BookingContactRequest(
+                              "USER@EXAMPLE.COM", "0900000000", true)),
+                      List.of(
+                          new CreateBookingRequest.BookingPassengerRequest(
+                              "AN",
+                              "NGUYEN",
+                              LocalDate.parse("1990-01-01"),
+                              "male",
+                              "VN",
+                              "adult",
+                              "passport",
+                              "B1234567",
+                              LocalDate.parse("2030-01-01")),
+                          new CreateBookingRequest.BookingPassengerRequest(
+                              "BINH",
+                              "NGUYEN",
+                              LocalDate.parse("2025-05-02"),
+                              "female",
+                              "VN",
+                              "child",
+                              "passport",
+                              "C1234567",
+                              LocalDate.parse("2030-01-01"))));
+              service.createBooking(7L, request);
+            });
+
+    assertEquals("INVALID_PASSENGER_AGE", exception.getCode());
+    verify(flightSeatRepository, never())
+        .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
+  }
+
+  @Test
+  void createBooking_rejectsInfantAgedTwoOrOlder() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 1);
+    var revalidated = stubRevalidate(summary, 1L, "1650000.00");
+    stubRevalidateSnapshotAccess(revalidated.revalidateId(), "idem-infant-age");
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> {
+              CreateBookingRequest request =
+                  new CreateBookingRequest(
+                      revalidated.revalidateId(),
+                      "idem-infant-age",
+                      summary,
+                      List.of(
+                          new CreateBookingRequest.BookingContactRequest(
+                              "USER@EXAMPLE.COM", "0900000000", true)),
+                      List.of(
+                          new CreateBookingRequest.BookingPassengerRequest(
+                              "AN",
+                              "NGUYEN",
+                              LocalDate.parse("1990-01-01"),
+                              "male",
+                              "VN",
+                              "adult",
+                              "passport",
+                              "B1234567",
+                              LocalDate.parse("2030-01-01")),
+                          new CreateBookingRequest.BookingPassengerRequest(
+                              "CUONG",
+                              "NGUYEN",
+                              LocalDate.parse("2024-05-01"),
+                              "male",
+                              "VN",
+                              "infant",
+                              "passport",
+                              "I1234567",
+                              LocalDate.parse("2030-01-01"))));
+              service.createBooking(7L, request);
+            });
+
+    assertEquals("INVALID_PASSENGER_AGE", exception.getCode());
+    verify(flightSeatRepository, never())
+        .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
+  }
+
+  @Test
+  void createBooking_rejectsAdultYoungerThanTwelve() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 0);
+    var revalidated = stubRevalidate(summary, 1L, "1500000.00");
+    stubRevalidateSnapshotAccess(revalidated.revalidateId(), "idem-adult-age");
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> {
+              CreateBookingRequest request =
+                  new CreateBookingRequest(
+                      revalidated.revalidateId(),
+                      "idem-adult-age",
+                      summary,
+                      List.of(
+                          new CreateBookingRequest.BookingContactRequest(
+                              "USER@EXAMPLE.COM", "0900000000", true)),
+                      List.of(
+                          new CreateBookingRequest.BookingPassengerRequest(
+                              "AN",
+                              "NGUYEN",
+                              LocalDate.parse("2014-05-02"),
+                              "male",
+                              "VN",
+                              "adult",
+                              "passport",
+                              "B1234567",
+                              LocalDate.parse("2030-01-01"))));
+              service.createBooking(7L, request);
+            });
+
+    assertEquals("INVALID_PASSENGER_AGE", exception.getCode());
+    verify(flightSeatRepository, never())
+        .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
+  }
+
+  private void stubBookingPersistence(
+      String revalidateId, String idempotencyKey, long bookingId, int reservedSeatCount) {
+    stubRevalidateSnapshotAccess(revalidateId, idempotencyKey);
+
+    UserEntity user = new UserEntity();
+    user.setId(7L);
+    when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              BookingEntity booking = invocation.getArgument(0, BookingEntity.class);
+              booking.setId(bookingId);
+              return booking;
+            });
+    when(bookingContactRepository.saveAll(any()))
+        .thenAnswer(
+            invocation -> {
+              List<BookingContactEntity> contacts = invocation.getArgument(0);
+              for (int i = 0; i < contacts.size(); i++) {
+                contacts.get(i).setId((long) i + 1);
+              }
+              return contacts;
+            });
+    when(passengerRepository.saveAll(any()))
+        .thenAnswer(
+            invocation -> {
+              List<PassengerEntity> passengers = invocation.getArgument(0);
+              for (int i = 0; i < passengers.size(); i++) {
+                passengers.get(i).setId((long) i + 10);
+              }
+              return passengers;
+            });
+    when(flightSeatRepository.reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any()))
+        .thenReturn(reservedSeatCount);
+  }
+
+  private void stubRevalidateSnapshotAccess(String revalidateId, String idempotencyKey) {
+    ArgumentCaptor<String> snapshotCaptor = ArgumentCaptor.forClass(String.class);
+    verify(valueOperations).set(eq("revalidate:" + revalidateId), snapshotCaptor.capture(), any());
+    when(valueOperations.get("revalidate:" + revalidateId)).thenReturn(snapshotCaptor.getValue());
+    when(valueOperations.setIfAbsent(eq("idem:booking:" + idempotencyKey), any(), any()))
+        .thenReturn(true);
+  }
+
+  private com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse stubRevalidate(
+      PassengerSummaryRequest summary, long availableSeats, String originalTotalPrice) {
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(flightSeatRepository.countAvailableSeats(11L, 5L)).thenReturn(availableSeats);
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1500000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal(originalTotalPrice));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(promotionPreviewService.preview(
+            null, new BigDecimal(originalTotalPrice), "VND", "VN", true))
+        .thenReturn(
+            PromotionPreviewService.PromoPreview.notApplicable(
+                "No promo code provided", new BigDecimal(originalTotalPrice)));
+    return service.revalidate(new RevalidateFareRequest(11L, 101L, null, summary));
   }
 
   private static FlightFareEntity fare() {

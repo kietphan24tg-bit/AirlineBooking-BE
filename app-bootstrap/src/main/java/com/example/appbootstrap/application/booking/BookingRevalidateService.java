@@ -37,6 +37,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
@@ -56,6 +57,8 @@ public class BookingRevalidateService {
   private static final Logger LOG = LoggerFactory.getLogger(BookingRevalidateService.class);
   private static final Duration REVALIDATE_TTL = Duration.ofMinutes(15);
   private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(6);
+  private static final int CHILD_MIN_AGE = 2;
+  private static final int ADULT_MIN_AGE = 12;
   private static final BigDecimal CHILD_RATE = new BigDecimal("0.75");
   private static final BigDecimal INFANT_RATE = new BigDecimal("0.10");
   private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -241,6 +244,7 @@ public class BookingRevalidateService {
         throw new AppException(
             "PRICE_CHANGED", "Fare changed after revalidation. Please revalidate again.", 409);
       }
+      validatePassengerAges(passengers, fare.getFlight().getFlightDate());
 
       int requiredSeats = snapshot.passengerSummary().seatedPassengers();
       UserEntity user =
@@ -407,6 +411,33 @@ public class BookingRevalidateService {
       throw new AppException(
           "PASSENGER_COUNT_MISMATCH", "passengerType counts must match passengerSummary", 400);
     }
+  }
+
+  private void validatePassengerAges(List<NormalizedPassenger> passengers, LocalDate flightDate) {
+    for (NormalizedPassenger passenger : passengers) {
+      int age = ageOnFlightDate(passenger.dateOfBirth(), flightDate);
+      boolean valid =
+          switch (passenger.passengerType()) {
+            case "ADULT" -> age >= ADULT_MIN_AGE;
+            case "CHILD" -> age >= CHILD_MIN_AGE && age < ADULT_MIN_AGE;
+            case "INFANT" -> age < CHILD_MIN_AGE;
+            default -> false;
+          };
+      if (!valid) {
+        throw new AppException(
+            "INVALID_PASSENGER_AGE",
+            "passengerType does not match age on flightDate for " + passenger.firstName(),
+            400);
+      }
+    }
+  }
+
+  private int ageOnFlightDate(LocalDate dateOfBirth, LocalDate flightDate) {
+    if (dateOfBirth == null || flightDate == null || dateOfBirth.isAfter(flightDate)) {
+      throw new AppException(
+          "INVALID_PASSENGER_AGE", "dateOfBirth must be on or before flightDate", 400);
+    }
+    return Period.between(dateOfBirth, flightDate).getYears();
   }
 
   private String normalizeEmail(String value) {
@@ -822,6 +853,7 @@ public class BookingRevalidateService {
       BigDecimal originalTotalPrice) {}
 
   private record PassengerSummary(int adult, int child, int infant) {
+    /** CHILD counts toward seats, INFANT is a lap infant and does not. */
     private int seatedPassengers() {
       return adult + child;
     }

@@ -92,7 +92,7 @@ Search Flight
 - Xem sơ đồ ghế và ancillary services theo chuyến bay
 
 ### 🎫 Booking & Ticketing
-- Tạo booking từ kết quả revalidate
+- Tạo booking từ kết quả `revalidate-fare`
 - Sinh mã `PNR` và trạng thái `PENDING_PAYMENT`
 - Chọn ghế cho từng hành khách
 - Chọn dịch vụ bổ sung như hành lý, suất ăn
@@ -404,7 +404,7 @@ APP_LOG_JSON_ENABLED=false
 
 Theo tài liệu API trong `docs/api/endpoints.md`, hệ thống còn bao phủ các nhóm endpoint sau:
 
-- `GET /api/flights/search`, `POST /api/flights/revalidate`
+- `GET /api/flights/search`, `POST /api/flights/revalidate-fare`
 - `POST /api/bookings`, `POST /api/bookings/:id/seats`, `POST /api/bookings/:id/services`
 - `POST /api/payments`, `GET /api/payments/:id/status`, `POST /api/payments/webhook`
 - `POST /api/checkin`, `GET /api/checkin/boarding-pass/:booking_id`
@@ -725,7 +725,8 @@ Migration files hiện đặt tại:
 ### Booking & PNR
 - Booking được tạo với trạng thái `PENDING_PAYMENT`
 - Hệ thống sinh `pnr_expires_at = current_time + 15 phút`
-- Nếu người dùng đã chọn ghế, ghế chuyển sang `RESERVED`
+- `POST /api/flights/revalidate-fare` chỉ tính lại giá, kiểm tra còn đủ ghế cho `adult + child`, và trả `revalidateId`; bước này chưa reserve ghế
+- `POST /api/bookings` dùng `revalidateId`, validate tuổi hành khách theo `flightDate`, rồi reserve ghế cho `adult + child`
 - Khi thanh toán thành công, booking chuyển sang `CONFIRMED`
 
 ### Seat Locking
@@ -736,6 +737,13 @@ Migration files hiện đặt tại:
 | Thanh toán thành công | `booking.status = CONFIRMED` | `BOOKED` |
 | Hết hạn PNR | Cron job | `AVAILABLE` |
 | Hủy booking | Booking cancelled | `AVAILABLE` |
+
+### Passenger Pricing & Seat Rules
+- `ADULT`: từ 12 tuổi trở lên, tính 100% giá người lớn và có ghế.
+- `CHILD`: từ 2 đến dưới 12 tuổi, tính 75% giá người lớn và có ghế.
+- `INFANT`: dưới 2 tuổi, tính 10% giá người lớn và không có ghế.
+- `INFANT` không được nhiều hơn `ADULT`.
+- Validate tuổi thật của từng passenger được thực hiện ở bước tạo booking dựa trên `dateOfBirth` và `flightDate`.
 
 ### Check-in Window
 - Check-in online mở trước `24 giờ`

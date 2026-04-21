@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class FlightPricingService {
 
+  /** CHILD passengers pay 75% of the adult fare and occupy seats. */
   private static final BigDecimal CHILD_RATE = new BigDecimal("0.75");
+
+  /** INFANT passengers pay 10% of the adult fare and do not occupy seats. */
   private static final BigDecimal INFANT_RATE = new BigDecimal("0.10");
 
   public BigDecimal calculateTotalPrice(

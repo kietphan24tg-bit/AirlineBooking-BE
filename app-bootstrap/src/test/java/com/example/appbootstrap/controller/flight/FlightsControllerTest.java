@@ -474,35 +474,43 @@ class FlightsControllerTest {
   }
 
   @Test
-  void searchFlights_rejectsSameRoute() {
-    AppException exception =
-        assertThrows(
-            AppException.class,
-            () ->
-                controller.searchFlights(
-                    null,
-                    new FlightSearchQueryRequest(
-                        "ONE_WAY",
-                        "SGN",
-                        "SGN",
-                        LocalDate.parse("2026-05-01"),
-                        null,
-                        1,
-                        0,
-                        0,
-                        null,
-                        null,
-                        null,
-                        null,
-                        20,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null)));
+  void searchFlights_sameRouteReturnsEmptyResult() {
+    when(flightSearchFacadeService.search(any()))
+        .thenReturn(
+            new FlightSearchResult(
+                List.of(),
+                List.of(),
+                new FlightSearchResult.PageInfo(null, false, 20),
+                new FlightSearchResult.PageInfo(null, false, 20),
+                null,
+                null));
 
-    assertEquals("INVALID_ROUTE", exception.getCode());
+    FlightSearchResponse response =
+        controller.searchFlights(
+            null,
+            new FlightSearchQueryRequest(
+                "ONE_WAY",
+                "SGN",
+                "SGN",
+                LocalDate.parse("2026-05-01"),
+                null,
+                1,
+                0,
+                0,
+                null,
+                null,
+                null,
+                null,
+                20,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null));
+
+    assertEquals(List.of(), response.outbound());
+    assertEquals(List.of(), response.inbound());
   }
 
   @Test

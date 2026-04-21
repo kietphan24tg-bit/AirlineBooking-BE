@@ -103,7 +103,9 @@ public class FlightsController {
   @Operation(
       summary = "Revalidate selected fare",
       description =
-          "Checks fare/availability/promotion, computes authoritative price, and returns revalidateId.")
+          "Checks fare/availability/promotion, computes authoritative price using "
+              + "ADULT/CHILD/INFANT rules, verifies seats for adult+child only, "
+              + "and returns revalidateId without reserving seats.")
   @SecurityRequirements
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Fare revalidated", content = @Content),
@@ -122,11 +124,6 @@ public class FlightsController {
   }
 
   private void validateBusinessRules(FlightSearchQueryRequest request) {
-    if (request.from() != null
-        && request.to() != null
-        && request.from().trim().equalsIgnoreCase(request.to().trim())) {
-      throw new AppException("INVALID_ROUTE", "from and to must be different airports", 400);
-    }
     FlightSearchTripType tripType = parseTripType(request.tripType());
     if (tripType == FlightSearchTripType.ROUND_TRIP) {
       if (request.returnDate() == null) {
