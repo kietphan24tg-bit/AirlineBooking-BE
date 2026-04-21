@@ -11,13 +11,20 @@ import org.springframework.data.repository.query.Param;
 public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Long> {
 
   @Query(
-      """
-      select count(fs.id)
-      from FlightSeatEntity fs
-      where fs.flight.id = :flightId
-        and fs.fareClass.id = :fareClassId
-        and fs.status = 'AVAILABLE'
-      """)
+      value =
+          """
+          select count(fs.id)
+          from flight_seats fs
+          where fs.flight_id = :flightId
+            and fs.status = 'AVAILABLE'
+            and exists (
+                select 1
+                from fare_class_seat_classes fcsc
+                where fcsc.fare_class_id = :fareClassId
+                  and fcsc.seat_class_id = fs.seat_class_id
+            )
+          """,
+      nativeQuery = true)
   long countAvailableSeats(
       @Param("flightId") Long flightId, @Param("fareClassId") Long fareClassId);
 
@@ -33,8 +40,13 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
               select id
               from flight_seats
               where flight_id = :flightId
-                and fare_class_id = :fareClassId
                 and status = 'AVAILABLE'
+                and exists (
+                    select 1
+                    from fare_class_seat_classes fcsc
+                    where fcsc.fare_class_id = :fareClassId
+                      and fcsc.seat_class_id = flight_seats.seat_class_id
+                )
               order by id
               limit :quantity
               for update skip locked
