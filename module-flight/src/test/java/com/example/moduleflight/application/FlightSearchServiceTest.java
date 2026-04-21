@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -42,6 +43,7 @@ class FlightSearchServiceTest {
   @Mock private PromotionBatchPreviewService promotionBatchPreviewService;
   @Mock private FlightRankingService flightRankingService;
   @Mock private FlightPaginationService flightPaginationService;
+  @Mock private FlightInventoryAvailabilityService flightInventoryAvailabilityService;
   @Mock private CountryCurrencyResolver countryCurrencyResolver;
   @Mock private FlightSearchFallbackService flightSearchFallbackService;
 
@@ -56,8 +58,11 @@ class FlightSearchServiceTest {
             promotionBatchPreviewService,
             flightRankingService,
             flightPaginationService,
+            flightInventoryAvailabilityService,
             countryCurrencyResolver,
             flightSearchFallbackService);
+    when(flightInventoryAvailabilityService.hasEnoughSeats(anyLong(), anyLong(), anyInt()))
+        .thenReturn(true);
   }
 
   @Test
@@ -414,6 +419,68 @@ class FlightSearchServiceTest {
         captor.getValue().getFirst().rankKey().compareTo(captor.getValue().get(1).rankKey()) < 0);
   }
 
+  @Test
+  void search_hidesFlightWhenAllFaresAreSoldOutByInventory() {
+    FlightFareEntity fare = fare(1L, 1001L, "VN123", "AVAILABLE", "ECONOMY", "Vietnam");
+    when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
+    when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
+        .thenReturn(List.of(List.of(fare)));
+    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(flightInventoryAvailabilityService.hasEnoughSeats(1001L, 1L, 1)).thenReturn(false);
+    when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), anyBoolean()))
+        .thenReturn(PromoPreview.notApplicable("n", new BigDecimal("1100000")));
+    when(flightPaginationService.paginate(any(), anyInt(), any()))
+        .thenAnswer(
+            inv ->
+                new FlightPaginationService.PageResult<>(
+                    inv.getArgument(0), null, false, inv.getArgument(1)));
+
+    FlightSearchResult result = service.search(baseQueryBuilder().build());
+
+    assertEquals(0, result.outbound().size());
+  }
+
+  @Test
+  void search_keepsFlightWhenAtLeastOneFareHasInventory() {
+    List<FlightFareEntity> group = economyAndBusinessOnSameFlight();
+    when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
+    when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
+        .thenReturn(List.of(group));
+    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(flightInventoryAvailabilityService.hasEnoughSeats(100L, 11L, 1))
+        .thenReturn(false)
+        .thenReturn(true);
+    when(flightInventoryAvailabilityService.hasEnoughSeats(100L, 12L, 1))
+        .thenReturn(true);
+    when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), eq(false)))
+        .thenReturn(PromoPreview.notApplicable("sold out", new BigDecimal("1000000")));
+    when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), eq(true)))
+        .thenReturn(PromoPreview.notApplicable("available", new BigDecimal("5000000")));
+    OffsetDateTime dep = group.getFirst().getFlight().getDepartureTime();
+    when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
+        .thenReturn(recommendedKey(2, new BigDecimal("1000000"), dep, 100L, 1L))
+        .thenReturn(recommendedKey(2, new BigDecimal("5000000"), dep, 100L, 2L));
+    when(flightPaginationService.paginate(any(), anyInt(), any()))
+        .thenAnswer(
+            inv ->
+                new FlightPaginationService.PageResult<>(
+                    inv.getArgument(0), null, false, inv.getArgument(1)));
+
+    FlightSearchResult result = service.search(baseQueryBuilder().build());
+
+    assertEquals(1, result.outbound().size());
+    assertEquals(2, result.outbound().getFirst().fares().size());
+    assertEquals("SOLD_OUT", result.outbound().getFirst().fares().getFirst().fareStatus());
+    assertEquals(false, result.outbound().getFirst().fares().getFirst().selectable());
+    assertEquals(true, result.outbound().getFirst().fares().get(1).selectable());
+  }
+
   private static FlightSearchQueryBuilder baseQueryBuilder() {
     return new FlightSearchQueryBuilder();
   }
@@ -517,6 +584,7 @@ class FlightSearchServiceTest {
     eco.setId(1L);
     eco.setFlight(flight);
     FareClassEntity fcEco = new FareClassEntity();
+    fcEco.setId(11L);
     fcEco.setCode("Y");
     fcEco.setCabinClass("ECONOMY");
     eco.setFareClass(fcEco);
@@ -528,6 +596,7 @@ class FlightSearchServiceTest {
     biz.setId(2L);
     biz.setFlight(flight);
     FareClassEntity fcBiz = new FareClassEntity();
+    fcBiz.setId(12L);
     fcBiz.setCode("J");
     fcBiz.setCabinClass("BUSINESS");
     biz.setFareClass(fcBiz);
@@ -577,6 +646,7 @@ class FlightSearchServiceTest {
     flight.setStatus("SCHEDULED");
 
     FareClassEntity fareClass = new FareClassEntity();
+    fareClass.setId(fareId);
     fareClass.setCode(fareCode);
     fareClass.setCabinClass(fareCode);
 

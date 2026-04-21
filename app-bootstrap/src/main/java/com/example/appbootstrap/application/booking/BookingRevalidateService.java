@@ -16,6 +16,7 @@ import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PromotionRepository;
 import com.example.moduleflight.application.CountryCurrencyResolver;
+import com.example.moduleflight.application.FlightInventoryAvailabilityService;
 import com.example.moduleflight.application.FlightPricingService;
 import com.example.moduleflight.application.PromotionPreviewService;
 import com.example.moduleflight.application.PromotionPreviewService.PromoPreview;
@@ -75,6 +76,7 @@ public class BookingRevalidateService {
   private final PassengerRepository passengerRepository;
   private final PromotionRepository promotionRepository;
   private final FlightSeatRepository flightSeatRepository;
+  private final FlightInventoryAvailabilityService flightInventoryAvailabilityService;
 
   public BookingRevalidateService(
       FlightFareRepository flightFareRepository,
@@ -88,7 +90,8 @@ public class BookingRevalidateService {
       BookingContactRepository bookingContactRepository,
       PassengerRepository passengerRepository,
       PromotionRepository promotionRepository,
-      FlightSeatRepository flightSeatRepository) {
+      FlightSeatRepository flightSeatRepository,
+      FlightInventoryAvailabilityService flightInventoryAvailabilityService) {
     this.flightFareRepository = flightFareRepository;
     this.flightPricingService = flightPricingService;
     this.promotionPreviewService = promotionPreviewService;
@@ -101,6 +104,7 @@ public class BookingRevalidateService {
     this.passengerRepository = passengerRepository;
     this.promotionRepository = promotionRepository;
     this.flightSeatRepository = flightSeatRepository;
+    this.flightInventoryAvailabilityService = flightInventoryAvailabilityService;
   }
 
   @Transactional(readOnly = true)
@@ -115,7 +119,7 @@ public class BookingRevalidateService {
           "INVALID_PASSENGER_BREAKDOWN", "At least one seated passenger required", 400);
     }
     long availableSeats =
-        flightSeatRepository.countAvailableSeats(
+        flightInventoryAvailabilityService.countAvailableSeats(
             fare.getFlight().getId(), fare.getFareClass().getId());
     if (availableSeats < requiredSeats) {
       throw new AppException(

@@ -21,26 +21,32 @@ public class FlightDataMaintenanceService {
   private final FlightExpirationCleanupService flightExpirationCleanupService;
   private final FlightMaintenanceProperties flightMaintenanceProperties;
   private final FlightMockDataProperties flightMockDataProperties;
+  private final FlightInventoryMetadataService flightInventoryMetadataService;
 
   public FlightDataMaintenanceService(
       FlightCoverageService flightCoverageService,
       FlightCoverageProperties flightCoverageProperties,
       FlightExpirationCleanupService flightExpirationCleanupService,
       FlightMaintenanceProperties flightMaintenanceProperties,
-      FlightMockDataProperties flightMockDataProperties) {
+      FlightMockDataProperties flightMockDataProperties,
+      FlightInventoryMetadataService flightInventoryMetadataService) {
     this.flightCoverageService = flightCoverageService;
     this.flightCoverageProperties = flightCoverageProperties;
     this.flightExpirationCleanupService = flightExpirationCleanupService;
     this.flightMaintenanceProperties = flightMaintenanceProperties;
     this.flightMockDataProperties = flightMockDataProperties;
+    this.flightInventoryMetadataService = flightInventoryMetadataService;
   }
 
   /**
    * One maintenance cycle: optional cleanup, then optional coverage (cleanup first frees old rows).
    */
   public void runScheduledMaintenance() {
+    flightInventoryMetadataService.repairMetadataForSaleability();
     if (flightMockDataProperties.enabled()) {
-      LOG.debug("Flight maintenance: coverage skipped because flight-mock is enabled.");
+      LOG.warn(
+          "Flight maintenance: coverage skipped because app.flight-mock.enabled=true. "
+              + "Disable flight-mock to allow coverage gap-fill to create additional flights.");
       if (flightMaintenanceProperties.cleanupEnabled()) {
         flightExpirationCleanupService.deleteExpiredFlightsWithoutTickets();
       }

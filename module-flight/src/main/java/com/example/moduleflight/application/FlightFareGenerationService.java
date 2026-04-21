@@ -19,8 +19,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -39,18 +41,24 @@ public class FlightFareGenerationService {
   private final TaxFeeRepository taxFeeRepository;
   private final FlightFareRepository flightFareRepository;
   private final ObjectMapper objectMapper;
+  private final JdbcTemplate jdbcTemplate;
+  private final FlightInventoryMetadataService flightInventoryMetadataService;
 
   public FlightFareGenerationService(
       FareClassRepository fareClassRepository,
       FareClassPriceRepository fareClassPriceRepository,
       TaxFeeRepository taxFeeRepository,
       FlightFareRepository flightFareRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      JdbcTemplate jdbcTemplate,
+      FlightInventoryMetadataService flightInventoryMetadataService) {
     this.fareClassRepository = fareClassRepository;
     this.fareClassPriceRepository = fareClassPriceRepository;
     this.taxFeeRepository = taxFeeRepository;
     this.flightFareRepository = flightFareRepository;
     this.objectMapper = objectMapper;
+    this.jdbcTemplate = jdbcTemplate;
+    this.flightInventoryMetadataService = flightInventoryMetadataService;
   }
 
   @Transactional
@@ -58,6 +66,7 @@ public class FlightFareGenerationService {
     if (flight == null || flight.getId() == null) {
       return;
     }
+    flightInventoryMetadataService.repairMetadataForSaleability();
 
     List<FareClassEntity> fares = fareClassRepository.findByCodeIn(SUPPORTED_FARE_CODES);
     if (fares.isEmpty()) {
@@ -73,6 +82,7 @@ public class FlightFareGenerationService {
     List<TaxFeeEntity> taxes = taxFeeRepository.findByIsActiveTrueAndApplyTo("ADULT");
     OffsetDateTime now = OffsetDateTime.now();
     List<FlightFareEntity> toSave = new ArrayList<>();
+    Set<String> supportedSeatClassCodes = supportedSeatClassCodes(flight);
 
     for (String fareCode : SUPPORTED_FARE_CODES) {
       FareClassEntity fareClass = fareByCode.get(fareCode);
@@ -80,14 +90,25 @@ public class FlightFareGenerationService {
         LOG.warn("Skip fare generation for {} because fare class is not configured.", fareCode);
         continue;
       }
-      BigDecimal basePrice = resolveBasePrice(fareClass, currency, countryCode);
-      TaxCalculation taxCalculation = calculateTax(basePrice, taxes);
-      BigDecimal totalPrice = basePrice.add(taxCalculation.totalTaxAmount());
-
       FlightFareEntity entity =
           flightFareRepository
               .findByFlightAndFareClass(flight, fareClass)
               .orElseGet(FlightFareEntity::new);
+      String canonicalSeatClassCode =
+          flightInventoryMetadataService.canonicalSeatClassCode(fareClass.getCabinClass());
+      if (!StringUtils.hasText(canonicalSeatClassCode)
+          || !supportedSeatClassCodes.contains(canonicalSeatClassCode)) {
+        if (entity.getId() != null) {
+          entity.setStatus("SOLD_OUT");
+          entity.setUpdatedAt(now);
+          toSave.add(entity);
+        }
+        continue;
+      }
+      BigDecimal basePrice = resolveBasePrice(fareClass, currency, countryCode);
+      TaxCalculation taxCalculation = calculateTax(basePrice, taxes);
+      BigDecimal totalPrice = basePrice.add(taxCalculation.totalTaxAmount());
+
       entity.setFlight(flight);
       entity.setFareClass(fareClass);
       entity.setBasePrice(basePrice);
@@ -102,6 +123,24 @@ public class FlightFareGenerationService {
     }
 
     flightFareRepository.saveAll(toSave);
+  }
+
+  private Set<String> supportedSeatClassCodes(FlightEntity flight) {
+    if (flight == null || flight.getAircraft() == null || flight.getAircraft().getId() == null) {
+      return Set.of();
+    }
+    List<String> rows =
+        jdbcTemplate.queryForList(
+            """
+            select distinct sc.code
+            from aircraft_layout al
+            join aircraft_layout_zones z on z.aircraft_layout_id = al.id
+            join seat_classes sc on sc.id = z.seat_class_id
+            where al.aircraft_id = ?
+            """,
+            String.class,
+            flight.getAircraft().getId());
+    return rows.stream().filter(StringUtils::hasText).map(String::toUpperCase).collect(java.util.stream.Collectors.toSet());
   }
 
   private BigDecimal resolveBasePrice(

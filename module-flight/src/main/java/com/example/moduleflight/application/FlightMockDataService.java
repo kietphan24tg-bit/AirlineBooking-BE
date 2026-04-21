@@ -53,6 +53,7 @@ public class FlightMockDataService {
   private final FlightSeatGenerationService flightSeatGenerationService;
   private final FlightFareGenerationService flightFareGenerationService;
   private final JdbcTemplate jdbcTemplate;
+  private final FlightInventoryMetadataService flightInventoryMetadataService;
 
   public FlightMockDataService(
       FlightMockDataProperties properties,
@@ -63,7 +64,8 @@ public class FlightMockDataService {
       FlightFareRepository flightFareRepository,
       FlightSeatGenerationService flightSeatGenerationService,
       FlightFareGenerationService flightFareGenerationService,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      FlightInventoryMetadataService flightInventoryMetadataService) {
     this.properties = properties;
     this.flightRepository = flightRepository;
     this.airlineRepository = airlineRepository;
@@ -73,10 +75,12 @@ public class FlightMockDataService {
     this.flightSeatGenerationService = flightSeatGenerationService;
     this.flightFareGenerationService = flightFareGenerationService;
     this.jdbcTemplate = jdbcTemplate;
+    this.flightInventoryMetadataService = flightInventoryMetadataService;
   }
 
   @Transactional
   public MockSummary reseedMockFlights() {
+    flightInventoryMetadataService.repairMetadataForSaleability();
     MockAuditSnapshot before = captureAudit("before");
     LOG.info("Flight mock audit before: {}", before.describe());
 

@@ -24,6 +24,7 @@ import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PromotionRepository;
 import com.example.moduleflight.application.CountryCurrencyResolver;
+import com.example.moduleflight.application.FlightInventoryAvailabilityService;
 import com.example.moduleflight.application.FlightPricingService;
 import com.example.moduleflight.application.PromotionPreviewService;
 import com.example.moduleflight.entity.AirlineEntity;
@@ -64,6 +65,7 @@ class BookingRevalidateServiceTest {
   @Mock private PassengerRepository passengerRepository;
   @Mock private PromotionRepository promotionRepository;
   @Mock private FlightSeatRepository flightSeatRepository;
+  @Mock private FlightInventoryAvailabilityService flightInventoryAvailabilityService;
 
   private BookingRevalidateService service;
   private FlightFareEntity fare;
@@ -83,7 +85,8 @@ class BookingRevalidateServiceTest {
             bookingContactRepository,
             passengerRepository,
             promotionRepository,
-            flightSeatRepository);
+            flightSeatRepository,
+            flightInventoryAvailabilityService);
     fare = fare();
   }
 
@@ -181,7 +184,7 @@ class BookingRevalidateServiceTest {
     assertEquals(new BigDecimal("2775000.00"), response.pricing().originalTotalPrice());
     assertEquals(2, response.seatReservation().reservedSeatCount());
     verify(flightPricingService).calculateTotalPrice(new BigDecimal("1500000.00"), 1, 1, 1);
-    verify(flightSeatRepository).countAvailableSeats(11L, 5L);
+    verify(flightInventoryAvailabilityService).countAvailableSeats(11L, 5L);
     verify(flightSeatRepository).reserveForBooking(eq(124L), eq(11L), eq(5L), eq(2), any());
   }
 
@@ -364,7 +367,8 @@ class BookingRevalidateServiceTest {
       PassengerSummaryRequest summary, long availableSeats, String originalTotalPrice) {
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
-    when(flightSeatRepository.countAvailableSeats(11L, 5L)).thenReturn(availableSeats);
+    when(flightInventoryAvailabilityService.countAvailableSeats(11L, 5L))
+        .thenReturn(availableSeats);
     when(flightPricingService.calculateTotalPrice(
             new BigDecimal("1500000.00"), summary.adult(), summary.child(), summary.infant()))
         .thenReturn(new BigDecimal(originalTotalPrice));

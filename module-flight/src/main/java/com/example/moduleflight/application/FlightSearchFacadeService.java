@@ -25,6 +25,7 @@ public class FlightSearchFacadeService {
   private final PromotionBatchPreviewService promotionBatchPreviewService;
   private final FlightRankingService flightRankingService;
   private final FlightPaginationService flightPaginationService;
+  private final FlightInventoryAvailabilityService flightInventoryAvailabilityService;
   private final CountryCurrencyResolver countryCurrencyResolver;
   private final FlightSearchFallbackService flightSearchFallbackService;
 
@@ -34,6 +35,7 @@ public class FlightSearchFacadeService {
       PromotionBatchPreviewService promotionBatchPreviewService,
       FlightRankingService flightRankingService,
       FlightPaginationService flightPaginationService,
+      FlightInventoryAvailabilityService flightInventoryAvailabilityService,
       CountryCurrencyResolver countryCurrencyResolver,
       FlightSearchFallbackService flightSearchFallbackService) {
     this.flightQueryService = flightQueryService;
@@ -41,6 +43,7 @@ public class FlightSearchFacadeService {
     this.promotionBatchPreviewService = promotionBatchPreviewService;
     this.flightRankingService = flightRankingService;
     this.flightPaginationService = flightPaginationService;
+    this.flightInventoryAvailabilityService = flightInventoryAvailabilityService;
     this.countryCurrencyResolver = countryCurrencyResolver;
     this.flightSearchFallbackService = flightSearchFallbackService;
   }
@@ -97,6 +100,7 @@ public class FlightSearchFacadeService {
       groupedFlights = flightQueryService.findByRouteAndDate(fromCode, toCode, date);
     }
     List<FlightSearchPageItem> rankedOptions = new ArrayList<>();
+    int requiredSeats = seatedPassengers(query);
 
     for (List<FlightFareEntity> fares : groupedFlights) {
       if (fares == null || fares.isEmpty()) {
@@ -127,18 +131,19 @@ public class FlightSearchFacadeService {
               ex);
           continue;
         }
-        boolean fareAvailable = "AVAILABLE".equalsIgnoreCase(fare.getStatus());
+        boolean fareAvailable = isFareBookable(fare, requiredSeats);
         PromoPreview preview =
             promotionBatchPreviewService.preview(
                 promotionContext, originalTotalPrice, currency, countryCode, fareAvailable);
+        String fareStatus = fareAvailable ? normalizeFareStatus(fare.getStatus()) : "SOLD_OUT";
 
         FlightSearchResult.FareOptionView fareOption =
             new FlightSearchResult.FareOptionView(
                 fare.getId(),
                 fare.getFareClass().getCode(),
                 fare.getFareClass().getCabinClass(),
-                normalizeFareStatus(fare.getStatus()),
-                isFareSelectable(query, preview, originalTotalPrice),
+                fareStatus,
+                fareAvailable && isFareSelectable(query, preview, originalTotalPrice),
                 originalTotalPrice,
                 "APPLIED".equals(preview.status()) ? preview.discountedPrice() : null,
                 "APPLIED".equals(preview.status()) ? preview.discountAmount() : BigDecimal.ZERO,
@@ -150,11 +155,17 @@ public class FlightSearchFacadeService {
             new RankedFareOption(
                 fareOption,
                 flightRankingService.buildFareRankKey(
-                    query.sortBy(), fare, preview, originalTotalPrice)));
+                    query.sortBy(), fare, preview, originalTotalPrice),
+                fareAvailable));
       }
 
       rankedFareOptions = applyFareFilters(rankedFareOptions, query);
       if (rankedFareOptions.isEmpty()) {
+        continue;
+      }
+      List<RankedFareOption> bookableFareOptions =
+          rankedFareOptions.stream().filter(RankedFareOption::bookable).toList();
+      if (bookableFareOptions.isEmpty()) {
         continue;
       }
       FlightEntity flightEntity = firstFare.getFlight();
@@ -168,7 +179,7 @@ public class FlightSearchFacadeService {
       List<RankedFareOption> selectableFareOptions =
           rankedFareOptions.stream().filter(option -> option.view().selectable()).toList();
       List<RankedFareOption> representativeFareOptions =
-          selectableFareOptions.isEmpty() ? rankedFareOptions : selectableFareOptions;
+          selectableFareOptions.isEmpty() ? bookableFareOptions : selectableFareOptions;
 
       rankedFareOptions.sort(Comparator.comparing(RankedFareOption::rankKey));
       RankedFareOption representativeFare =
@@ -239,6 +250,21 @@ public class FlightSearchFacadeService {
     return fare.originalTotalPrice();
   }
 
+  private boolean isFareBookable(FlightFareEntity fare, int requiredSeats) {
+    if (!"AVAILABLE".equalsIgnoreCase(fare.getStatus())) {
+      return false;
+    }
+    if (fare.getFlight() == null || fare.getFareClass() == null) {
+      return false;
+    }
+    return flightInventoryAvailabilityService.hasEnoughSeats(
+        fare.getFlight().getId(), fare.getFareClass().getId(), requiredSeats);
+  }
+
+  private int seatedPassengers(FlightSearchQuery query) {
+    return Math.max(0, query.adult()) + Math.max(0, query.child());
+  }
+
   private boolean passesTimeBuckets(FlightEntity flight, FlightSearchQuery query) {
     if (query.departureTimeBucket() != null
         && !query.departureTimeBucket().matches(flight.getDepartureTime().toLocalTime())) {
@@ -270,7 +296,8 @@ public class FlightSearchFacadeService {
     return status.trim().toUpperCase();
   }
 
-  private record RankedFareOption(FlightSearchResult.FareOptionView view, FlightRankKey rankKey) {}
+  private record RankedFareOption(
+      FlightSearchResult.FareOptionView view, FlightRankKey rankKey, boolean bookable) {}
 
   private record RankedFlightRow(FlightSearchResult.FlightOptionView view, FlightRankKey rankKey)
       implements FlightSearchPageItem {}

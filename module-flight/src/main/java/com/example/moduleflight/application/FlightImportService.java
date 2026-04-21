@@ -59,6 +59,7 @@ public class FlightImportService {
   private final FlightFareGenerationService flightFareGenerationService;
   private final AircraftIcaoFallbackService aircraftIcaoFallbackService;
   private final FlightImportProperties properties;
+  private final FlightInventoryMetadataService flightInventoryMetadataService;
 
   public FlightImportService(
       AirlabsSchedulesClient airlabsSchedulesClient,
@@ -70,7 +71,8 @@ public class FlightImportService {
       FlightSeatGenerationService flightSeatGenerationService,
       FlightFareGenerationService flightFareGenerationService,
       AircraftIcaoFallbackService aircraftIcaoFallbackService,
-      FlightImportProperties properties) {
+      FlightImportProperties properties,
+      FlightInventoryMetadataService flightInventoryMetadataService) {
     this.airlabsSchedulesClient = airlabsSchedulesClient;
     this.flightRepository = flightRepository;
     this.airlineRepository = airlineRepository;
@@ -81,10 +83,12 @@ public class FlightImportService {
     this.flightFareGenerationService = flightFareGenerationService;
     this.aircraftIcaoFallbackService = aircraftIcaoFallbackService;
     this.properties = properties;
+    this.flightInventoryMetadataService = flightInventoryMetadataService;
   }
 
   @Transactional
   public FlightImportSummary importFlights() {
+    flightInventoryMetadataService.repairMetadataForSaleability();
     if (!StringUtils.hasText(properties.apiKey())) {
       LOG.warn("Flight import skipped: app.flight-import.api-key is not configured.");
       return new FlightImportSummary(0, 0, 0, 0, 0);
