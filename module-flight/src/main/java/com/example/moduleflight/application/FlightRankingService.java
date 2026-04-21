@@ -110,7 +110,8 @@ public class FlightRankingService {
     score += boolWeight(fareClass.isChangeable(), 3_000);
     score += Math.max(0, Objects.requireNonNullElse(fareClass.getBaggageCheckinKg(), 0)) * 10L;
     score += Math.max(0, Objects.requireNonNullElse(fareClass.getBaggageHandKg(), 0)) * 8L;
-    BigDecimal mileageRate = Objects.requireNonNullElse(fareClass.getMileageRate(), BigDecimal.ZERO);
+    BigDecimal mileageRate =
+        Objects.requireNonNullElse(fareClass.getMileageRate(), BigDecimal.ZERO);
     score += mileageRate.multiply(BigDecimal.valueOf(100)).longValue();
     return score;
   }

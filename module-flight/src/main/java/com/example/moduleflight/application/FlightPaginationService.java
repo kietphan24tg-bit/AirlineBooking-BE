@@ -50,9 +50,7 @@ public class FlightPaginationService {
     String primaryPart =
         key.primaryMetric() == null ? CURSOR_NULL_DECIMAL : key.primaryMetric().toPlainString();
     String secondaryPart =
-        key.secondaryMetric() == null
-            ? CURSOR_NULL_DECIMAL
-            : key.secondaryMetric().toPlainString();
+        key.secondaryMetric() == null ? CURSOR_NULL_DECIMAL : key.secondaryMetric().toPlainString();
     String tertiaryPart =
         key.tertiaryMetric() == null ? CURSOR_NULL_DECIMAL : key.tertiaryMetric().toPlainString();
     String departurePart =

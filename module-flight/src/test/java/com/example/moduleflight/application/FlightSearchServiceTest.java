@@ -90,10 +90,18 @@ class FlightSearchServiceTest {
     when(flightRankingService.buildFareRankKey(any(), any(), any(), any()))
         .thenReturn(
             recommendedKey(
-                0, new BigDecimal("1200000"), OffsetDateTime.parse("2026-05-01T02:00:00Z"), 1001L, 1L))
+                0,
+                new BigDecimal("1200000"),
+                OffsetDateTime.parse("2026-05-01T02:00:00Z"),
+                1001L,
+                1L))
         .thenReturn(
             recommendedKey(
-                0, new BigDecimal("1200000"), OffsetDateTime.parse("2026-05-01T02:00:00Z"), 1002L, 2L));
+                0,
+                new BigDecimal("1200000"),
+                OffsetDateTime.parse("2026-05-01T02:00:00Z"),
+                1002L,
+                2L));
     when(flightPaginationService.paginate(any(), anyInt(), any()))
         .thenReturn(
             new FlightPaginationService.PageResult<>(
@@ -360,7 +368,11 @@ class FlightSearchServiceTest {
             inv -> {
               FlightFareEntity f = inv.getArgument(1, FlightFareEntity.class);
               return recommendedKey(
-                  2, f.getTotalPrice(), f.getFlight().getDepartureTime(), f.getFlight().getId(), f.getId());
+                  2,
+                  f.getTotalPrice(),
+                  f.getFlight().getDepartureTime(),
+                  f.getFlight().getId(),
+                  f.getId());
             });
 
     FlightPaginationService realPagination = new FlightPaginationService();
@@ -463,9 +475,19 @@ class FlightSearchServiceTest {
   }
 
   private static FlightRankKey recommendedKey(
-      int promoRank, BigDecimal effectivePrice, OffsetDateTime departure, long flightId, long fareId) {
+      int promoRank,
+      BigDecimal effectivePrice,
+      OffsetDateTime departure,
+      long flightId,
+      long fareId) {
     return new FlightRankKey(
-        FlightSortBy.RECOMMENDED, BigDecimal.valueOf(promoRank), effectivePrice, null, departure, flightId, fareId);
+        FlightSortBy.RECOMMENDED,
+        BigDecimal.valueOf(promoRank),
+        effectivePrice,
+        null,
+        departure,
+        flightId,
+        fareId);
   }
 
   private static List<FlightFareEntity> economyAndBusinessOnSameFlight() {

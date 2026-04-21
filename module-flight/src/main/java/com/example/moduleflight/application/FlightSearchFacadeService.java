@@ -172,7 +172,9 @@ public class FlightSearchFacadeService {
 
       rankedFareOptions.sort(Comparator.comparing(RankedFareOption::rankKey));
       RankedFareOption representativeFare =
-          representativeFareOptions.stream().min(Comparator.comparing(RankedFareOption::rankKey)).orElseThrow();
+          representativeFareOptions.stream()
+              .min(Comparator.comparing(RankedFareOption::rankKey))
+              .orElseThrow();
 
       FlightSearchResult.FlightOptionView flightOption =
           new FlightSearchResult.FlightOptionView(
