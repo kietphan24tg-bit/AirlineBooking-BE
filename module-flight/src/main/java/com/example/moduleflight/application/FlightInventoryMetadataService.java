@@ -76,8 +76,7 @@ public class FlightInventoryMetadataService {
     int insertedMappings = jdbcTemplate.update(INSERT_CANONICAL_MAPPINGS_SQL);
     int soldOutFares =
         jdbcTemplate.update(
-            MARK_UNSUPPORTED_FARES_SOLD_OUT_SQL,
-            Timestamp.from(OffsetDateTime.now().toInstant()));
+            MARK_UNSUPPORTED_FARES_SOLD_OUT_SQL, Timestamp.from(OffsetDateTime.now().toInstant()));
     return new InventoryMetadataRepairResult(deletedMappings, insertedMappings, soldOutFares);
   }
 

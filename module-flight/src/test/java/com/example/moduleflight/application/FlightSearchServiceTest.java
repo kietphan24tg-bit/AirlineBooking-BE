@@ -456,8 +456,7 @@ class FlightSearchServiceTest {
     when(flightInventoryAvailabilityService.hasEnoughSeats(100L, 11L, 1))
         .thenReturn(false)
         .thenReturn(true);
-    when(flightInventoryAvailabilityService.hasEnoughSeats(100L, 12L, 1))
-        .thenReturn(true);
+    when(flightInventoryAvailabilityService.hasEnoughSeats(100L, 12L, 1)).thenReturn(true);
     when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), eq(false)))
         .thenReturn(PromoPreview.notApplicable("sold out", new BigDecimal("1000000")));
     when(promotionBatchPreviewService.preview(any(), any(), anyString(), anyString(), eq(true)))

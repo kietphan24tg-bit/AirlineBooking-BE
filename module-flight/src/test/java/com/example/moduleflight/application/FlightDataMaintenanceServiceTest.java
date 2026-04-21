@@ -26,7 +26,8 @@ class FlightDataMaintenanceServiceTest {
             new FlightCoverageProperties(true, 14, 1, "VN", 8000, "", "", ""),
             flightExpirationCleanupService,
             new FlightMaintenanceProperties("0 30 2 * * *", false, true),
-            new FlightMockDataProperties(true, false, "0 0 4 * * *", false, 0, 3, 14, 1, "", "", ""),
+            new FlightMockDataProperties(
+                true, false, "0 0 4 * * *", false, 0, 3, 14, 1, "", "", ""),
             flightInventoryMetadataService);
 
     service.runScheduledMaintenance();

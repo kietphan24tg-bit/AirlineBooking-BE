@@ -140,7 +140,10 @@ public class FlightFareGenerationService {
             """,
             String.class,
             flight.getAircraft().getId());
-    return rows.stream().filter(StringUtils::hasText).map(String::toUpperCase).collect(java.util.stream.Collectors.toSet());
+    return rows.stream()
+        .filter(StringUtils::hasText)
+        .map(String::toUpperCase)
+        .collect(java.util.stream.Collectors.toSet());
   }
 
   private BigDecimal resolveBasePrice(
