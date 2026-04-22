@@ -29,10 +29,7 @@ public record CreateBookingRequest(
       @NotBlank(message = "lastName is required") String lastName,
       @NotNull(message = "dateOfBirth is required") LocalDate dateOfBirth,
       @NotBlank(message = "gender is required") String gender,
-      @Schema(
-              description =
-                  "Required for ADULT. Optional for CHILD and INFANT.",
-              nullable = true)
+      @Schema(description = "Required for ADULT. Optional for CHILD and INFANT.", nullable = true)
           String nationality,
       @Schema(
               description =
@@ -43,10 +40,7 @@ public record CreateBookingRequest(
                   "Required for ADULT. Optional for CHILD and INFANT. Must be ID_CARD or PASSPORT when provided.",
               nullable = true)
           String identifyType,
-      @Schema(
-              description =
-                  "Required for ADULT. Optional for CHILD and INFANT.",
-              nullable = true)
+      @Schema(description = "Required for ADULT. Optional for CHILD and INFANT.", nullable = true)
           String identifyNumber,
       LocalDate expiryDate) {}
 }
