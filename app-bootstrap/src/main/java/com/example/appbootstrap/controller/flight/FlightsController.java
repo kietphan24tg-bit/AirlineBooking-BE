@@ -1,10 +1,12 @@
 package com.example.appbootstrap.controller.flight;
 
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
+import com.example.appbootstrap.application.flight.FlightSeatMapService;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
+import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
 import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FlightConnectionFilter;
@@ -32,9 +34,11 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -45,14 +49,17 @@ public class FlightsController {
 
   private final FlightSearchFacadeService flightSearchFacadeService;
   private final BookingRevalidateService bookingRevalidateService;
+  private final FlightSeatMapService flightSeatMapService;
   private final UserRecentAirportService userRecentAirportService;
 
   public FlightsController(
       FlightSearchFacadeService flightSearchFacadeService,
       BookingRevalidateService bookingRevalidateService,
+      FlightSeatMapService flightSeatMapService,
       UserRecentAirportService userRecentAirportService) {
     this.flightSearchFacadeService = flightSearchFacadeService;
     this.bookingRevalidateService = bookingRevalidateService;
+    this.flightSeatMapService = flightSeatMapService;
     this.userRecentAirportService = userRecentAirportService;
   }
 
@@ -121,6 +128,22 @@ public class FlightsController {
   })
   RevalidateFareResponse revalidateFare(@Valid @RequestBody RevalidateFareRequest request) {
     return bookingRevalidateService.revalidate(request);
+  }
+
+  @GetMapping("/{flightId}/seats")
+  @Operation(
+      summary = "Get seat map for a selected fare",
+      description =
+          "Returns flight seats with fare-aware entitlement so the UI can distinguish included, "
+              + "paid, and unavailable seats.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Seat map returned", content = @Content),
+    @ApiResponse(responseCode = "404", description = "Flight or fare not found", content = @Content)
+  })
+  FlightSeatMapResponse getSeatMap(
+      @PathVariable Long flightId, @RequestParam("fareId") Long fareId) {
+    return FlightSeatMapResponse.from(flightSeatMapService.getSeatMap(flightId, fareId));
   }
 
   private void validateBusinessRules(FlightSearchQueryRequest request) {

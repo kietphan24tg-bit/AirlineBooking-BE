@@ -2,6 +2,7 @@ package com.example.modulebooking.entity;
 
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleflight.entity.SeatCategoryEntity;
 import com.example.moduleflight.entity.SeatClassEntity;
 import com.example.moduleflight.entity.SeatTypeEntity;
 import jakarta.persistence.Column;
@@ -43,6 +44,10 @@ public class FlightSeatEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "seat_type_id", nullable = false)
   private SeatTypeEntity seatType;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "seat_category_id", nullable = false)
+  private SeatCategoryEntity seatCategory;
 
   @Column(nullable = false, length = 20)
   private String status;

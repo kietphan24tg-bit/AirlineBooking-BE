@@ -97,6 +97,7 @@ public record FlightSearchResponse(
       BigDecimal mileageRate,
       boolean loungeAccess,
       boolean seatSelection,
+      String seatSelectionPolicy,
       String mealType,
       boolean wifiIncluded,
       boolean fastTrackSecurity) {
@@ -119,6 +120,7 @@ public record FlightSearchResponse(
           view.mileageRate(),
           view.loungeAccess(),
           view.seatSelection(),
+          view.seatSelectionPolicy(),
           view.mealType(),
           view.wifiIncluded(),
           view.fastTrackSecurity());

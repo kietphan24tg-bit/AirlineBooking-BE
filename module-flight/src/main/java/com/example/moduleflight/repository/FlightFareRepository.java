@@ -24,6 +24,7 @@ public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Lo
       join fetch f.departureAirport dep
       join fetch f.arrivalAirport arr
       join fetch ff.fareClass fc
+      left join fetch fc.includedSeatCategory isc
       where dep.code = :fromCode
         and arr.code = :toCode
         and f.flightDate = :flightDate
@@ -42,6 +43,7 @@ public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Lo
       join fetch ff.flight f
       join fetch f.departureAirport dep
       join fetch ff.fareClass fc
+      left join fetch fc.includedSeatCategory isc
       where ff.id = :id
       """)
   Optional<FlightFareEntity> findByIdWithDetails(@Param("id") Long id);

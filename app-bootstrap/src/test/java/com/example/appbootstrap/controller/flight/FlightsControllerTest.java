@@ -10,11 +10,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
+import com.example.appbootstrap.application.flight.FlightSeatMapService;
 import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
+import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
 import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FlightConnectionFilter;
@@ -46,6 +48,7 @@ class FlightsControllerTest {
 
   @Mock private FlightSearchFacadeService flightSearchFacadeService;
   @Mock private BookingRevalidateService bookingRevalidateService;
+  @Mock private FlightSeatMapService flightSeatMapService;
   @Mock private UserRecentAirportService userRecentAirportService;
 
   private FlightsController controller;
@@ -54,7 +57,10 @@ class FlightsControllerTest {
   void setUp() {
     controller =
         new FlightsController(
-            flightSearchFacadeService, bookingRevalidateService, userRecentAirportService);
+            flightSearchFacadeService,
+            bookingRevalidateService,
+            flightSeatMapService,
+            userRecentAirportService);
   }
 
   @Test
@@ -102,6 +108,7 @@ class FlightsControllerTest {
                                     new BigDecimal("1.00"),
                                     false,
                                     true,
+                                    "INCLUDED",
                                     "STANDARD",
                                     false,
                                     false))))),
@@ -155,6 +162,15 @@ class FlightsControllerTest {
         true,
         response.outbound().getFirst().fares().getFirst().fareClassBenefits().seatSelection());
     assertEquals(
+        "INCLUDED",
+        response
+            .outbound()
+            .getFirst()
+            .fares()
+            .getFirst()
+            .fareClassBenefits()
+            .seatSelectionPolicy());
+    assertEquals(
         false,
         response.outbound().getFirst().fares().getFirst().fareClassBenefits().wifiIncluded());
     assertEquals(
@@ -190,6 +206,79 @@ class FlightsControllerTest {
 
     assertEquals(expected, response);
     verify(bookingRevalidateService).revalidate(request);
+  }
+
+  @Test
+  void getSeatMap_mapsServiceResponse() {
+    when(flightSeatMapService.getSeatMap(11L, 101L))
+        .thenReturn(
+            new FlightSeatMapService.FlightSeatMapView(
+                11L,
+                101L,
+                1L,
+                "ECONOMY",
+                "PAID",
+                null,
+                "VND",
+                new FlightSeatMapService.AircraftLayoutView(
+                    List.of("A", "B", "C", "D", "E", "F"),
+                    List.of("C"),
+                    List.of(
+                        new FlightSeatMapService.SeatClassZoneView("BUSINESS", 1, 2),
+                        new FlightSeatMapService.SeatClassZoneView("ECONOMY", 3, 30))),
+                new FlightSeatMapService.LegendView(
+                    List.of("AVAILABLE", "RESERVED", "BOOKED", "UNAVAILABLE"),
+                    List.of("WINDOW", "MIDDLE", "AISLE"),
+                    List.of("STANDARD", "PREFERRED", "EXIT_ROW", "EXTRA_LEGROOM")),
+                List.of(
+                    new FlightSeatMapService.RowView(
+                        1,
+                        "BUSINESS",
+                        List.of(
+                            new FlightSeatMapService.SeatView(
+                                1,
+                                "A",
+                                502L,
+                                "1A",
+                                "BUSINESS",
+                                "WINDOW",
+                                "STANDARD",
+                                "AVAILABLE",
+                                false,
+                                false,
+                                null,
+                                null,
+                                "SEAT_NOT_ALLOWED_FOR_FARE"))),
+                    new FlightSeatMapService.RowView(
+                        12,
+                        "ECONOMY",
+                        List.of(
+                            new FlightSeatMapService.SeatView(
+                                12,
+                                "A",
+                                501L,
+                                "12A",
+                                "ECONOMY",
+                                "WINDOW",
+                                "STANDARD",
+                                "AVAILABLE",
+                                true,
+                                false,
+                                new BigDecimal("20000"),
+                                "VND",
+                                null))))));
+
+    FlightSeatMapResponse response = controller.getSeatMap(11L, 101L);
+
+    assertEquals("PAID", response.seatSelectionPolicy());
+    assertEquals(null, response.includedSeatCategoryCode());
+    assertEquals(List.of("A", "B", "C", "D", "E", "F"), response.layout().columns());
+    assertEquals(List.of("C"), response.layout().aisleAfterColumns());
+    assertEquals(2, response.rows().size());
+    assertEquals("STANDARD", response.rows().get(1).cells().getFirst().seatCategory());
+    assertEquals(new BigDecimal("20000"), response.rows().get(1).cells().getFirst().extraPrice());
+    assertEquals("SEAT_NOT_ALLOWED_FOR_FARE", response.rows().getFirst().cells().getFirst().reason());
+    verify(flightSeatMapService).getSeatMap(11L, 101L);
   }
 
   @Test

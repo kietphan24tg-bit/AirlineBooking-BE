@@ -103,6 +103,7 @@ public record FlightSearchResult(
       BigDecimal mileageRate,
       boolean loungeAccess,
       boolean seatSelection,
+      String seatSelectionPolicy,
       String mealType,
       boolean wifiIncluded,
       boolean fastTrackSecurity) {
@@ -126,6 +127,7 @@ public record FlightSearchResult(
           fc.getMileageRate(),
           fc.isLoungeAccess(),
           fc.isSeatSelection(),
+          fc.getSeatSelectionPolicy(),
           fc.getMealType(),
           fc.isWifiIncluded(),
           fc.isFastTrackSecurity());

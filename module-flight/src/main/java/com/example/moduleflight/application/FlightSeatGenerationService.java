@@ -1,10 +1,12 @@
 package com.example.moduleflight.application;
 
 import com.example.moduleflight.entity.AircraftLayoutEntity;
+import com.example.moduleflight.entity.AircraftLayoutSeatCategoryZoneEntity;
 import com.example.moduleflight.entity.AircraftLayoutSeatTypeZoneEntity;
 import com.example.moduleflight.entity.AircraftLayoutZoneEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.repository.AircraftLayoutRepository;
+import com.example.moduleflight.repository.AircraftLayoutSeatCategoryZoneRepository;
 import com.example.moduleflight.repository.AircraftLayoutSeatTypeZoneRepository;
 import com.example.moduleflight.repository.AircraftLayoutZoneRepository;
 import java.sql.Timestamp;
@@ -34,8 +36,9 @@ public class FlightSeatGenerationService {
 
   private static final String UPSERT_FLIGHT_SEAT_SQL =
       """
-      insert into flight_seats (flight_id, seat_number, seat_class_id, seat_type_id, status, created_at)
+      insert into flight_seats (flight_id, seat_number, seat_class_id, seat_type_id, seat_category_id, status, created_at)
       values (
+        ?,
         ?,
         ?,
         ?,
@@ -45,23 +48,27 @@ public class FlightSeatGenerationService {
       )
       on conflict (flight_id, seat_number) do update
       set seat_class_id = excluded.seat_class_id,
-          seat_type_id = excluded.seat_type_id
+          seat_type_id = excluded.seat_type_id,
+          seat_category_id = excluded.seat_category_id
       where flight_seats.status = 'AVAILABLE'
       """;
 
   private final AircraftLayoutRepository aircraftLayoutRepository;
   private final AircraftLayoutZoneRepository aircraftLayoutZoneRepository;
   private final AircraftLayoutSeatTypeZoneRepository aircraftLayoutSeatTypeZoneRepository;
+  private final AircraftLayoutSeatCategoryZoneRepository aircraftLayoutSeatCategoryZoneRepository;
   private final JdbcTemplate jdbcTemplate;
 
   public FlightSeatGenerationService(
       AircraftLayoutRepository aircraftLayoutRepository,
       AircraftLayoutZoneRepository aircraftLayoutZoneRepository,
       AircraftLayoutSeatTypeZoneRepository aircraftLayoutSeatTypeZoneRepository,
+      AircraftLayoutSeatCategoryZoneRepository aircraftLayoutSeatCategoryZoneRepository,
       JdbcTemplate jdbcTemplate) {
     this.aircraftLayoutRepository = aircraftLayoutRepository;
     this.aircraftLayoutZoneRepository = aircraftLayoutZoneRepository;
     this.aircraftLayoutSeatTypeZoneRepository = aircraftLayoutSeatTypeZoneRepository;
+    this.aircraftLayoutSeatCategoryZoneRepository = aircraftLayoutSeatCategoryZoneRepository;
     this.jdbcTemplate = jdbcTemplate;
   }
 
@@ -96,7 +103,9 @@ public class FlightSeatGenerationService {
     int totalRows = layout.getTotalRows();
     Map<Long, List<LayoutZone>> zoneCache = new HashMap<>();
     Map<Long, List<LayoutTypeZone>> seatTypeZoneCache = new HashMap<>();
+    Map<Long, List<LayoutCategoryZone>> seatCategoryZoneCache = new HashMap<>();
     Map<String, Long> seatTypeIdByCode = loadSeatTypeIds();
+    Map<String, Long> seatCategoryIdByCode = loadSeatCategoryIds();
     Timestamp createdAt = Timestamp.from(OffsetDateTime.now().toInstant());
     Set<String> generatedSeatNumbers = new LinkedHashSet<>();
     List<Object[]> seatsToUpsert = new ArrayList<>();
@@ -124,8 +133,18 @@ public class FlightSeatGenerationService {
               column);
           continue;
         }
+        Long seatCategoryId =
+            resolveSeatCategoryId(layout, row, column, seatCategoryZoneCache, seatCategoryIdByCode);
+        if (seatCategoryId == null) {
+          LOG.warn(
+              "Skip seat generation: no seat category resolved for layoutId={}, row={}, column={}",
+              layout.getId(),
+              row,
+              column);
+          continue;
+        }
         seatsToUpsert.add(
-            new Object[] {flight.getId(), seatNumber, seatClassId, seatTypeId, createdAt});
+            new Object[] {flight.getId(), seatNumber, seatClassId, seatTypeId, seatCategoryId, createdAt});
         generatedSeatNumbers.add(seatNumber);
       }
     }
@@ -211,6 +230,24 @@ public class FlightSeatGenerationService {
     return resolveSeatTypeIdByPosition(column, layoutColumns, seatTypeIdByCode);
   }
 
+  private Long resolveSeatCategoryId(
+      AircraftLayoutEntity layout,
+      int row,
+      String column,
+      Map<Long, List<LayoutCategoryZone>> zoneCache,
+      Map<String, Long> seatCategoryIdByCode) {
+    if (layout.getId() != null) {
+      List<LayoutCategoryZone> zones =
+          zoneCache.computeIfAbsent(layout.getId(), this::loadSeatCategoryZones);
+      for (LayoutCategoryZone zone : zones) {
+        if (zone.matches(row, column)) {
+          return zone.seatCategoryId();
+        }
+      }
+    }
+    return seatCategoryIdByCode.get("STANDARD");
+  }
+
   private Long resolveSeatTypeIdByPosition(
       String column, List<String> layoutColumns, Map<String, Long> seatTypeIdByCode) {
     int columnIndex = -1;
@@ -291,8 +328,41 @@ public class FlightSeatGenerationService {
     return zones;
   }
 
+  private List<LayoutCategoryZone> loadSeatCategoryZones(Long layoutId) {
+    List<AircraftLayoutSeatCategoryZoneEntity> entities =
+        aircraftLayoutSeatCategoryZoneRepository.findByAircraftLayoutIdOrderByRowStartAsc(layoutId);
+    List<LayoutCategoryZone> zones = new ArrayList<>();
+    for (AircraftLayoutSeatCategoryZoneEntity entity : entities) {
+      if (entity.getSeatCategory() == null || entity.getSeatCategory().getId() == null) {
+        continue;
+      }
+      zones.add(
+          new LayoutCategoryZone(
+              entity.getSeatCategory().getId(),
+              entity.getRowStart(),
+              entity.getRowEnd(),
+              parseColumns(entity.getColumns())));
+    }
+    return zones;
+  }
+
   private Map<String, Long> loadSeatTypeIds() {
     List<Map<String, Object>> rows = jdbcTemplate.queryForList("select code, id from seat_types");
+    Map<String, Long> ids = new HashMap<>();
+    for (Map<String, Object> row : rows) {
+      String code = row.get("code") == null ? null : row.get("code").toString();
+      Object idValue = row.get("id");
+      if (!StringUtils.hasText(code) || idValue == null) {
+        continue;
+      }
+      ids.put(code.toUpperCase(Locale.ROOT), ((Number) idValue).longValue());
+    }
+    return ids;
+  }
+
+  private Map<String, Long> loadSeatCategoryIds() {
+    List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList("select code, id from seat_categories");
     Map<String, Long> ids = new HashMap<>();
     for (Map<String, Object> row : rows) {
       String code = row.get("code") == null ? null : row.get("code").toString();
@@ -327,6 +397,19 @@ public class FlightSeatGenerationService {
 
   private record LayoutTypeZone(
       Long seatTypeId, Integer rowStart, Integer rowEnd, List<String> columns) {
+    private boolean matches(int row, String column) {
+      if (rowStart == null || rowEnd == null || row < rowStart || row > rowEnd) {
+        return false;
+      }
+      if (columns == null || columns.isEmpty()) {
+        return true;
+      }
+      return columns.contains(normalizeColumn(column));
+    }
+  }
+
+  private record LayoutCategoryZone(
+      Long seatCategoryId, Integer rowStart, Integer rowEnd, List<String> columns) {
     private boolean matches(int row, String column) {
       if (rowStart == null || rowEnd == null || row < rowStart || row > rowEnd) {
         return false;

@@ -3,12 +3,24 @@ package com.example.modulebooking.repository;
 import com.example.modulebooking.entity.FlightSeatEntity;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Long> {
+
+  @Query(
+      """
+      select fs
+      from FlightSeatEntity fs
+      join fetch fs.seatClass sc
+      join fetch fs.seatType st
+      join fetch fs.seatCategory cat
+      where fs.flight.id = :flightId
+      """)
+  List<FlightSeatEntity> findSeatMapByFlightId(@Param("flightId") Long flightId);
 
   @Query(
       value =
@@ -112,4 +124,21 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
           """,
       nativeQuery = true)
   List<Long> findSeatIdsByBookingId(@Param("bookingId") Long bookingId);
+
+  @Query(
+      value =
+          """
+          select fs.id
+          from flight_seats fs
+          where fs.flight_id = :flightId
+            and exists (
+                select 1
+                from fare_class_seat_classes fcsc
+                where fcsc.fare_class_id = :fareClassId
+                  and fcsc.seat_class_id = fs.seat_class_id
+            )
+          """,
+      nativeQuery = true)
+  Set<Long> findAllowedSeatIdsForFare(
+      @Param("flightId") Long flightId, @Param("fareClassId") Long fareClassId);
 }
