@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,7 +30,6 @@ public class BookingsController {
   }
 
   @PostMapping("/bookings")
-  @SecurityRequirement(name = "bearerAuth")
   @Operation(
       summary = "Create booking with revalidate session",
       description =
@@ -41,7 +39,6 @@ public class BookingsController {
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Booking created", content = @Content),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
     @ApiResponse(responseCode = "409", description = "Business conflict", content = @Content),
     @ApiResponse(
         responseCode = "410",
@@ -51,6 +48,7 @@ public class BookingsController {
   CreateBookingResponse createBooking(
       @AuthenticationPrincipal AppUserPrincipal principal,
       @Valid @RequestBody CreateBookingRequest request) {
-    return bookingRevalidateService.createBooking(principal.getUserId(), request);
+    return bookingRevalidateService.createBooking(
+        principal != null ? principal.getUserId() : null, request);
   }
 }

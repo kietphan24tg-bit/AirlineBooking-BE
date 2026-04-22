@@ -26,6 +26,7 @@ import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.repository.FlightFareRepository;
+import com.example.moduleidentity.entity.Role;
 import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -48,6 +49,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -77,6 +79,7 @@ public class BookingRevalidateService {
   private final PromotionRepository promotionRepository;
   private final FlightSeatRepository flightSeatRepository;
   private final FlightInventoryAvailabilityService flightInventoryAvailabilityService;
+  private final PasswordEncoder passwordEncoder;
 
   public BookingRevalidateService(
       FlightFareRepository flightFareRepository,
@@ -91,7 +94,8 @@ public class BookingRevalidateService {
       PassengerRepository passengerRepository,
       PromotionRepository promotionRepository,
       FlightSeatRepository flightSeatRepository,
-      FlightInventoryAvailabilityService flightInventoryAvailabilityService) {
+      FlightInventoryAvailabilityService flightInventoryAvailabilityService,
+      PasswordEncoder passwordEncoder) {
     this.flightFareRepository = flightFareRepository;
     this.flightPricingService = flightPricingService;
     this.promotionPreviewService = promotionPreviewService;
@@ -105,6 +109,7 @@ public class BookingRevalidateService {
     this.promotionRepository = promotionRepository;
     this.flightSeatRepository = flightSeatRepository;
     this.flightInventoryAvailabilityService = flightInventoryAvailabilityService;
+    this.passwordEncoder = passwordEncoder;
   }
 
   @Transactional(readOnly = true)
@@ -251,12 +256,7 @@ public class BookingRevalidateService {
       validatePassengerAges(passengers, fare.getFlight().getFlightDate());
 
       int requiredSeats = snapshot.passengerSummary().seatedPassengers();
-      UserEntity user =
-          userRepository
-              .findById(userId)
-              .orElseThrow(
-                  () ->
-                      new AppException("USER_NOT_FOUND", "Authenticated user does not exist", 404));
+      UserEntity user = resolveBookingUser(userId);
       BookingEntity booking = new BookingEntity();
       booking.setUser(user);
       booking.setPnrCode(generatePnrCode());
@@ -315,6 +315,27 @@ public class BookingRevalidateService {
           ex.getMessage());
       throw ex;
     }
+  }
+
+  private UserEntity resolveBookingUser(Long userId) {
+    if (userId != null) {
+      return userRepository
+          .findById(userId)
+          .orElseThrow(
+              () -> new AppException("USER_NOT_FOUND", "Authenticated user does not exist", 404));
+    }
+
+    OffsetDateTime now = OffsetDateTime.now();
+    UserEntity guestUser = new UserEntity();
+    guestUser.setEmail("guest+" + UUID.randomUUID() + "@booking.local");
+    guestUser.setFirstName("Guest");
+    guestUser.setLastName("Booking");
+    guestUser.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+    guestUser.setRole(Role.USER);
+    guestUser.setAcceptTerms(true);
+    guestUser.setCreatedAt(now);
+    guestUser.setUpdatedAt(now);
+    return userRepository.save(guestUser);
   }
 
   private void validatePassengerSummary(PassengerSummaryRequest summary) {

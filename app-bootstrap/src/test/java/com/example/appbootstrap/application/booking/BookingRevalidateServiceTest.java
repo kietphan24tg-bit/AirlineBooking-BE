@@ -50,6 +50,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class BookingRevalidateServiceTest {
@@ -67,6 +68,7 @@ class BookingRevalidateServiceTest {
   @Mock private PromotionRepository promotionRepository;
   @Mock private FlightSeatRepository flightSeatRepository;
   @Mock private FlightInventoryAvailabilityService flightInventoryAvailabilityService;
+  @Mock private PasswordEncoder passwordEncoder;
 
   private BookingRevalidateService service;
   private FlightFareEntity fare;
@@ -87,7 +89,8 @@ class BookingRevalidateServiceTest {
             passengerRepository,
             promotionRepository,
             flightSeatRepository,
-            flightInventoryAvailabilityService);
+            flightInventoryAvailabilityService,
+            passwordEncoder);
     fare = fare();
   }
 
@@ -198,6 +201,72 @@ class BookingRevalidateServiceTest {
     verify(flightPricingService).calculateTotalPrice(new BigDecimal("1500000.00"), 1, 1, 1);
     verify(flightInventoryAvailabilityService).countAvailableSeats(11L, 5L);
     verify(flightSeatRepository).reserveForBooking(eq(124L), eq(11L), eq(5L), eq(2), any());
+  }
+
+  @Test
+  void createBooking_withoutAuthentication_createsGuestUserAndBooking() {
+    var revalidated = stubRevalidate(new PassengerSummaryRequest(1, 0, 0), 1L, "1500000.00");
+    stubRevalidateSnapshotAccess(revalidated.revalidateId(), "idem-guest");
+    when(passwordEncoder.encode(any())).thenReturn("guest-password-hash");
+    when(userRepository.save(any(UserEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              UserEntity user = invocation.getArgument(0, UserEntity.class);
+              user.setId(99L);
+              return user;
+            });
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              BookingEntity booking = invocation.getArgument(0, BookingEntity.class);
+              booking.setId(125L);
+              return booking;
+            });
+    when(bookingContactRepository.saveAll(any()))
+        .thenAnswer(
+            invocation -> {
+              List<BookingContactEntity> contacts = invocation.getArgument(0);
+              for (int i = 0; i < contacts.size(); i++) {
+                contacts.get(i).setId((long) i + 1);
+              }
+              return contacts;
+            });
+    when(passengerRepository.saveAll(any()))
+        .thenAnswer(
+            invocation -> {
+              List<PassengerEntity> passengers = invocation.getArgument(0);
+              for (int i = 0; i < passengers.size(); i++) {
+                passengers.get(i).setId((long) i + 10);
+              }
+              return passengers;
+            });
+    when(flightSeatRepository.reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any()))
+        .thenReturn(1);
+
+    CreateBookingResponse response =
+        service.createBooking(
+            null,
+            new CreateBookingRequest(
+                revalidated.revalidateId(),
+                "idem-guest",
+                new PassengerSummaryRequest(1, 0, 0),
+                List.of(
+                    new CreateBookingRequest.BookingContactRequest(
+                        "guest@example.com", "0900000001", true)),
+                List.of(
+                    new CreateBookingRequest.BookingPassengerRequest(
+                        "AN",
+                        "NGUYEN",
+                        LocalDate.parse("1998-01-01"),
+                        "male",
+                        "VN",
+                        "adult",
+                        "passport",
+                        "B1234567",
+                        LocalDate.parse("2030-01-01")))));
+
+    assertEquals(125L, response.booking().bookingId());
+    verify(userRepository).save(any(UserEntity.class));
   }
 
   @Test
