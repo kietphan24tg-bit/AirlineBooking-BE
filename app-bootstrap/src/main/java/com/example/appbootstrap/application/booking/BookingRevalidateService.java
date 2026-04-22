@@ -369,24 +369,31 @@ public class BookingRevalidateService {
     for (CreateBookingRequest.BookingPassengerRequest passenger : passengers) {
       String passengerType = normalizeCode(passenger.passengerType());
       String gender = normalizeCode(passenger.gender());
-      String identifyType = normalizeCode(passenger.identifyType());
-      validatePassengerCodes(passengerType, gender, identifyType);
+      String identifyType = normalizeOptionalCode(passenger.identifyType());
+      String nationality = normalizeText(passenger.nationality());
+      String identifyNumber = normalizeText(passenger.identifyNumber());
+      validatePassengerFields(passengerType, gender, nationality, identifyType, identifyNumber);
       normalized.add(
           new NormalizedPassenger(
               normalizeRequiredText(passenger.firstName(), "firstName"),
               normalizeRequiredText(passenger.lastName(), "lastName"),
               passenger.dateOfBirth(),
               gender,
-              normalizeRequiredText(passenger.nationality(), "nationality"),
+              nationality,
               passengerType,
               identifyType,
-              normalizeRequiredText(passenger.identifyNumber(), "identifyNumber"),
+              identifyNumber,
               passenger.expiryDate()));
     }
     return List.copyOf(normalized);
   }
 
-  private void validatePassengerCodes(String passengerType, String gender, String identifyType) {
+  private void validatePassengerFields(
+      String passengerType,
+      String gender,
+      String nationality,
+      String identifyType,
+      String identifyNumber) {
     if (!"ADULT".equals(passengerType)
         && !"CHILD".equals(passengerType)
         && !"INFANT".equals(passengerType)) {
@@ -396,7 +403,20 @@ public class BookingRevalidateService {
     if (!"MALE".equals(gender) && !"FEMALE".equals(gender) && !"OTHER".equals(gender)) {
       throw new AppException("INVALID_GENDER", "gender must be MALE, FEMALE, or OTHER", 400);
     }
-    if (!"ID_CARD".equals(identifyType) && !"PASSPORT".equals(identifyType)) {
+    if ("ADULT".equals(passengerType)) {
+      if (!StringUtils.hasText(nationality)) {
+        throw new AppException("VALIDATION_FAILED", "nationality is required for ADULT", 400);
+      }
+      if (!StringUtils.hasText(identifyType)) {
+        throw new AppException("VALIDATION_FAILED", "identifyType is required for ADULT", 400);
+      }
+      if (!StringUtils.hasText(identifyNumber)) {
+        throw new AppException("VALIDATION_FAILED", "identifyNumber is required for ADULT", 400);
+      }
+    }
+    if (StringUtils.hasText(identifyType)
+        && !"ID_CARD".equals(identifyType)
+        && !"PASSPORT".equals(identifyType)) {
       throw new AppException(
           "INVALID_IDENTIFY_TYPE", "identifyType must be ID_CARD or PASSPORT", 400);
     }
@@ -451,6 +471,11 @@ public class BookingRevalidateService {
 
   private String normalizeCode(String value) {
     return normalizeRequiredText(value, "code").toUpperCase(Locale.ROOT);
+  }
+
+  private String normalizeOptionalCode(String value) {
+    String normalized = normalizeText(value);
+    return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
   }
 
   private String normalizeRequiredText(String value, String fieldName) {

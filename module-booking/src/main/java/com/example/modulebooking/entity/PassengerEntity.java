@@ -42,16 +42,16 @@ public class PassengerEntity {
   @Column(nullable = false, length = 20)
   private String gender;
 
-  @Column(nullable = false, length = 100)
+  @Column(length = 100)
   private String nationality;
 
   @Column(name = "passenger_type", nullable = false, length = 20)
   private String passengerType;
 
-  @Column(name = "identify_type", nullable = false, length = 20)
+  @Column(name = "identify_type", length = 20)
   private String identifyType;
 
-  @Column(name = "identify_number", nullable = false, length = 100)
+  @Column(name = "identify_number", length = 100)
   private String identifyNumber;
 
   @Column(name = "expiry_date")

@@ -1,6 +1,7 @@
 package com.example.appbootstrap.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -165,27 +166,74 @@ class BookingRevalidateServiceTest {
                         "NGUYEN",
                         LocalDate.parse("2018-05-01"),
                         "female",
-                        "VN",
+                        null,
                         "child",
-                        "passport",
-                        "C1234567",
-                        LocalDate.parse("2030-01-01")),
+                        null,
+                        null,
+                        null),
                     new CreateBookingRequest.BookingPassengerRequest(
                         "CUONG",
                         "NGUYEN",
                         LocalDate.parse("2025-06-01"),
                         "male",
-                        "VN",
+                        null,
                         "infant",
-                        "passport",
-                        "I1234567",
-                        LocalDate.parse("2030-01-01")))));
+                        null,
+                        null,
+                        null))));
 
     assertEquals(new BigDecimal("2775000.00"), response.pricing().originalTotalPrice());
     assertEquals(2, response.seatReservation().reservedSeatCount());
+    assertEquals("ADULT", response.passengers().get(0).passengerType());
+    assertEquals("VN", response.passengers().get(0).nationality());
+    assertEquals("PASSPORT", response.passengers().get(0).identifyType());
+    assertEquals("CHILD", response.passengers().get(1).passengerType());
+    assertNull(response.passengers().get(1).nationality());
+    assertNull(response.passengers().get(1).identifyType());
+    assertNull(response.passengers().get(1).identifyNumber());
+    assertEquals("INFANT", response.passengers().get(2).passengerType());
+    assertNull(response.passengers().get(2).nationality());
+    assertNull(response.passengers().get(2).identifyType());
+    assertNull(response.passengers().get(2).identifyNumber());
     verify(flightPricingService).calculateTotalPrice(new BigDecimal("1500000.00"), 1, 1, 1);
     verify(flightInventoryAvailabilityService).countAvailableSeats(11L, 5L);
     verify(flightSeatRepository).reserveForBooking(eq(124L), eq(11L), eq(5L), eq(2), any());
+  }
+
+  @Test
+  void createBooking_rejectsAdultMissingRequiredDocuments() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 0);
+    var revalidated = stubRevalidate(summary, 1L, "1500000.00");
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.createBooking(
+                    7L,
+                    new CreateBookingRequest(
+                        revalidated.revalidateId(),
+                        "idem-adult-docs",
+                        summary,
+                        List.of(
+                            new CreateBookingRequest.BookingContactRequest(
+                                "USER@EXAMPLE.COM", "0900000000", true)),
+                        List.of(
+                            new CreateBookingRequest.BookingPassengerRequest(
+                                "AN",
+                                "NGUYEN",
+                                LocalDate.parse("1998-01-01"),
+                                "male",
+                                null,
+                                "adult",
+                                null,
+                                null,
+                                null)))));
+
+    assertEquals("VALIDATION_FAILED", exception.getCode());
+    assertEquals("nationality is required for ADULT", exception.getMessage());
+    verify(flightSeatRepository, never())
+        .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
   }
 
   @Test
