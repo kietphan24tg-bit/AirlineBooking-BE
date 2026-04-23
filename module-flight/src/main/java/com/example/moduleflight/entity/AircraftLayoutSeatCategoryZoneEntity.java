@@ -35,18 +35,15 @@ public class AircraftLayoutSeatCategoryZoneEntity {
   private SeatCategoryEntity seatCategory;
 
   @Column(name = "row_start", nullable = false)
-  @Min(1)
-  private Integer rowStart;
+  @Min(1) private Integer rowStart;
 
   @Column(name = "row_end", nullable = false)
-  @Min(1)
-  private Integer rowEnd;
+  @Min(1) private Integer rowEnd;
 
   @Column(name = "columns", length = 20)
   private String columns;
 
-  @AssertTrue(message = "rowStart and rowEnd must be > 0 and rowStart <= rowEnd")
-  private boolean isRowRangeValid() {
+  @AssertTrue(message = "rowStart and rowEnd must be > 0 and rowStart <= rowEnd") private boolean isRowRangeValid() {
     return rowStart != null && rowEnd != null && rowStart <= rowEnd;
   }
 }

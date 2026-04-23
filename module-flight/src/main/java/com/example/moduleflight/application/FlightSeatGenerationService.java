@@ -144,7 +144,9 @@ public class FlightSeatGenerationService {
           continue;
         }
         seatsToUpsert.add(
-            new Object[] {flight.getId(), seatNumber, seatClassId, seatTypeId, seatCategoryId, createdAt});
+            new Object[] {
+              flight.getId(), seatNumber, seatClassId, seatTypeId, seatCategoryId, createdAt
+            });
         generatedSeatNumbers.add(seatNumber);
       }
     }
