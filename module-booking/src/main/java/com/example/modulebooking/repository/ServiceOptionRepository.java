@@ -21,5 +21,6 @@ public interface ServiceOptionRepository extends JpaRepository<ServiceOptionEnti
         and so.isActive = true
       order by s.type asc, s.name asc, so.price asc, so.name asc
       """)
-  List<ServiceOptionEntity> findActiveByServiceIds(@Param("serviceIds") Collection<Long> serviceIds);
+  List<ServiceOptionEntity> findActiveByServiceIds(
+      @Param("serviceIds") Collection<Long> serviceIds);
 }
