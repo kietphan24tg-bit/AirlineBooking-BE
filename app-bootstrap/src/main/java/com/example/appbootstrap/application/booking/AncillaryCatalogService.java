@@ -48,7 +48,8 @@ public class AncillaryCatalogService {
       return getCatalog();
     }
     if (flightId == null || fareId == null) {
-      throw new AppException("VALIDATION_FAILED", "flightId and fareId must be provided together", 400);
+      throw new AppException(
+          "VALIDATION_FAILED", "flightId and fareId must be provided together", 400);
     }
     FlightFareEntity fare =
         flightFareRepository

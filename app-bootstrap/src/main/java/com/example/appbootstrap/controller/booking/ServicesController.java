@@ -37,6 +37,7 @@ public class ServicesController {
   })
   AncillaryCatalogResponse getCatalog(
       @RequestParam(required = false) Long flightId, @RequestParam(required = false) Long fareId) {
-    return AncillaryCatalogResponse.from(ancillaryCatalogService.getCatalogForFare(flightId, fareId));
+    return AncillaryCatalogResponse.from(
+        ancillaryCatalogService.getCatalogForFare(flightId, fareId));
   }
 }

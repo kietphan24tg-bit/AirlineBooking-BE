@@ -105,7 +105,8 @@ class AncillaryCatalogServiceTest {
     when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
     when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("US");
     when(countryCurrencyResolver.resolveCurrency("US")).thenReturn("USD");
-    when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc()).thenReturn(List.of(baggage));
+    when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc())
+        .thenReturn(List.of(baggage));
     when(serviceOptionRepository.findActiveByServiceIds(anyCollection()))
         .thenReturn(
             List.of(optionEntity(11L, baggage, "Extra 15kg", "Checked bag 15kg", "180000", true)));
@@ -125,7 +126,8 @@ class AncillaryCatalogServiceTest {
             flightFareRepository,
             countryCurrencyResolver);
 
-    AppException exception = assertThrows(AppException.class, () -> service.getCatalogForFare(11L, null));
+    AppException exception =
+        assertThrows(AppException.class, () -> service.getCatalogForFare(11L, null));
 
     assertEquals("VALIDATION_FAILED", exception.getCode());
   }
@@ -159,7 +161,8 @@ class AncillaryCatalogServiceTest {
     return entity;
   }
 
-  private static FlightFareEntity fare(Long flightId, Long fareId, String countryCode, String country) {
+  private static FlightFareEntity fare(
+      Long flightId, Long fareId, String countryCode, String country) {
     AirportEntity airport = new AirportEntity();
     airport.setCountryCode(countryCode);
     airport.setCountry(country);
