@@ -1,7 +1,7 @@
 package com.example.moduleflight.application;
 
-import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleflight.entity.FlightFareEntity;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.stereotype.Component;
