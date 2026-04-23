@@ -187,8 +187,7 @@ public class FlightCoverageService {
 
       OffsetDateTime departureTime =
           departureAt(dep, flightDate, LocalTime.of(departureHour, departureMinute));
-      OffsetDateTime arrivalTime =
-          arrivalAt(arr, departureTime, durationHours, durationMinutes);
+      OffsetDateTime arrivalTime = arrivalAt(arr, departureTime, durationHours, durationMinutes);
 
       FlightEntity flight = new FlightEntity();
       flight.setAirline(airline);

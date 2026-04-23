@@ -38,7 +38,8 @@ class FlightCoverageServiceTest {
   void fillCoverageGaps_createsTargetFlightsPerRoutePerDay() {
     FlightCoverageService service = newService(3);
     mockCommonPools();
-    when(flightRepository.countByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(any(), any(), any()))
+    when(flightRepository.countByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(
+            any(), any(), any()))
         .thenReturn(0L);
     when(flightRepository.findByAirlineAndFlightNumberAndFlightDate(any(), any(), any()))
         .thenReturn(Optional.empty());
@@ -62,7 +63,8 @@ class FlightCoverageServiceTest {
   void fillCoverageGaps_onlyCreatesMissingFlightsWhenRouteAlreadyHasCoverage() {
     FlightCoverageService service = newService(3);
     mockCommonPools();
-    when(flightRepository.countByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(any(), any(), any()))
+    when(flightRepository.countByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(
+            any(), any(), any()))
         .thenReturn(2L);
     when(flightRepository.findByAirlineAndFlightNumberAndFlightDate(any(), any(), any()))
         .thenReturn(Optional.empty());
