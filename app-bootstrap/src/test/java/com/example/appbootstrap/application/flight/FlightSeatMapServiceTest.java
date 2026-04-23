@@ -175,6 +175,45 @@ class FlightSeatMapServiceTest {
   }
 
   @Test
+  void getSeatMap_nonVndFareRejectsRawVndSeatSurcharge() {
+    FlightSeatMapService service =
+        new FlightSeatMapService(
+            flightFareRepository,
+            flightSeatRepository,
+            aircraftLayoutRepository,
+            aircraftLayoutZoneRepository,
+            countryCurrencyResolver);
+    FlightFareEntity fare = fare(11L, 104L, 5L, "ECONOMY", "PAID", null);
+    FlightSeatEntity paidSeat =
+        seat(801L, "12A", "ECONOMY", "WINDOW", "PREFERRED", "AVAILABLE", "20000", "40000");
+    FlightSeatEntity freeSeat =
+        seat(802L, "12B", "ECONOMY", "MIDDLE", "STANDARD", "AVAILABLE", "0", "0");
+
+    when(flightFareRepository.findByIdWithDetails(104L)).thenReturn(Optional.of(fare));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("US");
+    when(countryCurrencyResolver.resolveCurrency("US")).thenReturn("USD");
+    when(aircraftLayoutRepository.findByAircraftId(901L))
+        .thenReturn(Optional.of(layout(301L, "ABCDEF")));
+    when(aircraftLayoutZoneRepository.findByAircraftLayoutIdOrderByRowStartAsc(301L))
+        .thenReturn(List.of(zone("ECONOMY", 1, 30)));
+    when(flightSeatRepository.findAllowedSeatIdsForFare(11L, 5L)).thenReturn(Set.of(801L, 802L));
+    when(flightSeatRepository.findSeatMapByFlightId(11L)).thenReturn(List.of(paidSeat, freeSeat));
+
+    FlightSeatMapService.FlightSeatMapView view = service.getSeatMap(11L, 104L);
+
+    FlightSeatMapService.SeatView blockedSeat = view.rows().getFirst().cells().getFirst();
+    assertFalse(blockedSeat.selectable());
+    assertEquals("SEAT_SURCHARGE_CURRENCY_UNSUPPORTED", blockedSeat.reason());
+    assertEquals(null, blockedSeat.extraPrice());
+    assertEquals(null, blockedSeat.currency());
+
+    FlightSeatMapService.SeatView zeroSurchargeSeat = view.rows().getFirst().cells().get(1);
+    assertTrue(zeroSurchargeSeat.selectable());
+    assertEquals(BigDecimal.ZERO, zeroSurchargeSeat.extraPrice());
+    assertEquals("USD", zeroSurchargeSeat.currency());
+  }
+
+  @Test
   void getSeatMap_rejectsFareFromDifferentFlight() {
     FlightSeatMapService service =
         new FlightSeatMapService(

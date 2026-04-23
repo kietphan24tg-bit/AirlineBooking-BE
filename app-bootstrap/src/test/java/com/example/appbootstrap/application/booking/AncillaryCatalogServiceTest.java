@@ -1,16 +1,24 @@
 package com.example.appbootstrap.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
+import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.ServiceEntity;
 import com.example.modulebooking.entity.ServiceOptionEntity;
 import com.example.modulebooking.repository.ServiceOptionRepository;
 import com.example.modulebooking.repository.ServiceRepository;
+import com.example.moduleflight.application.CountryCurrencyResolver;
+import com.example.moduleflight.entity.AirportEntity;
+import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleflight.entity.FlightFareEntity;
+import com.example.moduleflight.repository.FlightFareRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,11 +29,17 @@ class AncillaryCatalogServiceTest {
 
   @Mock private ServiceRepository serviceRepository;
   @Mock private ServiceOptionRepository serviceOptionRepository;
+  @Mock private FlightFareRepository flightFareRepository;
+  @Mock private CountryCurrencyResolver countryCurrencyResolver;
 
   @Test
   void getCatalog_returnsActiveGroupedOptionsWithStableOrdering() {
     AncillaryCatalogService service =
-        new AncillaryCatalogService(serviceRepository, serviceOptionRepository);
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
     ServiceEntity baggage = serviceEntity(1L, "BAGGAGE", "Baggage Add-on", "bag.png", true);
     ServiceEntity meal = serviceEntity(2L, "MEAL", "Pre-order Meals", "meal.png", true);
 
@@ -57,7 +71,11 @@ class AncillaryCatalogServiceTest {
   @Test
   void getCatalog_excludesServicesWithoutActiveOptions() {
     AncillaryCatalogService service =
-        new AncillaryCatalogService(serviceRepository, serviceOptionRepository);
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
     ServiceEntity baggage = serviceEntity(1L, "BAGGAGE", "Baggage Add-on", "bag.png", true);
     ServiceEntity lounge = serviceEntity(2L, "LOUNGE", "Airport Lounge", "lounge.png", true);
 
@@ -71,6 +89,45 @@ class AncillaryCatalogServiceTest {
 
     assertEquals(1, view.services().size());
     assertEquals("BAGGAGE", view.services().getFirst().serviceType());
+  }
+
+  @Test
+  void getCatalogForFare_usesFareCurrency() {
+    AncillaryCatalogService service =
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
+    ServiceEntity baggage = serviceEntity(1L, "BAGGAGE", "Baggage Add-on", "bag.png", true);
+    FlightFareEntity fare = fare(11L, 101L, "US", "United States");
+
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("US");
+    when(countryCurrencyResolver.resolveCurrency("US")).thenReturn("USD");
+    when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc()).thenReturn(List.of(baggage));
+    when(serviceOptionRepository.findActiveByServiceIds(anyCollection()))
+        .thenReturn(
+            List.of(optionEntity(11L, baggage, "Extra 15kg", "Checked bag 15kg", "180000", true)));
+
+    AncillaryCatalogService.AncillaryCatalogView view = service.getCatalogForFare(11L, 101L);
+
+    assertEquals("USD", view.currency());
+    assertEquals("USD", view.services().getFirst().options().getFirst().currency());
+  }
+
+  @Test
+  void getCatalogForFare_requiresFlightAndFareTogether() {
+    AncillaryCatalogService service =
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
+
+    AppException exception = assertThrows(AppException.class, () -> service.getCatalogForFare(11L, null));
+
+    assertEquals("VALIDATION_FAILED", exception.getCode());
   }
 
   private static ServiceEntity serviceEntity(
@@ -100,5 +157,18 @@ class AncillaryCatalogServiceTest {
     entity.setImageUrl(name + ".png");
     entity.setActive(isActive);
     return entity;
+  }
+
+  private static FlightFareEntity fare(Long flightId, Long fareId, String countryCode, String country) {
+    AirportEntity airport = new AirportEntity();
+    airport.setCountryCode(countryCode);
+    airport.setCountry(country);
+    FlightEntity flight = new FlightEntity();
+    flight.setId(flightId);
+    flight.setDepartureAirport(airport);
+    FlightFareEntity fare = new FlightFareEntity();
+    fare.setId(fareId);
+    fare.setFlight(flight);
+    return fare;
   }
 }

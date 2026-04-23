@@ -43,6 +43,7 @@ public class FlightFareGenerationService {
   private final ObjectMapper objectMapper;
   private final JdbcTemplate jdbcTemplate;
   private final FlightInventoryMetadataService flightInventoryMetadataService;
+  private final CountryCurrencyResolver countryCurrencyResolver;
 
   public FlightFareGenerationService(
       FareClassRepository fareClassRepository,
@@ -51,7 +52,8 @@ public class FlightFareGenerationService {
       FlightFareRepository flightFareRepository,
       ObjectMapper objectMapper,
       JdbcTemplate jdbcTemplate,
-      FlightInventoryMetadataService flightInventoryMetadataService) {
+      FlightInventoryMetadataService flightInventoryMetadataService,
+      CountryCurrencyResolver countryCurrencyResolver) {
     this.fareClassRepository = fareClassRepository;
     this.fareClassPriceRepository = fareClassPriceRepository;
     this.taxFeeRepository = taxFeeRepository;
@@ -59,6 +61,7 @@ public class FlightFareGenerationService {
     this.objectMapper = objectMapper;
     this.jdbcTemplate = jdbcTemplate;
     this.flightInventoryMetadataService = flightInventoryMetadataService;
+    this.countryCurrencyResolver = countryCurrencyResolver;
   }
 
   @Transactional
@@ -77,8 +80,8 @@ public class FlightFareGenerationService {
     for (FareClassEntity fareClass : fares) {
       fareByCode.put(normalize(fareClass.getCode()), fareClass);
     }
-    String countryCode = resolveCountryCode(flight);
-    String currency = resolveCurrency(countryCode);
+    String countryCode = countryCurrencyResolver.resolveCountryCode(flight);
+    String currency = countryCurrencyResolver.resolveCurrency(countryCode);
     List<TaxFeeEntity> taxes = taxFeeRepository.findByIsActiveTrueAndApplyTo("ADULT");
     OffsetDateTime now = OffsetDateTime.now();
     List<FlightFareEntity> toSave = new ArrayList<>();
@@ -106,7 +109,7 @@ public class FlightFareGenerationService {
         continue;
       }
       BigDecimal basePrice = resolveBasePrice(fareClass, currency, countryCode);
-      TaxCalculation taxCalculation = calculateTax(basePrice, taxes);
+      TaxCalculation taxCalculation = calculateTax(basePrice, taxes, currency);
       BigDecimal totalPrice = basePrice.add(taxCalculation.totalTaxAmount());
 
       entity.setFlight(flight);
@@ -186,40 +189,6 @@ public class FlightFareGenerationService {
         .orElse(null);
   }
 
-  private String resolveCountryCode(FlightEntity flight) {
-    if (flight.getDepartureAirport() == null
-        || !StringUtils.hasText(flight.getDepartureAirport().getCountry())) {
-      return null;
-    }
-    String normalizedCountry = normalize(flight.getDepartureAirport().getCountry());
-    return switch (normalizedCountry) {
-      case "VIETNAM", "VIET_NAM" -> "VN";
-      case "UNITED_STATES", "UNITED_STATES_OF_AMERICA", "USA", "US" -> "US";
-      case "UNITED_KINGDOM", "UK", "GREAT_BRITAIN", "BRITAIN" -> "GB";
-      case "GERMANY", "DEUTSCHLAND" -> "DE";
-      case "JAPAN" -> "JP";
-      case "AUSTRALIA" -> "AU";
-      case "SINGAPORE" -> "SG";
-      default -> null;
-    };
-  }
-
-  private String resolveCurrency(String countryCode) {
-    if (!StringUtils.hasText(countryCode)) {
-      return DEFAULT_CURRENCY;
-    }
-    return switch (normalize(countryCode)) {
-      case "VN" -> "VND";
-      case "US" -> "USD";
-      case "GB" -> "GBP";
-      case "DE" -> "EUR";
-      case "JP" -> "JPY";
-      case "AU" -> "AUD";
-      case "SG" -> "SGD";
-      default -> DEFAULT_CURRENCY;
-    };
-  }
-
   private String normalize(String value) {
     if (!StringUtils.hasText(value)) {
       return "";
@@ -240,7 +209,8 @@ public class FlightFareGenerationService {
     };
   }
 
-  private TaxCalculation calculateTax(BigDecimal basePrice, List<TaxFeeEntity> taxes) {
+  private TaxCalculation calculateTax(
+      BigDecimal basePrice, List<TaxFeeEntity> taxes, String currency) {
     List<Map<String, Object>> breakdown = new ArrayList<>();
     BigDecimal totalTaxAmount = BigDecimal.ZERO;
 
@@ -249,6 +219,9 @@ public class FlightFareGenerationService {
       if ("PERCENT".equalsIgnoreCase(tax.getAmountType())) {
         amount = basePrice.multiply(tax.getValue()).setScale(2, RoundingMode.HALF_UP);
       } else if ("FIXED".equalsIgnoreCase(tax.getAmountType())) {
+        if (!DEFAULT_CURRENCY.equalsIgnoreCase(normalize(currency))) {
+          continue;
+        }
         amount = tax.getValue().setScale(2, RoundingMode.HALF_UP);
       }
 

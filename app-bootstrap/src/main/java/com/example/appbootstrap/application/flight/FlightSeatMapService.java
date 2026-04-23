@@ -28,6 +28,7 @@ import org.springframework.util.StringUtils;
 @Service
 public class FlightSeatMapService {
 
+  private static final String VND = "VND";
   private static final List<String> LEGEND_STATUSES =
       List.of("AVAILABLE", "RESERVED", "BOOKED", "UNAVAILABLE");
   private static final List<String> LEGEND_SEAT_TYPES = List.of("WINDOW", "MIDDLE", "AISLE");
@@ -132,12 +133,17 @@ public class FlightSeatMapService {
     } else if (!selectionPolicy.allowsAdvanceSelection()) {
       reason = selectionPolicy == SeatSelectionPolicy.CHECKIN_ONLY ? "CHECKIN_ONLY" : "NOT_ALLOWED";
     } else {
-      selectable = true;
       included = isSeatIncluded(selectionPolicy, seat, includedSeatCategory);
-      extraPrice =
+      BigDecimal surcharge =
           included
               ? BigDecimal.ZERO
               : surchargeAmount(seat.getSeatCategory()).add(surchargeAmount(seat.getSeatType()));
+      if (surcharge.signum() > 0 && !VND.equalsIgnoreCase(currency)) {
+        reason = "SEAT_SURCHARGE_CURRENCY_UNSUPPORTED";
+      } else {
+        selectable = true;
+        extraPrice = surcharge;
+      }
     }
 
     return new SeatView(

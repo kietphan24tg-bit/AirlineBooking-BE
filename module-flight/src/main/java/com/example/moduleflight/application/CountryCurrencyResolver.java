@@ -1,6 +1,7 @@
 package com.example.moduleflight.application;
 
 import com.example.moduleflight.entity.FlightFareEntity;
+import com.example.moduleflight.entity.FlightEntity;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -42,12 +43,21 @@ public class CountryCurrencyResolver {
           "SG", "SGD");
 
   public String resolveCountryCode(FlightFareEntity fare) {
-    if (fare == null
-        || fare.getFlight() == null
-        || fare.getFlight().getDepartureAirport() == null) {
+    return resolveCountryCode(fare == null ? null : fare.getFlight());
+  }
+
+  public String resolveCountryCode(FlightEntity flight) {
+    if (flight == null || flight.getDepartureAirport() == null) {
       return DEFAULT_COUNTRY_CODE;
     }
-    String country = fare.getFlight().getDepartureAirport().getCountry();
+    String countryCode = flight.getDepartureAirport().getCountryCode();
+    if (StringUtils.hasText(countryCode)) {
+      String normalizedCode = countryCode.trim().toUpperCase(Locale.ROOT);
+      if (CURRENCY_BY_COUNTRY.containsKey(normalizedCode)) {
+        return normalizedCode;
+      }
+    }
+    String country = flight.getDepartureAirport().getCountry();
     if (!StringUtils.hasText(country)) {
       return DEFAULT_COUNTRY_CODE;
     }

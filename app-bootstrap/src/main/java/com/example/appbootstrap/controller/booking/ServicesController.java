@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -34,7 +35,8 @@ public class ServicesController {
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Service catalog returned", content = @Content)
   })
-  AncillaryCatalogResponse getCatalog() {
-    return AncillaryCatalogResponse.from(ancillaryCatalogService.getCatalog());
+  AncillaryCatalogResponse getCatalog(
+      @RequestParam(required = false) Long flightId, @RequestParam(required = false) Long fareId) {
+    return AncillaryCatalogResponse.from(ancillaryCatalogService.getCatalogForFare(flightId, fareId));
   }
 }

@@ -38,6 +38,7 @@ public class OpenApiConfig {
         .addTagsItem(new Tag().name("Identity").description("Authentication and user endpoints"))
         .addTagsItem(new Tag().name("Flights").description("Flight search, schedules, and fares"))
         .addTagsItem(new Tag().name("Bookings").description("Booking, passenger, and ticket flows"))
+        .addTagsItem(new Tag().name("Services").description("Ancillary service catalog"))
         .addTagsItem(new Tag().name("Payments").description("Payment and transaction endpoints"))
         .addTagsItem(
             new Tag().name("Check-in").description("Check-in and boarding pass endpoints"));
@@ -63,7 +64,12 @@ public class OpenApiConfig {
   GroupedOpenApi bookingsApi() {
     return GroupedOpenApi.builder()
         .group("bookings")
-        .pathsToMatch("/api/bookings/**", "/api/passengers/**", "/api/tickets/**")
+        .pathsToMatch(
+            "/api/bookings/**",
+            "/api/passengers/**",
+            "/api/tickets/**",
+            "/api/services",
+            "/api/services/**")
         .build();
   }
 

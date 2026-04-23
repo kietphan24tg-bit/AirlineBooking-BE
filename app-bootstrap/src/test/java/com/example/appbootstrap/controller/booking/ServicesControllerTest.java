@@ -27,7 +27,7 @@ class ServicesControllerTest {
 
   @Test
   void getCatalog_mapsServiceResponse() {
-    when(ancillaryCatalogService.getCatalog())
+    when(ancillaryCatalogService.getCatalogForFare(null, null))
         .thenReturn(
             new AncillaryCatalogService.AncillaryCatalogView(
                 "VND",
@@ -48,7 +48,7 @@ class ServicesControllerTest {
                                 "extra15.png",
                                 true))))));
 
-    AncillaryCatalogResponse response = controller.getCatalog();
+    AncillaryCatalogResponse response = controller.getCatalog(null, null);
 
     assertEquals("VND", response.currency());
     assertEquals(1, response.services().size());

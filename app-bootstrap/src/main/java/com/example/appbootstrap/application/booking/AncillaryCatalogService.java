@@ -1,13 +1,18 @@
 package com.example.appbootstrap.application.booking;
 
+import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.ServiceEntity;
 import com.example.modulebooking.entity.ServiceOptionEntity;
 import com.example.modulebooking.repository.ServiceOptionRepository;
 import com.example.modulebooking.repository.ServiceRepository;
+import com.example.moduleflight.application.CountryCurrencyResolver;
+import com.example.moduleflight.entity.FlightFareEntity;
+import com.example.moduleflight.repository.FlightFareRepository;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,18 +23,48 @@ public class AncillaryCatalogService {
 
   private final ServiceRepository serviceRepository;
   private final ServiceOptionRepository serviceOptionRepository;
+  private final FlightFareRepository flightFareRepository;
+  private final CountryCurrencyResolver countryCurrencyResolver;
 
   public AncillaryCatalogService(
-      ServiceRepository serviceRepository, ServiceOptionRepository serviceOptionRepository) {
+      ServiceRepository serviceRepository,
+      ServiceOptionRepository serviceOptionRepository,
+      FlightFareRepository flightFareRepository,
+      CountryCurrencyResolver countryCurrencyResolver) {
     this.serviceRepository = serviceRepository;
     this.serviceOptionRepository = serviceOptionRepository;
+    this.flightFareRepository = flightFareRepository;
+    this.countryCurrencyResolver = countryCurrencyResolver;
   }
 
   @Transactional(readOnly = true)
   public AncillaryCatalogView getCatalog() {
+    return getCatalog(DEFAULT_CURRENCY);
+  }
+
+  @Transactional(readOnly = true)
+  public AncillaryCatalogView getCatalogForFare(Long flightId, Long fareId) {
+    if (flightId == null && fareId == null) {
+      return getCatalog();
+    }
+    if (flightId == null || fareId == null) {
+      throw new AppException("VALIDATION_FAILED", "flightId and fareId must be provided together", 400);
+    }
+    FlightFareEntity fare =
+        flightFareRepository
+            .findByIdWithDetails(fareId)
+            .orElseThrow(() -> new AppException("FARE_NOT_FOUND", "Fare not found", 404));
+    if (fare.getFlight() == null || !Objects.equals(flightId, fare.getFlight().getId())) {
+      throw new AppException("FARE_NOT_FOUND", "Fare does not belong to the requested flight", 404);
+    }
+    String countryCode = countryCurrencyResolver.resolveCountryCode(fare);
+    return getCatalog(countryCurrencyResolver.resolveCurrency(countryCode));
+  }
+
+  private AncillaryCatalogView getCatalog(String currency) {
     List<ServiceEntity> services = serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc();
     if (services.isEmpty()) {
-      return new AncillaryCatalogView(DEFAULT_CURRENCY, List.of());
+      return new AncillaryCatalogView(currency, List.of());
     }
 
     Map<Long, ServiceEntity> servicesById = new LinkedHashMap<>();
@@ -39,7 +74,7 @@ public class AncillaryCatalogService {
       }
     }
     if (servicesById.isEmpty()) {
-      return new AncillaryCatalogView(DEFAULT_CURRENCY, List.of());
+      return new AncillaryCatalogView(currency, List.of());
     }
 
     Map<Long, List<AncillaryOptionView>> optionsByServiceId =
@@ -49,7 +84,8 @@ public class AncillaryCatalogService {
                     option -> option.getService().getId(),
                     LinkedHashMap::new,
                     java.util.stream.Collectors.mapping(
-                        this::toOptionView, java.util.stream.Collectors.toList())));
+                        option -> toOptionView(option, currency),
+                        java.util.stream.Collectors.toList())));
 
     List<AncillaryServiceGroupView> groups =
         servicesById.entrySet().stream()
@@ -71,16 +107,16 @@ public class AncillaryCatalogService {
             .filter(java.util.Objects::nonNull)
             .toList();
 
-    return new AncillaryCatalogView(DEFAULT_CURRENCY, groups);
+    return new AncillaryCatalogView(currency, groups);
   }
 
-  private AncillaryOptionView toOptionView(ServiceOptionEntity option) {
+  private AncillaryOptionView toOptionView(ServiceOptionEntity option, String currency) {
     return new AncillaryOptionView(
         option.getId(),
         option.getName(),
         option.getDescription(),
         option.getPrice(),
-        DEFAULT_CURRENCY,
+        currency,
         option.getImageUrl(),
         option.isActive());
   }

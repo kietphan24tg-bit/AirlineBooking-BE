@@ -79,7 +79,7 @@ class FlightSearchServiceTest {
         .thenReturn(List.of(List.of(outboundFare)));
     when(flightQueryService.findByRouteAndDate("HAN", "SGN", LocalDate.parse("2026-05-10")))
         .thenReturn(List.of(List.of(inboundFare)));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -196,7 +196,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(group));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -228,7 +228,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(List.of(fare)));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -284,7 +284,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(List.of(morning), List.of(afternoon)));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -325,7 +325,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(List.of(flight)));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -362,7 +362,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(List.of(cheap), List.of(expensive), List.of(mid)));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -425,7 +425,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(List.of(fare)));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -449,7 +449,7 @@ class FlightSearchServiceTest {
     when(promotionBatchPreviewService.loadContext(any())).thenReturn(PromotionContext.empty());
     when(flightQueryService.findByRouteAndDate("SGN", "HAN", LocalDate.parse("2026-05-01")))
         .thenReturn(List.of(group));
-    when(countryCurrencyResolver.resolveCountryCode(any())).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(any(FlightFareEntity.class))).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
     when(flightPricingService.calculateTotalPrice(any(), anyInt(), anyInt(), anyInt()))
         .thenAnswer(invocation -> invocation.getArgument(0));
