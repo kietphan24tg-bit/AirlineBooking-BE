@@ -48,7 +48,8 @@ public class AncillaryCatalogService {
                 java.util.stream.Collectors.groupingBy(
                     option -> option.getService().getId(),
                     LinkedHashMap::new,
-                    java.util.stream.Collectors.mapping(this::toOptionView, java.util.stream.Collectors.toList())));
+                    java.util.stream.Collectors.mapping(
+                        this::toOptionView, java.util.stream.Collectors.toList())));
 
     List<AncillaryServiceGroupView> groups =
         servicesById.entrySet().stream()

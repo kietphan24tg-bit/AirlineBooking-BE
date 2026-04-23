@@ -55,6 +55,7 @@ class ServicesControllerTest {
     assertEquals("BAGGAGE", response.services().getFirst().serviceType());
     assertEquals("SINGLE", response.services().getFirst().selectionMode());
     assertEquals("Extra 15kg", response.services().getFirst().options().getFirst().name());
-    assertEquals(new BigDecimal("180000"), response.services().getFirst().options().getFirst().price());
+    assertEquals(
+        new BigDecimal("180000"), response.services().getFirst().options().getFirst().price());
   }
 }

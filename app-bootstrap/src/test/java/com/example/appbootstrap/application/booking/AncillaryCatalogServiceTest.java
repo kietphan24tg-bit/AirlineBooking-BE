@@ -64,7 +64,8 @@ class AncillaryCatalogServiceTest {
     when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc())
         .thenReturn(List.of(baggage, lounge));
     when(serviceOptionRepository.findActiveByServiceIds(anyCollection()))
-        .thenReturn(List.of(optionEntity(11L, baggage, "Extra 15kg", "Checked bag 15kg", "180000", true)));
+        .thenReturn(
+            List.of(optionEntity(11L, baggage, "Extra 15kg", "Checked bag 15kg", "180000", true)));
 
     AncillaryCatalogService.AncillaryCatalogView view = service.getCatalog();
 
