@@ -104,10 +104,11 @@ app:
         cleanup-enabled: ${APP_FLIGHT_MAINTENANCE_CLEANUP_ENABLED:true}
     flight-coverage:
         enabled: ${APP_FLIGHT_COVERAGE_ENABLED:true}
-        rolling-days: ${APP_FLIGHT_COVERAGE_ROLLING_DAYS:14}
+        rolling-days: ${APP_FLIGHT_COVERAGE_ROLLING_DAYS:30}
         start-date-offset-days: ${APP_FLIGHT_COVERAGE_START_DATE_OFFSET_DAYS:1}
-        include-airport-country-codes: ${APP_FLIGHT_COVERAGE_INCLUDE_AIRPORT_COUNTRY_CODES:VN}
-        max-flights-per-run: ${APP_FLIGHT_COVERAGE_MAX_FLIGHTS_PER_RUN:8000}
+        include-airport-country-codes: ${APP_FLIGHT_COVERAGE_INCLUDE_AIRPORT_COUNTRY_CODES:VN,TH,SG,MY,ID,PH}
+        flights-per-route-per-day: ${APP_FLIGHT_COVERAGE_FLIGHTS_PER_ROUTE_PER_DAY:3}
+        max-flights-per-run: ${APP_FLIGHT_COVERAGE_MAX_FLIGHTS_PER_RUN:20000}
         excluded-airline-codes: ${APP_FLIGHT_COVERAGE_EXCLUDED_AIRLINE_CODES:}
         excluded-airline-country-codes: ${APP_FLIGHT_COVERAGE_EXCLUDED_AIRLINE_COUNTRY_CODES:}
         excluded-airport-country-codes: ${APP_FLIGHT_COVERAGE_EXCLUDED_AIRPORT_COUNTRY_CODES:}

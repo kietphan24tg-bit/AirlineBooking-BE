@@ -23,7 +23,7 @@ class FlightDataMaintenanceServiceTest {
     FlightDataMaintenanceService service =
         new FlightDataMaintenanceService(
             flightCoverageService,
-            new FlightCoverageProperties(true, 14, 1, "VN", 8000, "", "", ""),
+            new FlightCoverageProperties(true, 14, 1, "VN", 3, 8000, "", "", ""),
             flightExpirationCleanupService,
             new FlightMaintenanceProperties("0 30 2 * * *", false, true),
             new FlightMockDataProperties(

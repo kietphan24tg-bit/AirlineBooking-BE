@@ -9,6 +9,7 @@ public record FlightCoverageProperties(
     int startDateOffsetDays,
     /** Comma-separated ISO country codes (e.g. {@code VN}); only these airports join the pool. */
     String includeAirportCountryCodes,
+    int flightsPerRoutePerDay,
     int maxFlightsPerRun,
     String excludedAirlineCodes,
     String excludedAirlineCountryCodes,

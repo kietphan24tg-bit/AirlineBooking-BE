@@ -15,6 +15,9 @@ public interface FlightRepository extends JpaRepository<FlightEntity, Long> {
   java.util.List<FlightEntity> findByAirlineInAndFlightDateBetween(
       Collection<AirlineEntity> airlines, LocalDate startDate, LocalDate endDate);
 
+  long countByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(
+      Long departureAirportId, Long arrivalAirportId, LocalDate flightDate);
+
   boolean existsByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(
       Long departureAirportId, Long arrivalAirportId, LocalDate flightDate);
 }

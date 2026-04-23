@@ -33,9 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
- * Inserts synthetic {@link FlightSource#COVERAGE} flights for configured domestic markets (default
- * {@code VN → VN}) across rolling dates when no flight exists yet for a departure/arrival/date
- * triple, up to {@link FlightCoverageProperties#maxFlightsPerRun} per invocation.
+ * Inserts synthetic {@link FlightSource#COVERAGE} flights for configured markets across rolling
+ * dates until each departure/arrival/date triple reaches the configured target density.
  */
 @Service
 public class FlightCoverageService {
@@ -44,6 +43,8 @@ public class FlightCoverageService {
   private static final Pattern AIRLINE_IATA_PATTERN = Pattern.compile("^[A-Z0-9]{2}$");
   private static final Pattern AIRPORT_IATA_PATTERN = Pattern.compile("^[A-Z]{3}$");
   private static final String STATUS = "SCHEDULED";
+  private static final List<String> DEFAULT_COUNTRY_POOL =
+      List.of("VN", "TH", "SG", "MY", "ID", "PH");
 
   private final FlightCoverageProperties properties;
   private final FlightRepository flightRepository;
@@ -92,6 +93,7 @@ public class FlightCoverageService {
 
     int rollingDays = Math.max(1, properties.rollingDays());
     int startOffset = Math.max(0, properties.startDateOffsetDays());
+    int perRoutePerDay = Math.max(1, properties.flightsPerRoutePerDay());
     int maxCreated = Math.max(1, properties.maxFlightsPerRun());
     LocalDate startDate = LocalDate.now().plusDays(startOffset);
 
@@ -100,7 +102,6 @@ public class FlightCoverageService {
     outer:
     for (int d = 0; d < rollingDays; d++) {
       LocalDate flightDate = startDate.plusDays(d);
-      long epoch = flightDate.toEpochDay();
       for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
           if (created >= maxCreated) {
@@ -115,71 +116,108 @@ public class FlightCoverageService {
             continue;
           }
 
-          if (flightRepository.existsByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(
-              dep.getId(), arr.getId(), flightDate)) {
-            continue;
+          int existing =
+              Math.toIntExact(
+                  flightRepository.countByDepartureAirport_IdAndArrivalAirport_IdAndFlightDate(
+                      dep.getId(), arr.getId(), flightDate));
+          int missing = Math.max(0, perRoutePerDay - existing);
+          for (int slot = 0; slot < missing; slot++) {
+            if (created >= maxCreated) {
+              break outer;
+            }
+            FlightEntity saved =
+                createCoverageFlight(
+                    dep, arr, flightDate, i, j, d, existing + slot, airlinePool, aircraftPool);
+            if (saved == null) {
+              continue;
+            }
+            flightSeatGenerationService.generateForFlight(saved);
+            flightFareGenerationService.generateFaresForFlight(saved);
+            created++;
           }
-
-          AirlineEntity airline = airlinePool.get((i + j + (int) epoch) % airlinePool.size());
-          AircraftEntity aircraft = aircraftPool.get((i + d + j) % aircraftPool.size());
-
-          int h = Objects.hash(dep.getId(), arr.getId(), flightDate, airline.getId());
-          String flightNumber =
-              normalizeText(airline.getCode())
-                  + String.format(Locale.ROOT, "%05d", 10_000 + Math.floorMod(h, 90_000));
-
-          if (flightRepository
-              .findByAirlineAndFlightNumberAndFlightDate(airline, flightNumber, flightDate)
-              .isPresent()) {
-            continue;
-          }
-
-          int departureHour = 6 + (i % 12);
-          int departureMinute = (j % 4) * 15;
-          int durationHours = 2 + ((i + j) % 11);
-          int durationMinutes = ((i + j) % 3) * 20;
-
-          OffsetDateTime departureTime =
-              departureAt(dep, flightDate, LocalTime.of(departureHour, departureMinute));
-          OffsetDateTime arrivalTime =
-              arrivalAt(arr, departureTime, durationHours, durationMinutes);
-
-          FlightEntity flight = new FlightEntity();
-          flight.setAirline(airline);
-          flight.setFlightNumber(flightNumber);
-          flight.setFlightDate(flightDate);
-          flight.setAircraft(aircraft);
-          flight.setDepartureAirport(dep);
-          flight.setArrivalAirport(arr);
-          flight.setDepartureTime(departureTime);
-          flight.setArrivalTime(arrivalTime);
-          flight.setDepartureTerminal("T" + ((i % 3) + 1));
-          flight.setDepartureGate("G" + ((j % 24) + 1));
-          flight.setArrivalTerminal("T" + (((i + 1) % 3) + 1));
-          flight.setArrivalGate("A" + ((j % 18) + 1));
-          flight.setStatus(STATUS);
-          flight.setFlightSource(FlightSource.COVERAGE);
-          OffsetDateTime now = OffsetDateTime.now();
-          flight.setCreatedAt(now);
-          flight.setUpdatedAt(now);
-
-          FlightEntity saved = flightRepository.save(flight);
-          flightSeatGenerationService.generateForFlight(saved);
-          flightFareGenerationService.generateFaresForFlight(saved);
-          created++;
         }
       }
     }
 
     if (created > 0) {
       LOG.info(
-          "Flight coverage: created {} synthetic flights (rollingDays={}, airportsInPool={}, cap={})",
+          "Flight coverage: created {} synthetic flights (rollingDays={}, airportsInPool={}, perRoutePerDay={}, cap={})",
           created,
           rollingDays,
           airportPool.size(),
+          perRoutePerDay,
           maxCreated);
     }
     return created;
+  }
+
+  private FlightEntity createCoverageFlight(
+      AirportEntity dep,
+      AirportEntity arr,
+      LocalDate flightDate,
+      int departureIndex,
+      int arrivalIndex,
+      int dayOffset,
+      int slot,
+      List<AirlineEntity> airlinePool,
+      List<AircraftEntity> aircraftPool) {
+    for (int attempt = 0; attempt < airlinePool.size(); attempt++) {
+      AirlineEntity airline =
+          airlinePool.get(
+              (departureIndex + arrivalIndex + dayOffset + slot + attempt) % airlinePool.size());
+      AircraftEntity aircraft =
+          aircraftPool.get(
+              (departureIndex + dayOffset + arrivalIndex + slot + attempt) % aircraftPool.size());
+
+      int h = Objects.hash(dep.getId(), arr.getId(), flightDate, airline.getId(), slot, attempt);
+      String flightNumber =
+          normalizeText(airline.getCode())
+              + String.format(Locale.ROOT, "%05d", 10_000 + Math.floorMod(h, 90_000));
+
+      if (flightRepository
+          .findByAirlineAndFlightNumberAndFlightDate(airline, flightNumber, flightDate)
+          .isPresent()) {
+        continue;
+      }
+
+      int departureHour = 5 + Math.floorMod(departureIndex * 3 + slot * 2 + dayOffset, 17);
+      int departureMinute = Math.floorMod(arrivalIndex + slot, 4) * 15;
+      int durationHours = 2 + Math.floorMod(departureIndex + arrivalIndex + slot, 11);
+      int durationMinutes = Math.floorMod(departureIndex + arrivalIndex + slot, 3) * 20;
+
+      OffsetDateTime departureTime =
+          departureAt(dep, flightDate, LocalTime.of(departureHour, departureMinute));
+      OffsetDateTime arrivalTime =
+          arrivalAt(arr, departureTime, durationHours, durationMinutes);
+
+      FlightEntity flight = new FlightEntity();
+      flight.setAirline(airline);
+      flight.setFlightNumber(flightNumber);
+      flight.setFlightDate(flightDate);
+      flight.setAircraft(aircraft);
+      flight.setDepartureAirport(dep);
+      flight.setArrivalAirport(arr);
+      flight.setDepartureTime(departureTime);
+      flight.setArrivalTime(arrivalTime);
+      flight.setDepartureTerminal("T" + ((departureIndex + slot) % 3 + 1));
+      flight.setDepartureGate("G" + ((arrivalIndex + slot) % 24 + 1));
+      flight.setArrivalTerminal("T" + ((departureIndex + slot + 1) % 3 + 1));
+      flight.setArrivalGate("A" + ((arrivalIndex + slot) % 18 + 1));
+      flight.setStatus(STATUS);
+      flight.setFlightSource(FlightSource.COVERAGE);
+      OffsetDateTime now = OffsetDateTime.now();
+      flight.setCreatedAt(now);
+      flight.setUpdatedAt(now);
+      return flightRepository.save(flight);
+    }
+
+    LOG.warn(
+        "Flight coverage: could not allocate unique flight number for {} -> {} on {} (slot={})",
+        dep.getCode(),
+        arr.getCode(),
+        flightDate,
+        slot);
+    return null;
   }
 
   private List<AircraftEntity> loadAircraftPool() {
@@ -245,7 +283,7 @@ public class FlightCoverageService {
   private List<String> resolveIncludedCountryCodes() {
     String raw = properties.includeAirportCountryCodes();
     if (!StringUtils.hasText(raw)) {
-      return List.of("VN");
+      return DEFAULT_COUNTRY_POOL;
     }
     List<String> parsed =
         Arrays.stream(raw.split(","))
@@ -253,7 +291,7 @@ public class FlightCoverageService {
             .filter(StringUtils::hasText)
             .distinct()
             .toList();
-    return parsed.isEmpty() ? List.of("VN") : parsed;
+    return parsed.isEmpty() ? DEFAULT_COUNTRY_POOL : parsed;
   }
 
   private static java.util.Set<String> parseCsvUpper(String raw) {
