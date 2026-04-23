@@ -3,10 +3,10 @@ package com.example.appbootstrap.application.flight;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.repository.FlightSeatRepository;
-import com.example.moduleflight.entity.AircraftLayoutEntity;
-import com.example.moduleflight.entity.AircraftLayoutZoneEntity;
 import com.example.moduleflight.application.CountryCurrencyResolver;
 import com.example.moduleflight.application.SeatSelectionPolicy;
+import com.example.moduleflight.entity.AircraftLayoutEntity;
+import com.example.moduleflight.entity.AircraftLayoutZoneEntity;
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.entity.SeatCategoryEntity;
@@ -102,7 +102,9 @@ public class FlightSeatMapService {
         fareClass.getId(),
         fareClass.getCode(),
         selectionPolicy.name(),
-        fareClass.getIncludedSeatCategory() == null ? null : fareClass.getIncludedSeatCategory().getCode(),
+        fareClass.getIncludedSeatCategory() == null
+            ? null
+            : fareClass.getIncludedSeatCategory().getCode(),
         currency,
         layout,
         new LegendView(LEGEND_STATUSES, LEGEND_SEAT_TYPES, LEGEND_SEAT_CATEGORIES),
@@ -171,8 +173,13 @@ public class FlightSeatMapService {
           "SEAT_MAP_LAYOUT_NOT_FOUND", "Aircraft layout columns are missing", 404);
     }
     List<SeatClassZoneView> seatClassZones =
-        aircraftLayoutZoneRepository.findByAircraftLayoutIdOrderByRowStartAsc(layout.getId()).stream()
-            .filter(zone -> zone.getSeatClass() != null && StringUtils.hasText(zone.getSeatClass().getCode()))
+        aircraftLayoutZoneRepository
+            .findByAircraftLayoutIdOrderByRowStartAsc(layout.getId())
+            .stream()
+            .filter(
+                zone ->
+                    zone.getSeatClass() != null
+                        && StringUtils.hasText(zone.getSeatClass().getCode()))
             .map(this::toSeatClassZoneView)
             .toList();
     return new AircraftLayoutView(columns, resolveAisleAfterColumns(columns), seatClassZones);
@@ -186,19 +193,19 @@ public class FlightSeatMapService {
   private List<RowView> toRows(List<SeatView> seats, List<String> columns) {
     Map<Integer, Map<String, SeatView>> seatsByRow = new TreeMap<>();
     for (SeatView seat : seats) {
-      seatsByRow.computeIfAbsent(seat.rowNumber(), ignored -> new TreeMap<>()).put(seat.columnLetter(), seat);
+      seatsByRow
+          .computeIfAbsent(seat.rowNumber(), ignored -> new TreeMap<>())
+          .put(seat.columnLetter(), seat);
     }
     return seatsByRow.entrySet().stream()
         .map(entry -> toRowView(entry.getKey(), entry.getValue(), columns))
         .toList();
   }
 
-  private RowView toRowView(int rowNumber, Map<String, SeatView> seatByColumn, List<String> columns) {
+  private RowView toRowView(
+      int rowNumber, Map<String, SeatView> seatByColumn, List<String> columns) {
     List<SeatView> cells =
-        columns.stream()
-            .map(seatByColumn::get)
-            .filter(java.util.Objects::nonNull)
-            .toList();
+        columns.stream().map(seatByColumn::get).filter(java.util.Objects::nonNull).toList();
     String seatClass = cells.isEmpty() ? null : cells.getFirst().seatClass();
     return new RowView(rowNumber, seatClass, cells);
   }
@@ -284,7 +291,8 @@ public class FlightSeatMapService {
           .filter(StringUtils::hasText)
           .toList();
     }
-    return normalized.chars()
+    return normalized
+        .chars()
         .mapToObj(value -> String.valueOf((char) value))
         .filter(StringUtils::hasText)
         .toList();
@@ -317,7 +325,9 @@ public class FlightSeatMapService {
       List<RowView> rows) {}
 
   public record AircraftLayoutView(
-      List<String> columns, List<String> aisleAfterColumns, List<SeatClassZoneView> seatClassZones) {}
+      List<String> columns,
+      List<String> aisleAfterColumns,
+      List<SeatClassZoneView> seatClassZones) {}
 
   public record SeatClassZoneView(String seatClass, Integer rowStart, Integer rowEnd) {}
 

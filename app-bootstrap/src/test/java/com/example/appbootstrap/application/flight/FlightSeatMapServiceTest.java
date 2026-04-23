@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.moduleflight.application.CountryCurrencyResolver;
 import com.example.moduleflight.entity.AircraftEntity;
 import com.example.moduleflight.entity.AircraftLayoutEntity;
 import com.example.moduleflight.entity.AircraftLayoutZoneEntity;
@@ -18,7 +19,6 @@ import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.entity.SeatCategoryEntity;
 import com.example.moduleflight.entity.SeatClassEntity;
 import com.example.moduleflight.entity.SeatTypeEntity;
-import com.example.moduleflight.application.CountryCurrencyResolver;
 import com.example.moduleflight.repository.AircraftLayoutRepository;
 import com.example.moduleflight.repository.AircraftLayoutZoneRepository;
 import com.example.moduleflight.repository.FlightFareRepository;
@@ -125,7 +125,8 @@ class FlightSeatMapServiceTest {
     when(flightSeatRepository.findAllowedSeatIdsForFare(11L, 6L)).thenReturn(Set.of(601L));
     when(flightSeatRepository.findSeatMapByFlightId(11L)).thenReturn(List.of(seat));
 
-    FlightSeatMapService.SeatView view = service.getSeatMap(11L, 102L).rows().getFirst().cells().getFirst();
+    FlightSeatMapService.SeatView view =
+        service.getSeatMap(11L, 102L).rows().getFirst().cells().getFirst();
 
     assertTrue(view.selectable());
     assertTrue(view.included());
@@ -185,8 +186,7 @@ class FlightSeatMapServiceTest {
     FlightFareEntity fare = fare(22L, 101L, 5L, "ECONOMY", "PAID", null);
     when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
 
-    AppException exception =
-        assertThrows(AppException.class, () -> service.getSeatMap(11L, 101L));
+    AppException exception = assertThrows(AppException.class, () -> service.getSeatMap(11L, 101L));
 
     assertEquals("FARE_NOT_FOUND", exception.getCode());
   }

@@ -58,7 +58,9 @@ public record FlightSeatMapResponse(
   public record RowResponse(Integer rowNumber, String seatClass, List<SeatResponse> cells) {
     static RowResponse from(FlightSeatMapService.RowView view) {
       return new RowResponse(
-          view.rowNumber(), view.seatClass(), view.cells().stream().map(SeatResponse::from).toList());
+          view.rowNumber(),
+          view.seatClass(),
+          view.cells().stream().map(SeatResponse::from).toList());
     }
   }
 

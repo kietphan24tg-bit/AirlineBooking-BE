@@ -277,7 +277,8 @@ class FlightsControllerTest {
     assertEquals(2, response.rows().size());
     assertEquals("STANDARD", response.rows().get(1).cells().getFirst().seatCategory());
     assertEquals(new BigDecimal("20000"), response.rows().get(1).cells().getFirst().extraPrice());
-    assertEquals("SEAT_NOT_ALLOWED_FOR_FARE", response.rows().getFirst().cells().getFirst().reason());
+    assertEquals(
+        "SEAT_NOT_ALLOWED_FOR_FARE", response.rows().getFirst().cells().getFirst().reason());
     verify(flightSeatMapService).getSeatMap(11L, 101L);
   }
 
