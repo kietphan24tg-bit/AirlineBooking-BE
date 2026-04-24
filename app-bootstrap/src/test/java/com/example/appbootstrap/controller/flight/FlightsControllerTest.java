@@ -271,14 +271,26 @@ class FlightsControllerTest {
     FlightSeatMapResponse response = controller.getSeatMap(11L, 101L);
 
     assertEquals("PAID", response.seatSelectionPolicy());
+    assertEquals("Seat selection with surcharge", response.policyDisplay().label());
     assertEquals(null, response.includedSeatCategoryCode());
     assertEquals(List.of("A", "B", "C", "D", "E", "F"), response.layout().columns());
     assertEquals(List.of("C"), response.layout().aisleAfterColumns());
     assertEquals(2, response.rows().size());
     assertEquals("STANDARD", response.rows().get(1).cells().getFirst().seatCategory());
+    assertEquals("Window", response.rows().get(1).cells().getFirst().seatTypeDisplay().label());
+    assertEquals(
+        "Standard", response.rows().get(1).cells().getFirst().seatCategoryDisplay().label());
+    assertEquals("Available", response.rows().get(1).cells().getFirst().statusDisplay().label());
     assertEquals(new BigDecimal("20000"), response.rows().get(1).cells().getFirst().extraPrice());
+    assertEquals("+20000 VND", response.rows().get(1).cells().getFirst().displayPrice().text());
+    assertEquals("PAID", response.rows().get(1).cells().getFirst().pricingBadge().code());
     assertEquals(
         "SEAT_NOT_ALLOWED_FOR_FARE", response.rows().getFirst().cells().getFirst().reason());
+    assertEquals("NOT_ALLOWED", response.rows().getFirst().cells().getFirst().pricingBadge().code());
+    assertEquals(
+        "Not allowed", response.rows().getFirst().cells().getFirst().displayPrice().text());
+    assertEquals(4, response.legend().pricingItems().size());
+    assertEquals("Window", response.legend().seatTypeItems().getFirst().label());
     verify(flightSeatMapService).getSeatMap(11L, 101L);
   }
 
