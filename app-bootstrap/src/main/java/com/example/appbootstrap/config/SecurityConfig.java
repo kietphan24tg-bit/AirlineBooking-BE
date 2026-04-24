@@ -75,7 +75,9 @@ public class SecurityConfig {
                         "/api/auth/**",
                         "/api/payments/webhooks/payos",
                         "/api/flights/**",
-                        "/api/airports/**")
+                        "/api/airports/**",
+                        "/api/services",
+                        "/api/services/**")
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/bookings")
                     .permitAll()
