@@ -149,7 +149,9 @@ public record FlightSeatMapResponse(
                 "Seats become available for selection during check-in.");
         default ->
             new PolicyDisplayResponse(
-                normalize(code), "Selection not available", "Advance seat selection is not allowed.");
+                normalize(code),
+                "Selection not available",
+                "Advance seat selection is not allowed.");
       };
     }
   }
@@ -220,8 +222,7 @@ public record FlightSeatMapResponse(
             "FREE", "Free", "This seat does not add any surcharge for the selected fare.");
       }
       if (view.selectable() && view.extraPrice() != null && view.extraPrice().signum() > 0) {
-        return new PricingBadgeResponse(
-            "PAID", "Paid", "This seat requires an extra surcharge.");
+        return new PricingBadgeResponse("PAID", "Paid", "This seat requires an extra surcharge.");
       }
       if ("SEAT_UNAVAILABLE".equals(normalize(view.reason()))) {
         return new PricingBadgeResponse(

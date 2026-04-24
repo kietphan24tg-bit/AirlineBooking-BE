@@ -286,7 +286,8 @@ class FlightsControllerTest {
     assertEquals("PAID", response.rows().get(1).cells().getFirst().pricingBadge().code());
     assertEquals(
         "SEAT_NOT_ALLOWED_FOR_FARE", response.rows().getFirst().cells().getFirst().reason());
-    assertEquals("NOT_ALLOWED", response.rows().getFirst().cells().getFirst().pricingBadge().code());
+    assertEquals(
+        "NOT_ALLOWED", response.rows().getFirst().cells().getFirst().pricingBadge().code());
     assertEquals(
         "Not allowed", response.rows().getFirst().cells().getFirst().displayPrice().text());
     assertEquals(4, response.legend().pricingItems().size());
