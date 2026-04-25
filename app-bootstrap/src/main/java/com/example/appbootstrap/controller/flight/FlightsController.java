@@ -19,6 +19,7 @@ import com.example.moduleflight.application.UserRecentAirportService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -69,7 +70,10 @@ public class FlightsController {
       description = "Supports one-way and round-trip search with optional promo preview.")
   @SecurityRequirements
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Search completed", content = @Content),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Search completed",
+        content = @Content(schema = @Schema(implementation = FlightSearchResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content)
   })
   FlightSearchResponse searchFlights(
@@ -115,7 +119,10 @@ public class FlightsController {
               + "and returns revalidateId without reserving seats.")
   @SecurityRequirements
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Fare revalidated", content = @Content),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Fare revalidated",
+        content = @Content(schema = @Schema(implementation = RevalidateFareResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
     @ApiResponse(
         responseCode = "404",
@@ -138,7 +145,10 @@ public class FlightsController {
               + "paid, and unavailable seats.")
   @SecurityRequirements
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Seat map returned", content = @Content),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Seat map returned",
+        content = @Content(schema = @Schema(implementation = FlightSeatMapResponse.class))),
     @ApiResponse(responseCode = "404", description = "Flight or fare not found", content = @Content)
   })
   FlightSeatMapResponse getSeatMap(

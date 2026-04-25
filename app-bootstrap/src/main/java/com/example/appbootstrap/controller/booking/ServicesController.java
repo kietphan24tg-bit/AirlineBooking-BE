@@ -5,6 +5,7 @@ import com.example.appbootstrap.application.booking.AncillaryCatalogService;
 import com.example.appbootstrap.controller.booking.dto.AncillaryCatalogResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -33,7 +34,10 @@ public class ServicesController {
           "Returns active ancillary services grouped with their active options for UI rendering.")
   @SecurityRequirements
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Service catalog returned", content = @Content)
+    @ApiResponse(
+        responseCode = "200",
+        description = "Service catalog returned",
+        content = @Content(schema = @Schema(implementation = AncillaryCatalogResponse.class)))
   })
   AncillaryCatalogResponse getCatalog(
       @RequestParam(required = false) Long flightId, @RequestParam(required = false) Long fareId) {

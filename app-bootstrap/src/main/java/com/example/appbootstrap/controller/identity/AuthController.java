@@ -63,7 +63,10 @@ public class AuthController {
       description = "Creates a user account without logging in")
   @SecurityRequirements
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Registration successful"),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Registration successful",
+        content = @Content(schema = @Schema(implementation = RegisterResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
     @ApiResponse(
         responseCode = "409",

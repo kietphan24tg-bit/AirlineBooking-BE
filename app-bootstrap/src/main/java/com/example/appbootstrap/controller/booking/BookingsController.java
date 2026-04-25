@@ -12,6 +12,7 @@ import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,7 +53,10 @@ public class BookingsController {
               + "checks fare version and seat availability again, then reserves seats "
               + "for adults and children while infants remain without seats.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Booking created", content = @Content),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Booking created",
+        content = @Content(schema = @Schema(implementation = CreateBookingResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
     @ApiResponse(responseCode = "409", description = "Business conflict", content = @Content),
     @ApiResponse(
@@ -73,7 +77,10 @@ public class BookingsController {
       description =
           "Assigns concrete flight seats to non-infant passengers after a booking fare hold exists.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Seats assigned", content = @Content),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Seats assigned",
+        content = @Content(schema = @Schema(implementation = SeatAssignmentResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
     @ApiResponse(
         responseCode = "404",
@@ -96,7 +103,11 @@ public class BookingsController {
           "Replaces ancillary service selections for the submitted passengers and refreshes the "
               + "booking total before payment.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Services assigned", content = @Content),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Services assigned",
+        content =
+            @Content(schema = @Schema(implementation = PassengerServiceSelectionResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
     @ApiResponse(
         responseCode = "404",
