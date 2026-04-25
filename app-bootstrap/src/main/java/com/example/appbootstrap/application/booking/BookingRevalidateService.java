@@ -8,9 +8,11 @@ import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.entity.BookingFareHoldEntity;
 import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.PromotionEntity;
 import com.example.modulebooking.repository.BookingContactRepository;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulebooking.repository.PassengerRepository;
@@ -75,6 +77,7 @@ public class BookingRevalidateService {
   private final UserRepository userRepository;
   private final BookingRepository bookingRepository;
   private final BookingContactRepository bookingContactRepository;
+  private final BookingFareHoldRepository bookingFareHoldRepository;
   private final PassengerRepository passengerRepository;
   private final PromotionRepository promotionRepository;
   private final FlightSeatRepository flightSeatRepository;
@@ -91,6 +94,7 @@ public class BookingRevalidateService {
       UserRepository userRepository,
       BookingRepository bookingRepository,
       BookingContactRepository bookingContactRepository,
+      BookingFareHoldRepository bookingFareHoldRepository,
       PassengerRepository passengerRepository,
       PromotionRepository promotionRepository,
       FlightSeatRepository flightSeatRepository,
@@ -105,6 +109,7 @@ public class BookingRevalidateService {
     this.userRepository = userRepository;
     this.bookingRepository = bookingRepository;
     this.bookingContactRepository = bookingContactRepository;
+    this.bookingFareHoldRepository = bookingFareHoldRepository;
     this.passengerRepository = passengerRepository;
     this.promotionRepository = promotionRepository;
     this.flightSeatRepository = flightSeatRepository;
@@ -248,7 +253,7 @@ public class BookingRevalidateService {
     }
 
     try {
-      FlightFareEntity fare = requireFareForFlight(snapshot.fareId(), snapshot.flightId());
+      FlightFareEntity fare = requireFareForFlightForUpdate(snapshot.fareId(), snapshot.flightId());
       if (!Objects.equals(fareVersionOf(fare), snapshot.fareVersion())) {
         throw new AppException(
             "PRICE_CHANGED", "Fare changed after revalidation. Please revalidate again.", 409);
@@ -256,6 +261,12 @@ public class BookingRevalidateService {
       validatePassengerAges(passengers, fare.getFlight().getFlightDate());
 
       int requiredSeats = snapshot.passengerSummary().seatedPassengers();
+      long availableSeats =
+          flightInventoryAvailabilityService.countAvailableSeats(
+              snapshot.flightId(), snapshot.fareClassId());
+      if (availableSeats < requiredSeats) {
+        throw new AppException("FARE_SOLD_OUT", "Selected fare is sold out during booking", 409);
+      }
       UserEntity user = resolveBookingUser(userId);
       BookingEntity booking = new BookingEntity();
       booking.setUser(user);
@@ -279,23 +290,13 @@ public class BookingRevalidateService {
 
       List<BookingContactEntity> contactEntities = saveContacts(booking, contacts);
       List<PassengerEntity> passengerEntities = savePassengers(booking, passengers);
-
-      int updated =
-          flightSeatRepository.reserveForBooking(
-              booking.getId(),
-              snapshot.flightId(),
-              snapshot.fareClassId(),
-              requiredSeats,
-              booking.getPnrExpiresAt());
-      if (updated < requiredSeats) {
-        throw new AppException("FARE_SOLD_OUT", "Selected fare is sold out during booking", 409);
-      }
+      BookingFareHoldEntity fareHold = saveFareHold(booking, fare, requiredSeats);
 
       deleteRevalidateSnapshot(snapshot.revalidateId());
 
       CreateBookingResponse response =
           toCreateBookingResponse(
-              booking, fare, snapshot, contactEntities, passengerEntities, updated);
+              booking, fare, snapshot, contactEntities, passengerEntities, fareHold.getQuantity());
       markIdempotencySuccess(request.idempotencyKey(), requestHash, response);
       LOG.info(
           "booking created bookingId={} userId={} revalidateId={} fareId={} flightId={} seats={}",
@@ -585,6 +586,20 @@ public class BookingRevalidateService {
     return passengerRepository.saveAll(entities);
   }
 
+  private BookingFareHoldEntity saveFareHold(
+      BookingEntity booking, FlightFareEntity fare, int quantity) {
+    OffsetDateTime now = OffsetDateTime.now();
+    BookingFareHoldEntity hold = new BookingFareHoldEntity();
+    hold.setBooking(booking);
+    hold.setFlightFare(fare);
+    hold.setQuantity(quantity);
+    hold.setStatus("HELD");
+    hold.setExpiresAt(booking.getPnrExpiresAt());
+    hold.setCreatedAt(now);
+    hold.setUpdatedAt(now);
+    return bookingFareHoldRepository.save(hold);
+  }
+
   private CreateBookingResponse toCreateBookingResponse(
       BookingEntity booking,
       FlightFareEntity fare,
@@ -692,7 +707,7 @@ public class BookingRevalidateService {
                         passenger.getExpiryDate()))
             .toList(),
         new CreateBookingResponse.SeatReservationResponse(
-            reservedSeatCount, "RESERVED", booking.getPnrExpiresAt()),
+            reservedSeatCount, "HELD", booking.getPnrExpiresAt()),
         new CreateBookingResponse.NextActionResponse("CREATE_PAYMENT", "/api/payments"));
   }
 
@@ -700,6 +715,17 @@ public class BookingRevalidateService {
     FlightFareEntity fare =
         flightFareRepository
             .findByIdWithDetails(fareId)
+            .orElseThrow(() -> new AppException("FARE_NOT_FOUND", "Fare not found", 404));
+    if (!Objects.equals(fare.getFlight().getId(), flightId)) {
+      throw new AppException("FARE_NOT_FOUND", "Fare does not belong to the requested flight", 404);
+    }
+    return fare;
+  }
+
+  private FlightFareEntity requireFareForFlightForUpdate(Long fareId, Long flightId) {
+    FlightFareEntity fare =
+        flightFareRepository
+            .findByIdWithDetailsForUpdate(fareId)
             .orElseThrow(() -> new AppException("FARE_NOT_FOUND", "Fare not found", 404));
     if (!Objects.equals(fare.getFlight().getId(), flightId)) {
       throw new AppException("FARE_NOT_FOUND", "Fare does not belong to the requested flight", 404);

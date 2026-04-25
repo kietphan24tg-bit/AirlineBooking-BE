@@ -9,7 +9,9 @@ import static org.mockito.Mockito.when;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
@@ -33,6 +35,8 @@ class PaymentWebhookServiceTest {
   @Mock private PaymentWebhookEventRepository paymentWebhookEventRepository;
   @Mock private PayosWebhookSupport payosWebhookSupport;
   @Mock private FlightSeatRepository flightSeatRepository;
+  @Mock private BookingFareHoldRepository bookingFareHoldRepository;
+  @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
 
   private PaymentWebhookService paymentWebhookService;
 
@@ -43,7 +47,9 @@ class PaymentWebhookServiceTest {
             paymentRepository,
             paymentWebhookEventRepository,
             payosWebhookSupport,
-            flightSeatRepository);
+            flightSeatRepository,
+            bookingFareHoldRepository,
+            passengerSeatAssignmentRepository);
   }
 
   @Test
@@ -75,7 +81,9 @@ class PaymentWebhookServiceTest {
 
     assertEquals("SUCCESS", payment.getPaymentStatus());
     assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    verify(bookingFareHoldRepository).confirmHeldByBookingId(any(), any());
     verify(flightSeatRepository).bookReservedForBooking(10L);
+    verify(passengerSeatAssignmentRepository).bookReservedByBookingId(any(), any());
     ArgumentCaptor<PaymentWebhookEventEntity> captor =
         ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
     verify(paymentWebhookEventRepository).save(captor.capture());

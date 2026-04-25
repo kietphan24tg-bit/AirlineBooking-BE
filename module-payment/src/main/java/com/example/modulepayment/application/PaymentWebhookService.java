@@ -1,7 +1,9 @@
 package com.example.modulepayment.application;
 
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
@@ -37,16 +39,22 @@ public class PaymentWebhookService {
   private final PaymentWebhookEventRepository paymentWebhookEventRepository;
   private final PayosWebhookSupport payosWebhookSupport;
   private final FlightSeatRepository flightSeatRepository;
+  private final BookingFareHoldRepository bookingFareHoldRepository;
+  private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
       PaymentWebhookEventRepository paymentWebhookEventRepository,
       PayosWebhookSupport payosWebhookSupport,
-      FlightSeatRepository flightSeatRepository) {
+      FlightSeatRepository flightSeatRepository,
+      BookingFareHoldRepository bookingFareHoldRepository,
+      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
     this.flightSeatRepository = flightSeatRepository;
+    this.bookingFareHoldRepository = bookingFareHoldRepository;
+    this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
   }
 
   @Transactional
@@ -143,7 +151,9 @@ public class PaymentWebhookService {
       payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
       booking.setStatus(BOOKING_STATUS_EXPIRED);
       booking.setUpdatedAt(now);
+      bookingFareHoldRepository.releaseHeldByBookingId(booking.getId(), now);
       flightSeatRepository.releaseReservedForBooking(booking.getId());
+      passengerSeatAssignmentRepository.releaseReservedByBookingId(booking.getId(), now);
       paymentRepository.save(payment);
       saveAudit(payment, booking, event, OUTCOME_REJECTED, "BOOKING_EXPIRED", "Booking expired");
       return;
@@ -156,7 +166,9 @@ public class PaymentWebhookService {
     }
     booking.setStatus(BOOKING_STATUS_CONFIRMED);
     booking.setUpdatedAt(now);
+    bookingFareHoldRepository.confirmHeldByBookingId(booking.getId(), now);
     flightSeatRepository.bookReservedForBooking(booking.getId());
+    passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
     saveAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
 

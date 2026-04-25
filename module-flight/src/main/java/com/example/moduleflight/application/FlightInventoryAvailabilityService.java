@@ -8,16 +8,36 @@ public class FlightInventoryAvailabilityService {
 
   private static final String COUNT_AVAILABLE_SEATS_SQL =
       """
-      select count(fs.id)
-      from flight_seats fs
-      where fs.flight_id = ?
-        and fs.status = 'AVAILABLE'
-        and exists (
-            select 1
-            from fare_class_seat_classes fcsc
-            where fcsc.fare_class_id = ?
-              and fcsc.seat_class_id = fs.seat_class_id
-        )
+      select greatest(
+          0,
+          (
+              select count(fs.id)
+              from flight_seats fs
+              where fs.flight_id = ?
+                and fs.status <> 'UNAVAILABLE'
+                and exists (
+                    select 1
+                    from fare_class_seat_classes fcsc
+                    where fcsc.fare_class_id = ?
+                      and fcsc.seat_class_id = fs.seat_class_id
+                )
+          )
+          -
+          (
+              select coalesce(sum(bfh.quantity), 0)
+              from booking_fare_holds bfh
+              join flight_fares ff on ff.id = bfh.flight_fare_id
+              where ff.flight_id = ?
+                and ff.fare_class_id = ?
+                and (
+                    bfh.status = 'CONFIRMED'
+                    or (
+                        bfh.status = 'HELD'
+                        and (bfh.expires_at is null or bfh.expires_at > current_timestamp)
+                    )
+                )
+          )
+      )
       """;
 
   private final JdbcTemplate jdbcTemplate;
@@ -31,7 +51,8 @@ public class FlightInventoryAvailabilityService {
       return 0;
     }
     Long value =
-        jdbcTemplate.queryForObject(COUNT_AVAILABLE_SEATS_SQL, Long.class, flightId, fareClassId);
+        jdbcTemplate.queryForObject(
+            COUNT_AVAILABLE_SEATS_SQL, Long.class, flightId, fareClassId, flightId, fareClassId);
     return value == null ? 0 : value;
   }
 

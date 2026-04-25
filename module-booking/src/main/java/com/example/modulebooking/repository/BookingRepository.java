@@ -14,6 +14,8 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
 
   Optional<BookingEntity> findByPnrCode(String pnrCode);
 
+  Optional<BookingEntity> findByIdAndUserId(Long id, Long userId);
+
   @Modifying
   @Query(
       value =

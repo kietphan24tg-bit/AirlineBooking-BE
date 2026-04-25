@@ -38,6 +38,10 @@ public class BookingServiceEntity {
   @JoinColumn(name = "service_id", nullable = false)
   private ServiceEntity service;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "service_option_id")
+  private ServiceOptionEntity serviceOption;
+
   @Column(nullable = false)
   private Integer quantity;
 
@@ -46,4 +50,7 @@ public class BookingServiceEntity {
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
+
+  @Column(name = "updated_at", nullable = false)
+  private OffsetDateTime updatedAt;
 }

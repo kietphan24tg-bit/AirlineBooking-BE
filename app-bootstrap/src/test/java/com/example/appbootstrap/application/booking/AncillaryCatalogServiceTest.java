@@ -13,6 +13,7 @@ import com.example.modulebooking.repository.ServiceOptionRepository;
 import com.example.modulebooking.repository.ServiceRepository;
 import com.example.moduleflight.application.CountryCurrencyResolver;
 import com.example.moduleflight.entity.AirportEntity;
+import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.repository.FlightFareRepository;
@@ -118,6 +119,102 @@ class AncillaryCatalogServiceTest {
   }
 
   @Test
+  void getCatalogForFare_removesLoungeAndPriorityWhenIncludedInFare() {
+    AncillaryCatalogService service =
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
+    ServiceEntity baggage = serviceEntity(1L, "BAGGAGE", "Baggage Add-on", "bag.png", true);
+    ServiceEntity lounge = serviceEntity(2L, "LOUNGE", "Airport Lounge", "lounge.png", true);
+    ServiceEntity priority =
+        serviceEntity(3L, "PRIORITY_BOARDING", "Priority Boarding", "priority.png", true);
+    ServiceEntity meal = serviceEntity(4L, "MEAL", "Pre-order Meals", "meal.png", true);
+    FlightFareEntity fare = fare(11L, 101L, "VN", "Vietnam", fareClass(true, true));
+
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc())
+        .thenReturn(List.of(baggage, lounge, priority, meal));
+    when(serviceOptionRepository.findActiveByServiceIds(anyCollection()))
+        .thenReturn(
+            List.of(
+                optionEntity(11L, baggage, "Extra 15kg", "Checked bag 15kg", "180000", true),
+                optionEntity(41L, meal, "Kids Pasta Set", "Child meal", "85000", true)));
+
+    AncillaryCatalogService.AncillaryCatalogView view = service.getCatalogForFare(11L, 101L);
+
+    assertEquals(List.of("BAGGAGE", "MEAL"), serviceTypes(view));
+  }
+
+  @Test
+  void getCatalogForFare_removesPriorityButKeepsLoungeWhenOnlyPriorityIncluded() {
+    AncillaryCatalogService service =
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
+    ServiceEntity lounge = serviceEntity(2L, "LOUNGE", "Airport Lounge", "lounge.png", true);
+    ServiceEntity priority =
+        serviceEntity(3L, "PRIORITY_BOARDING", "Priority Boarding", "priority.png", true);
+    FlightFareEntity fare = fare(11L, 101L, "VN", "Vietnam", fareClass(false, true));
+
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc())
+        .thenReturn(List.of(lounge, priority));
+    when(serviceOptionRepository.findActiveByServiceIds(anyCollection()))
+        .thenReturn(
+            List.of(
+                optionEntity(
+                    21L, lounge, "Domestic Lounge Pass", "Domestic lounge", "350000", true)));
+
+    AncillaryCatalogService.AncillaryCatalogView view = service.getCatalogForFare(11L, 101L);
+
+    assertEquals(List.of("LOUNGE"), serviceTypes(view));
+  }
+
+  @Test
+  void getCatalogForFare_keepsLoungeAndPriorityWhenNotIncludedInFare() {
+    AncillaryCatalogService service =
+        new AncillaryCatalogService(
+            serviceRepository,
+            serviceOptionRepository,
+            flightFareRepository,
+            countryCurrencyResolver);
+    ServiceEntity lounge = serviceEntity(2L, "LOUNGE", "Airport Lounge", "lounge.png", true);
+    ServiceEntity priority =
+        serviceEntity(3L, "PRIORITY_BOARDING", "Priority Boarding", "priority.png", true);
+    FlightFareEntity fare = fare(11L, 101L, "VN", "Vietnam", fareClass(false, false));
+
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc())
+        .thenReturn(List.of(lounge, priority));
+    when(serviceOptionRepository.findActiveByServiceIds(anyCollection()))
+        .thenReturn(
+            List.of(
+                optionEntity(
+                    21L, lounge, "Domestic Lounge Pass", "Domestic lounge", "350000", true),
+                optionEntity(
+                    31L,
+                    priority,
+                    "Priority Boarding Standard",
+                    "Board earlier",
+                    "80000",
+                    true)));
+
+    AncillaryCatalogService.AncillaryCatalogView view = service.getCatalogForFare(11L, 101L);
+
+    assertEquals(List.of("LOUNGE", "PRIORITY_BOARDING"), serviceTypes(view));
+  }
+
+  @Test
   void getCatalogForFare_requiresFlightAndFareTogether() {
     AncillaryCatalogService service =
         new AncillaryCatalogService(
@@ -163,6 +260,15 @@ class AncillaryCatalogServiceTest {
 
   private static FlightFareEntity fare(
       Long flightId, Long fareId, String countryCode, String country) {
+    return fare(flightId, fareId, countryCode, country, null);
+  }
+
+  private static FlightFareEntity fare(
+      Long flightId,
+      Long fareId,
+      String countryCode,
+      String country,
+      FareClassEntity fareClass) {
     AirportEntity airport = new AirportEntity();
     airport.setCountryCode(countryCode);
     airport.setCountry(country);
@@ -172,6 +278,20 @@ class AncillaryCatalogServiceTest {
     FlightFareEntity fare = new FlightFareEntity();
     fare.setId(fareId);
     fare.setFlight(flight);
+    fare.setFareClass(fareClass);
     return fare;
+  }
+
+  private static FareClassEntity fareClass(boolean loungeAccess, boolean priorityBoarding) {
+    FareClassEntity fareClass = new FareClassEntity();
+    fareClass.setLoungeAccess(loungeAccess);
+    fareClass.setPriorityBoarding(priorityBoarding);
+    return fareClass;
+  }
+
+  private static List<String> serviceTypes(AncillaryCatalogService.AncillaryCatalogView view) {
+    return view.services().stream()
+        .map(AncillaryCatalogService.AncillaryServiceGroupView::serviceType)
+        .toList();
   }
 }

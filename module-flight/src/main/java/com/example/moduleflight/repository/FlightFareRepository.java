@@ -3,10 +3,12 @@ package com.example.moduleflight.repository;
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -47,4 +49,17 @@ public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Lo
       where ff.id = :id
       """)
   Optional<FlightFareEntity> findByIdWithDetails(@Param("id") Long id);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select ff
+      from FlightFareEntity ff
+      join fetch ff.flight f
+      join fetch f.departureAirport dep
+      join fetch ff.fareClass fc
+      left join fetch fc.includedSeatCategory isc
+      where ff.id = :id
+      """)
+  Optional<FlightFareEntity> findByIdWithDetailsForUpdate(@Param("id") Long id);
 }

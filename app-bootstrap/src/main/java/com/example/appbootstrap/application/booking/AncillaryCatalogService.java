@@ -6,6 +6,7 @@ import com.example.modulebooking.entity.ServiceOptionEntity;
 import com.example.modulebooking.repository.ServiceOptionRepository;
 import com.example.modulebooking.repository.ServiceRepository;
 import com.example.moduleflight.application.CountryCurrencyResolver;
+import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.moduleflight.repository.FlightFareRepository;
 import java.math.BigDecimal;
@@ -39,7 +40,7 @@ public class AncillaryCatalogService {
 
   @Transactional(readOnly = true)
   public AncillaryCatalogView getCatalog() {
-    return getCatalog(DEFAULT_CURRENCY);
+    return getCatalog(DEFAULT_CURRENCY, null);
   }
 
   @Transactional(readOnly = true)
@@ -59,10 +60,10 @@ public class AncillaryCatalogService {
       throw new AppException("FARE_NOT_FOUND", "Fare does not belong to the requested flight", 404);
     }
     String countryCode = countryCurrencyResolver.resolveCountryCode(fare);
-    return getCatalog(countryCurrencyResolver.resolveCurrency(countryCode));
+    return getCatalog(countryCurrencyResolver.resolveCurrency(countryCode), fare.getFareClass());
   }
 
-  private AncillaryCatalogView getCatalog(String currency) {
+  private AncillaryCatalogView getCatalog(String currency, FareClassEntity fareClass) {
     List<ServiceEntity> services = serviceRepository.findAllByIsActiveTrueOrderByTypeAscNameAsc();
     if (services.isEmpty()) {
       return new AncillaryCatalogView(currency, List.of());
@@ -70,7 +71,7 @@ public class AncillaryCatalogService {
 
     Map<Long, ServiceEntity> servicesById = new LinkedHashMap<>();
     for (ServiceEntity service : services) {
-      if (service.getId() != null) {
+      if (service.getId() != null && isSelectableForFare(service, fareClass)) {
         servicesById.put(service.getId(), service);
       }
     }
@@ -109,6 +110,19 @@ public class AncillaryCatalogService {
             .toList();
 
     return new AncillaryCatalogView(currency, groups);
+  }
+
+  private boolean isSelectableForFare(ServiceEntity service, FareClassEntity fareClass) {
+    if (fareClass == null || service.getType() == null) {
+      return true;
+    }
+    if ("LOUNGE".equalsIgnoreCase(service.getType())) {
+      return !fareClass.isLoungeAccess();
+    }
+    if ("PRIORITY_BOARDING".equalsIgnoreCase(service.getType())) {
+      return !fareClass.isPriorityBoarding();
+    }
+    return true;
   }
 
   private AncillaryOptionView toOptionView(ServiceOptionEntity option, String currency) {

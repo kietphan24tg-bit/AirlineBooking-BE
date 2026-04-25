@@ -23,4 +23,16 @@ public interface ServiceOptionRepository extends JpaRepository<ServiceOptionEnti
       """)
   List<ServiceOptionEntity> findActiveByServiceIds(
       @Param("serviceIds") Collection<Long> serviceIds);
+
+  @Query(
+      """
+      select so
+      from ServiceOptionEntity so
+      join fetch so.service s
+      where so.id in :optionIds
+        and s.isActive = true
+        and so.isActive = true
+      """)
+  List<ServiceOptionEntity> findActiveByIdsWithService(
+      @Param("optionIds") Collection<Long> optionIds);
 }

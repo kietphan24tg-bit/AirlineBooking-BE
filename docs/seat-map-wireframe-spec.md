@@ -1,44 +1,85 @@
-# Seat Map Frontend Spec
+# Seat Map Frontend Handoff
 
-Tai lieu nay la ban spec de frontend render man `chon ghe` chinh xac theo contract backend hien tai.
+Tai lieu nay la ban handoff chinh thuc cho frontend de implement man `chon ghe`.
 
 Muc tieu:
 
-- Chot `response` frontend duoc phep rely on
-- Chot `flow` tu luc vao man den luc chon ghe
-- Chot `wireframe` desktop/mobile
-- Chot `render rules` cho tung trang thai ghe
+- Backend va frontend dung cung 1 cach hieu
+- Frontend khong phai suy luan them tu response
+- Khong lap lai loi cu: ghe `Paid` nhung hien `Available/Unavailable`
+- Co the implement ngay tu tai lieu nay
 
-Philosophy UI:
+## 1. Ket luan Chot
 
-- `Seat map` dung de scan nhanh
-- `Detail panel` dung de ra quyet dinh
-- Khong hien `0 VND` hoac `$0`
-- Neu ghe khong tinh them tien thi hien `Free` hoac `Included`
+Pattern UI phai dung:
 
-## 1. UI Strategy
+1. Seat map chi de scan nhanh
+2. Moi seat cell chi hien:
+   - `seatNumber`
+   - `displayPrice.text`
+3. Chi khi click vao ghe `selectable = true` moi duoc set `selectedSeat`
+4. Detail panel chi hien thong tin cua `selectedSeat`
+5. Neu ghe `selectable = false`:
+   - khong set `selectedSeat`
+   - khong mo panel active
+   - chi show tooltip/toast nhe
 
-Pattern duoc chot:
+Quyet dinh quan trong:
 
-1. Ban dau seat map chi hien thong tin ngan
-2. User click vao ghe
-3. Panel ben phai (desktop) hoac bottom sheet (mobile) hien chi tiet day du
-4. User bam `Select seat` de xac nhan
+- `displayPrice.text` la text chinh de render trong seat cell
+- `statusDisplay.label` chi dung trong detail panel
+- Khong dung `statusDisplay.label` lam text chinh trong seat cell
 
-Ly do:
+## 2. API Contract Frontend Duoc Phep Rely On
 
-- Nhe giao dien
-- De scan nhanh cac ghe con trong
-- Giong pattern thuc te cua hang khong va OTA
-- Frontend khong phai nhoi qua nhieu text vao tung seat cell
-
-## 2. API Response Contract
-
-Frontend nen goi:
+Frontend goi:
 
 `GET /api/flights/{flightId}/seats?fareId={fareId}`
 
-Response seed mau de render giao dien:
+Frontend duoc rely on cac field sau.
+
+### 2.1 Header
+
+- `fareCode`
+- `policyDisplay.label`
+- `policyDisplay.description`
+
+### 2.2 Layout
+
+- `layout.columns`
+- `layout.aisleAfterColumns`
+- `layout.seatClassZones`
+- `rows`
+
+### 2.3 Seat Cell
+
+- `seatNumber`
+- `displayPrice.type`
+- `displayPrice.text`
+- `pricingBadge.code`
+- `selectable`
+
+### 2.4 Detail Panel
+
+- `seatNumber`
+- `displayPrice.text`
+- `seatTypeDisplay.label`
+- `seatTypeDisplay.description`
+- `seatCategoryDisplay.label`
+- `seatCategoryDisplay.description`
+- `statusDisplay.label`
+- `included`
+- `extraPrice`
+- `currency`
+- `policyDisplay.label`
+
+Frontend khong nen rely on:
+
+- `extraPrice === 0` de tu suy ra `Free`
+- `reason` de tu suy ra text hien thi
+- `statusDisplay.label` de render text chinh trong seat cell
+
+## 3. Response Example
 
 ```json
 {
@@ -58,84 +99,16 @@ Response seed mau de render giao dien:
     "columns": ["A", "B", "C", "D", "E", "F"],
     "aisleAfterColumns": ["C"],
     "seatClassZones": [
-      {
-        "seatClass": "BUSINESS",
-        "rowStart": 1,
-        "rowEnd": 2
-      },
-      {
-        "seatClass": "ECONOMY",
-        "rowStart": 3,
-        "rowEnd": 30
-      }
+      { "seatClass": "BUSINESS", "rowStart": 1, "rowEnd": 2 },
+      { "seatClass": "ECONOMY", "rowStart": 3, "rowEnd": 30 }
     ]
   },
   "legend": {
-    "statuses": ["AVAILABLE", "RESERVED", "BOOKED", "UNAVAILABLE"],
-    "seatTypes": ["WINDOW", "MIDDLE", "AISLE"],
-    "seatCategories": ["STANDARD", "PREFERRED", "EXIT_ROW", "EXTRA_LEGROOM"],
-    "statusItems": [
-      {
-        "code": "AVAILABLE",
-        "label": "Available",
-        "description": "Seat is open for selection if your fare allows it."
-      },
-      {
-        "code": "UNAVAILABLE",
-        "label": "Unavailable",
-        "description": "Seat is blocked from sale or temporarily disabled."
-      }
-    ],
-    "seatTypeItems": [
-      {
-        "code": "WINDOW",
-        "label": "Window",
-        "description": "Seat next to the aircraft window."
-      },
-      {
-        "code": "MIDDLE",
-        "label": "Middle",
-        "description": "Center seat within a seat block."
-      },
-      {
-        "code": "AISLE",
-        "label": "Aisle",
-        "description": "Seat with direct access to the aisle."
-      }
-    ],
-    "seatCategoryItems": [
-      {
-        "code": "STANDARD",
-        "label": "Standard",
-        "description": "Regular seat with no special location benefits."
-      },
-      {
-        "code": "EXIT_ROW",
-        "label": "Exit row",
-        "description": "Seat located at an exit row, usually with more space."
-      }
-    ],
     "pricingItems": [
-      {
-        "code": "FREE",
-        "label": "Free",
-        "description": "Seat can be selected without any extra charge."
-      },
-      {
-        "code": "PAID",
-        "label": "Paid",
-        "description": "Seat requires an additional surcharge."
-      },
-      {
-        "code": "UNAVAILABLE",
-        "label": "Unavailable",
-        "description": "Seat is blocked, reserved, or already booked."
-      },
-      {
-        "code": "NOT_ALLOWED",
-        "label": "Not allowed",
-        "description": "Seat cannot be chosen for this fare or at this stage."
-      }
+      { "code": "FREE", "label": "Free" },
+      { "code": "PAID", "label": "Paid" },
+      { "code": "UNAVAILABLE", "label": "Unavailable" },
+      { "code": "NOT_ALLOWED", "label": "Not allowed" }
     ]
   },
   "rows": [
@@ -147,20 +120,16 @@ Response seed mau de render giao dien:
           "columnLetter": "A",
           "seatId": 501,
           "seatNumber": "6A",
-          "seatClass": "ECONOMY",
-          "seatType": "WINDOW",
           "seatTypeDisplay": {
             "code": "WINDOW",
             "label": "Window",
             "description": "Seat next to the aircraft window."
           },
-          "seatCategory": "STANDARD",
           "seatCategoryDisplay": {
             "code": "STANDARD",
             "label": "Standard",
             "description": "Regular seat with no special location benefits."
           },
-          "status": "AVAILABLE",
           "statusDisplay": {
             "code": "AVAILABLE",
             "label": "Available",
@@ -170,7 +139,6 @@ Response seed mau de render giao dien:
           "included": false,
           "extraPrice": 20000,
           "currency": "VND",
-          "reason": null,
           "displayPrice": {
             "type": "PAID",
             "text": "+20000 VND",
@@ -180,28 +148,23 @@ Response seed mau de render giao dien:
           },
           "pricingBadge": {
             "code": "PAID",
-            "label": "Paid",
-            "description": "This seat requires an extra surcharge."
+            "label": "Paid"
           }
         },
         {
           "columnLetter": "B",
           "seatId": 502,
           "seatNumber": "6B",
-          "seatClass": "ECONOMY",
-          "seatType": "MIDDLE",
           "seatTypeDisplay": {
             "code": "MIDDLE",
             "label": "Middle",
             "description": "Center seat within a seat block."
           },
-          "seatCategory": "STANDARD",
           "seatCategoryDisplay": {
             "code": "STANDARD",
             "label": "Standard",
             "description": "Regular seat with no special location benefits."
           },
-          "status": "AVAILABLE",
           "statusDisplay": {
             "code": "AVAILABLE",
             "label": "Available",
@@ -211,7 +174,6 @@ Response seed mau de render giao dien:
           "included": false,
           "extraPrice": 0,
           "currency": "VND",
-          "reason": null,
           "displayPrice": {
             "type": "FREE",
             "text": "Free",
@@ -221,28 +183,23 @@ Response seed mau de render giao dien:
           },
           "pricingBadge": {
             "code": "FREE",
-            "label": "Free",
-            "description": "This seat does not add any surcharge for the selected fare."
+            "label": "Free"
           }
         },
         {
           "columnLetter": "C",
           "seatId": 503,
           "seatNumber": "6C",
-          "seatClass": "ECONOMY",
-          "seatType": "AISLE",
           "seatTypeDisplay": {
             "code": "AISLE",
             "label": "Aisle",
             "description": "Seat with direct access to the aisle."
           },
-          "seatCategory": "STANDARD",
           "seatCategoryDisplay": {
             "code": "STANDARD",
             "label": "Standard",
             "description": "Regular seat with no special location benefits."
           },
-          "status": "AVAILABLE",
           "statusDisplay": {
             "code": "AVAILABLE",
             "label": "Available",
@@ -252,7 +209,6 @@ Response seed mau de render giao dien:
           "included": false,
           "extraPrice": null,
           "currency": null,
-          "reason": "SEAT_NOT_ALLOWED_FOR_FARE",
           "displayPrice": {
             "type": "NOT_ALLOWED",
             "text": "Not allowed",
@@ -262,8 +218,7 @@ Response seed mau de render giao dien:
           },
           "pricingBadge": {
             "code": "NOT_ALLOWED",
-            "label": "Not allowed",
-            "description": "This seat is not eligible for the selected fare."
+            "label": "Not allowed"
           }
         }
       ]
@@ -272,185 +227,72 @@ Response seed mau de render giao dien:
 }
 ```
 
-## 3. Field Mapping Cho Frontend
+## 4. UI Structure
 
-Frontend chi nen rely on cac field sau:
+### 4.1 Desktop
 
-- Header:
-  - `fareCode`
-  - `policyDisplay.label`
-  - `policyDisplay.description`
-
-- Layout:
-  - `layout.columns`
-  - `layout.aisleAfterColumns`
-  - `layout.seatClassZones`
-
-- Seat cell:
-  - `seatNumber`
-  - `displayPrice.text`
-  - `pricingBadge.code`
-  - `statusDisplay.code`
-  - `selectable`
-
-- Detail panel:
-  - `seatNumber`
-  - `displayPrice.text`
-  - `seatTypeDisplay.label`
-  - `seatCategoryDisplay.label`
-  - `seatTypeDisplay.description`
-  - `seatCategoryDisplay.description`
-  - `statusDisplay.label`
-  - `included`
-  - `extraPrice`
-  - `currency`
-
-Frontend khong nen:
-
-- Tu suy luan `0 => Free`
-- Tu suy luan `reason => text`
-- Tu format text chinh cho free/paid/not allowed
-
-## 4. Flow Chi Tiet
-
-### 4.1 Data Flow
-
-1. User chon fare o man search/revalidate
-2. Frontend luu `flightId` va `fareId`
-3. Khi vao man chon ghe, frontend goi:
-   - `GET /api/flights/{flightId}/seats?fareId={fareId}`
-4. Frontend render seat map
-5. User click 1 ghe
-6. Frontend cap nhat `selectedSeat`
-7. Panel chi tiet render theo `selectedSeat`
-8. User bam `Select seat`
-9. Frontend luu `seatId` vao state booking/passenger step
-10. Sau do moi goi API save booking seat o step tiep theo
-
-### 4.2 Interaction Flow
-
-#### First load
-
-- Seat map hien ra voi legend
-- Chua co ghe nao duoc chon
-- Panel ben phai hien empty state
-
-#### User click ghe `AVAILABLE + selectable`
-
-- Seat cell vao state `selected`
-- Panel ben phai hien chi tiet day du
-- CTA `Select seat` duoc enable
-
-#### User click ghe `UNAVAILABLE`
-
-- Khong cho selected
-- Co the show tooltip nhe: `Unavailable`
-
-#### User click ghe `NOT_ALLOWED`
-
-- Khong cho selected
-- Co the show tooltip nhe: `Not allowed for this fare`
-
-#### User confirm
-
-- Frontend luu:
-  - `seatId`
-  - `seatNumber`
-  - `displayPrice`
-  - `seatTypeDisplay`
-  - `seatCategoryDisplay`
-
-## 5. Wireframe Desktop
+- cot trai: seat map
+- cot phai: detail panel sticky
 
 ```text
 +--------------------------------------------------------------------------------------------------+
 | [<-] Chon ghe                                                                                     |
-| Flight #21008 • Economy                                                                           |
+| Flight #22347 • ECONOMY                                                                           |
 | Seat selection with surcharge                                                                     |
 | Some seats are free, others require an extra fee depending on seat type and location.            |
 +--------------------------------------------------------------------------------------------------+
 
 +--------------------------------------------------------------------+----------------------------+
 | Legend                                                             | Selected seat             |
-|                                                                    |                            |
-| Availability                                                       | [empty state]             |
-| [green] Available   [gray] Unavailable   [rose] Not allowed        | Select a seat to view     |
-|                                                                    | details.                  |
-| Pricing                                                            |                            |
-| [mint] Free         [amber] Paid                                   | Fare policy               |
-|                                                                    | Seat selection with       |
-|                                                                    | surcharge                 |
+| [Available] [Unavailable] [Not allowed] [Free] [Paid]              | Empty state / details     |
 +--------------------------------------------------------------------+----------------------------+
 
 +--------------------------------------------------------------------+----------------------------+
-| BUSINESS (Rows 1-2)                                                | Khi user chon ghế 6B      |
-|                                                                    |                            |
-|        A           B           C       AISLE      D         E       | Seat 6B                   |
-| Row 1 [Not allow] [Not allow] [Not allow]       [Not allow][N/A]   | Free                      |
-| Row 2 [Not allow] [Not allow] [Not allow]       [Not allow][N/A]   |                            |
+| BUSINESS (Rows 1-2)                                                | Seat 6B                   |
+| ECONOMY (Rows 3-30)                                                | Free                      |
 |                                                                    | Middle                    |
-| ECONOMY (Rows 3-30)                                                | Standard                  |
-|                                                                    |                            |
-|        A           B           C       AISLE      D         E       | Center seat within a      |
-| Row 6 [+20k]      [Free]      [Not all.]        [+20k]    [Free]   | seat block.               |
-| Row 7 [+20k]      [Free]      [+20k]            [+20k]    [Free]   |                            |
-| Row 8 [Unavail.]  [Free]      [+20k]            [+20k]    [Free]   | Status                    |
-|                                                                    | Available                 |
-|                                                                    |                            |
-|                                                                    | Included in fare          |
-|                                                                    | No                        |
-|                                                                    |                            |
-|                                                                    | Additional surcharge      |
-|                                                                    | 0 VND                     |
-|                                                                    |                            |
+| Seat cells                                                         | Standard                  |
+| [6A +20k] [6B Free] [6C Not allowed]                               | Available                 |
 |                                                                    | [ Select seat ]           |
 +--------------------------------------------------------------------+----------------------------+
 ```
 
-## 6. Wireframe Mobile
+### 4.2 Mobile
 
-Mobile khong dung panel ben phai. Dung `bottom sheet`.
+- map full width
+- detail dung bottom sheet
 
 ```text
 +----------------------------------+
 | Chon ghe                         |
-| Flight #21008 • Economy          |
+| Flight #22347 • ECONOMY          |
 | Seat selection with surcharge    |
 +----------------------------------+
 
 | Legend: Available • Free • Paid  |
+| Seat map                         |
+| [6A +20k] [6B Free] [6C Not al.] |
 
-| BUSINESS                         |
-| Row 1 [N/A] [N/A] [N/A]          |
-| Row 2 [N/A] [N/A] [N/A]          |
-
-| ECONOMY                          |
-| Row 6 [+20k] [Free] [+20k]       |
-| Row 7 [+20k] [Free] [+20k]       |
-| Row 8 [Unav] [Free] [+20k]       |
-
-+----------------------------------+
-| Bottom sheet when seat selected  |
+| Bottom sheet when selected       |
 | Seat 6B                          |
 | Free                             |
 | Middle                           |
 | Standard                         |
 | Available                        |
-|                                  |
 | [ Select seat ]                  |
 +----------------------------------+
 ```
 
-## 7. Seat Cell Spec
+## 5. Seat Cell Rules
 
-Seat cell chi nen hien 2 tang thong tin:
+Seat cell chi hien 2 dong:
 
 1. `seatNumber`
 2. `displayPrice.text`
 
-Example:
+Examples:
 
-### Free seat
+### Free
 
 ```text
 +-----------+
@@ -459,7 +301,7 @@ Example:
 +-----------+
 ```
 
-### Paid seat
+### Paid
 
 ```text
 +-----------+
@@ -468,16 +310,7 @@ Example:
 +-----------+
 ```
 
-### Selected seat
-
-```text
-+===========+
-| 6B        |
-| Free      |
-+===========+
-```
-
-### Unavailable seat
+### Unavailable
 
 ```text
 +-----------+
@@ -486,7 +319,7 @@ Example:
 +-----------+
 ```
 
-### Not allowed seat
+### Not allowed
 
 ```text
 +-----------+
@@ -495,203 +328,395 @@ Example:
 +-----------+
 ```
 
-## 8. Detail Panel Spec
+Khong dung:
 
-Panel chi tiet la noi show full metadata.
+- `Available` lam text trong seat cell
+- `statusDisplay.label` lam text chinh trong seat cell
 
-Desktop panel:
+## 6. Detail Panel Rules
 
-```text
-+------------------------------+
-| Selected seat                |
-|                              |
-| Seat 6B                      |
-| Free                         |
-|                              |
-| Middle                       |
-| Standard                     |
-|                              |
-| Center seat within block.    |
-|                              |
-| Status                       |
-| Available                    |
-|                              |
-| Fare policy                  |
-| Seat selection with surcharge|
-|                              |
-| Included in fare             |
-| No                           |
-|                              |
-| Additional surcharge         |
-| 0 VND                        |
-|                              |
-| [ Select seat ]              |
-+------------------------------+
+Detail panel chi hien thong tin cua `selectedSeat`.
+
+Field mapping:
+
+| Vung UI | Field |
+| --- | --- |
+| Heading | `Seat {seatNumber}` |
+| Gia chinh | `displayPrice.text` |
+| Seat type | `seatTypeDisplay.label` |
+| Seat category | `seatCategoryDisplay.label` |
+| Mo ta | `seatCategoryDisplay.description` uu tien cao hon |
+| Status | `statusDisplay.label` |
+| Included in fare | `included ? "Yes" : "No"` |
+| Additional surcharge | `extraPrice + currency` |
+| Fare policy | `policyDisplay.label` |
+| CTA | enable chi khi `selectable = true` |
+
+Rule bat buoc:
+
+- `displayPrice.text` la gia/chinh sach hien thi lon
+- `statusDisplay.label` la dong status rieng
+- khong bao gio thay `displayPrice.text` bang `statusDisplay.label`
+
+## 7. Interaction Flow
+
+### 7.1 First Load
+
+- fetch seat map
+- render legend
+- render seat map
+- `selectedSeat = null`
+- panel hien empty state
+
+### 7.2 Click Seat
+
+#### Case A: seat.selectable = true
+
+- set `selectedSeat = seat`
+- highlight seat
+- render detail panel
+- CTA enable
+
+#### Case B: seat.selectable = false
+
+- khong set `selectedSeat`
+- giu panel o empty state hoac state truoc do
+- show tooltip/toast:
+  - `Unavailable`
+  - hoac `Not allowed`
+
+### 7.3 Confirm Seat
+
+- chi cho bam khi co `selectedSeat`
+- frontend luu:
+  - `seatId`
+  - `seatNumber`
+  - `displayPrice`
+  - `seatTypeDisplay`
+  - `seatCategoryDisplay`
+
+## 8. Rendering Matrix
+
+### 8.1 Seat Cell
+
+| Condition | Line 1 | Line 2 | Appearance | Click |
+| --- | --- | --- | --- | --- |
+| `selectable = true` and `displayPrice.type = FREE` | `seatNumber` | `Free` or `Included` | mint/green | allowed |
+| `selectable = true` and `displayPrice.type = PAID` | `seatNumber` | `+amount` | amber | allowed |
+| `selectable = false` and `pricingBadge.code = UNAVAILABLE` | `seatNumber` | `Unavailable` | gray | blocked |
+| `selectable = false` and `pricingBadge.code = NOT_ALLOWED` | `seatNumber` | `Not allowed` | rose muted | blocked |
+
+### 8.2 Detail Panel
+
+| Condition | Panel |
+| --- | --- |
+| `selectedSeat = null` | empty state |
+| `selectedSeat != null` and `selectedSeat.selectable = true` | show full details |
+| disabled seat clicked | khong doi `selectedSeat` |
+
+## 9. Pseudo-code
+
+### 9.1 Seat View Model
+
+```ts
+type SeatCellViewModel = {
+  title: string;
+  subtitle: string;
+  appearance: "free" | "paid" | "unavailable" | "not_allowed" | "selected";
+  disabled: boolean;
+};
+
+function getSeatCellViewModel(seat: SeatResponse, isSelected: boolean): SeatCellViewModel {
+  const title = seat.seatNumber;
+  const subtitle = seat.displayPrice.text;
+
+  if (isSelected) {
+    return {
+      title,
+      subtitle,
+      appearance: "selected",
+      disabled: false,
+    };
+  }
+
+  if (!seat.selectable && seat.pricingBadge.code === "UNAVAILABLE") {
+    return { title, subtitle, appearance: "unavailable", disabled: true };
+  }
+
+  if (!seat.selectable && seat.pricingBadge.code === "NOT_ALLOWED") {
+    return { title, subtitle, appearance: "not_allowed", disabled: true };
+  }
+
+  if (seat.displayPrice.type === "FREE") {
+    return { title, subtitle, appearance: "free", disabled: false };
+  }
+
+  return { title, subtitle, appearance: "paid", disabled: false };
+}
 ```
 
-Rule:
+### 9.2 Interaction
 
-- Tieu de:
-  - `Seat {seatNumber}`
-- Gia:
-  - `displayPrice.text`
-- Loai ghe:
-  - `seatTypeDisplay.label`
-- Nhom ghe:
-  - `seatCategoryDisplay.label`
-- Mo ta:
-  - uu tien `seatCategoryDisplay.description`
-  - neu can co the them `seatTypeDisplay.description`
-- Trang thai:
-  - `statusDisplay.label`
-- Fare policy:
-  - `policyDisplay.label`
-- CTA:
-  - enable neu `selectable = true`
-  - disable neu `selectable = false`
+```ts
+function onSeatClick(seat: SeatResponse) {
+  if (!seat.selectable) {
+    showSeatHint(seat.displayPrice.text);
+    return;
+  }
 
-## 9. Render Rules Theo Trang Thai
-
-### `AVAILABLE + selectable + displayPrice.type = FREE`
-
-- Seat cell:
-  - hien `seatNumber`
-  - hien `Free` hoac `Included`
-- Mau:
-  - background sang, outline xanh/mint nhe
-- Click:
-  - duoc click
-
-### `AVAILABLE + selectable + displayPrice.type = PAID`
-
-- Seat cell:
-  - hien `seatNumber`
-  - hien `+amount`
-- Mau:
-  - background vang nhat, border amber
-- Click:
-  - duoc click
-
-### `selectable = false + pricingBadge.code = UNAVAILABLE`
-
-- Seat cell:
-  - hien `Unavailable`
-- Mau:
-  - gray neutral
-- Click:
-  - khong chon
-
-### `selectable = false + pricingBadge.code = NOT_ALLOWED`
-
-- Seat cell:
-  - hien `Not allowed`
-- Mau:
-  - gray/rose muted
-- Click:
-  - khong chon
-
-## 10. Legend Rules
-
-Legend chot de dung:
-
-- Availability
-  - Available
-  - Unavailable
-  - Not allowed
-
-- Pricing
-  - Free
-  - Paid
-
-Khong can dua `Window / Middle / Aisle` vao legend chinh o phase dau.
-Ly do:
-
-- Thong tin nay de trong panel da du
-- Neu nhieu legend qua man hinh se roi
-
-Neu desktop rong va muon hien them:
-
-- Seat type
-  - Window
-  - Middle
-  - Aisle
-
-## 11. Empty State Spec
-
-Khi chua chon ghe:
-
-```text
-+------------------------------+
-| Selected seat                |
-|                              |
-| Select a seat to view        |
-| details.                     |
-|                              |
-| You will see:                |
-| seat number                  |
-| seat type                    |
-| seat category                |
-| price                        |
-| availability                 |
-+------------------------------+
+  setSelectedSeat(seat);
+}
 ```
 
-## 12. Frontend Implementation Rules
+### 9.3 Detail Panel
 
-Frontend can follow exactly:
+```ts
+function getSeatDetailViewModel(
+  seat: SeatResponse,
+  policyDisplay: PolicyDisplayResponse
+) {
+  return {
+    heading: `Seat ${seat.seatNumber}`,
+    priceText: seat.displayPrice.text,
+    seatType: seat.seatTypeDisplay.label,
+    seatCategory: seat.seatCategoryDisplay.label,
+    description: seat.seatCategoryDisplay.description || seat.seatTypeDisplay.description,
+    status: seat.statusDisplay.label,
+    includedInFare: seat.included ? "Yes" : "No",
+    surchargeText:
+      seat.extraPrice == null || seat.currency == null
+        ? "-"
+        : `${seat.extraPrice} ${seat.currency}`,
+    farePolicy: policyDisplay.label,
+    canSelect: seat.selectable,
+  };
+}
+```
 
-1. Render row theo `rows`
-2. Render cot theo `layout.columns`
-3. Match `cells[].columnLetter` vao tung cot
-4. Sau cot nam trong `layout.aisleAfterColumns`, chen 1 khoang aisle
-5. Moi `seatClassZone` render thanh 1 section title
-6. Seat cell text chinh phai lay tu `displayPrice.text`
-7. Detail panel text chinh phai lay tu `seatTypeDisplay`, `seatCategoryDisplay`, `statusDisplay`
-8. Khong hardcode `0 => Free`
-9. Khong hardcode `AVAILABLE => Available`
-10. Khong format text gia chinh o frontend neu khong can
+## 10. Anti-patterns Cam Dung
 
-## 13. Copy Chot De Frontend Dung
+```ts
+// Sai: dung status lam text chinh trong seat cell
+seatCellText = seat.statusDisplay.label;
 
-Header:
+// Sai: mix mau theo pricing, text theo status
+seatCellClass = seat.pricingBadge.code;
+seatCellText = seat.statusDisplay.label;
+
+// Sai: suy luan free tu extraPrice o frontend
+seatCellText = seat.extraPrice === 0 ? "Free" : `${seat.extraPrice}`;
+
+// Sai: disabled seat van duoc set selected
+setSelectedSeat(seat);
+
+// Sai: co reason thi ep ve unavailable
+seatCellText = seat.reason ? "Unavailable" : seat.displayPrice.text;
+```
+
+## 11. Frontend Checklist
+
+Frontend can tu test theo checklist nay:
+
+1. Ghe `FREE` hien `Free` hoac `Included`, khong hien `Available`
+2. Ghe `PAID` hien `+amount`, khong hien `Available`
+3. Ghe `UNAVAILABLE` hien `Unavailable`
+4. Ghe `NOT_ALLOWED` hien `Not allowed`
+5. Seat cell chi co 2 dong text
+6. Click ghe disabled khong doi `selectedSeat`
+7. Click ghe disabled khong enable CTA
+8. Panel gia lon lay tu `displayPrice.text`
+9. Panel status rieng lay tu `statusDisplay.label`
+10. Khong co o ghe nao vua mang mau `Paid` vua hien text `Unavailable`
+11. Khong co panel nao hien gia lon la `Unavailable` nhung status lai `Available`
+
+## 12. Copy Chot
+
+### Header
 
 - Title: `Chon ghe`
-- Subtitle line 1: `Flight #{flightNumber} • {fareCode}`
-- Subtitle line 2: `policyDisplay.label`
-- Description: `policyDisplay.description`
+- Subtitle: `Flight #{flightNumber} • {fareCode}`
+- Policy label: `policyDisplay.label`
+- Policy description: `policyDisplay.description`
 
-Panel:
+### Panel
 
-- Section title: `Selected seat`
-- Empty state: `Select a seat to view details.`
+- Empty state title: `Selected seat`
+- Empty state body: `Select a seat to view details.`
 - CTA: `Select seat`
 
-Seat cell:
+### Seat cell
 
-- Free: `Free`
-- Included: `Included`
-- Paid: `+amount`
-- Unavailable: `Unavailable`
-- Not allowed: `Not allowed`
+- FREE: `Free`
+- INCLUDED: `Included`
+- PAID: `+amount`
+- UNAVAILABLE: `Unavailable`
+- NOT_ALLOWED: `Not allowed`
 
-## 14. Recommendation Chot
+## 13. Recommendation Chot
 
-Frontend nen lam dung pattern sau:
+Frontend phai lam dung nhu sau:
 
 - Desktop:
   - map trai
   - detail panel phai
 - Mobile:
   - map full width
-  - bottom sheet chi tiet
+  - detail bottom sheet
 - Seat cell:
-  - 2 dong toi da
+  - chi 2 dong
 - Detail panel:
-  - moi hien full metadata
+  - chi render khi `selectedSeat` hop le
 
-Day la pattern can bang nhat giua:
+Neu frontend lam dung tai lieu nay, UI se khong bi quay lai loi cu.
 
-- de scan
-- de chon
-- de maintain
-- sat thuc te san pham hang khong
+## 14. Can Dieu Chinh Tren Giao Dien Hien Tai
+
+Muc nay dung de doi chieu voi ban frontend dang render hien tai.
+
+### 14.1 Nhung diem da dung
+
+- Khong con loi `Paid` nhung hien `Available/Unavailable`
+- Detail panel da tach rieng khoi seat map
+- Seat duoc chon da co state highlight
+- CTA `Select seat` chi xuat hien trong panel
+
+### 14.2 Nhung diem chua dung va can sua
+
+#### A. Seat cell dang thieu `displayPrice.text`
+
+Van de hien tai:
+
+- Trong o ghe moi chi thay `seatNumber`
+- Chua hien dong thu 2 la `displayPrice.text`
+
+Bat buoc sua:
+
+- Moi seat cell phai hien:
+  - dong 1: `seatNumber`
+  - dong 2: `displayPrice.text`
+
+Vi du:
+
+- ghe free:
+  - `6B`
+  - `Free`
+- ghe tra phi:
+  - `3A`
+  - `200.000 VND`
+- ghe unavailable:
+  - `1A`
+  - `Unavailable`
+- ghe not allowed:
+  - `6C`
+  - `Not allowed`
+
+Khong chap nhan:
+
+- seat cell chi hien `seatNumber`
+- seat cell hien `Available`
+
+#### B. O business row dang mo ho qua
+
+Van de hien tai:
+
+- Ghe business disabled dang chi co so ghe
+- User nhin vao khong biet la unavailable hay not allowed
+
+Bat buoc sua:
+
+- Neu ghe business la disabled thi dong thu 2 van phai hien:
+  - `Unavailable`
+  - hoac `Not allowed`
+
+#### C. Panel gia lon dung roi, nhung seat map chua scan duoc
+
+Van de hien tai:
+
+- Gia chi xuat hien trong detail panel
+- User phai click moi biet ghe nao free, ghe nao paid
+
+Bat buoc sua:
+
+- User phai scan duoc gia ngay tren map
+- Detail panel chi la noi xem them chi tiet, khong phai noi duy nhat de thay gia
+
+#### D. Horizontal overflow van con chat
+
+Van de hien tai:
+
+- Cot cuoi van sat mep
+- O mot so viewport, grid co cam giac bi cat ngang
+
+Bat buoc sua:
+
+- Dam bao cot cuoi khong bi cat
+- Neu map rong hon container:
+  - cho phep scroll ngang ro rang
+  - nhung van phai co padding o mep phai
+
+#### E. Khoang cach seat map va detail panel can on dinh hon
+
+Van de hien tai:
+
+- Tren mot so viewport, panel ben phai chiem kha nhieu rong
+- Seat map bi ep lai
+
+Bat buoc sua:
+
+- Desktop:
+  - panel ben phai co chieu rong co dinh hop ly
+  - seat map uu tien khong gian chinh
+- Goi y:
+  - panel khoang `320px - 380px`
+  - seat map la vung linh hoat con lai
+
+### 14.3 Acceptance Criteria Ban Frontend Phai Dat
+
+Frontend duoc xem la dung khi dat du cac dieu kien sau:
+
+1. Moi seat cell deu co 2 dong:
+   - `seatNumber`
+   - `displayPrice.text`
+2. Ghe `PAID` hien gia tren map, khong can click moi thay
+3. Ghe `FREE` hien `Free` hoac `Included` tren map
+4. Ghe `UNAVAILABLE` hien `Unavailable` tren map
+5. Ghe `NOT_ALLOWED` hien `Not allowed` tren map
+6. Click ghe disabled khong doi `selectedSeat`
+7. Detail panel chi render thong tin cua ghe `selectable = true`
+8. Gia lon trong panel lay tu `displayPrice.text`
+9. Trang thai rieng trong panel lay tu `statusDisplay.label`
+10. Khong co cot cuoi nao bi cat mat tren viewport desktop thong dung
+
+### 14.4 UI Mau Can Dat
+
+Seat card phai dat muc toi thieu nhu sau:
+
+```text
++-----------+
+| 3A        |
+| 200.000đ  |
++-----------+
+```
+
+```text
++-----------+
+| 6B        |
+| Free      |
++-----------+
+```
+
+```text
++-----------+
+| 1A        |
+| Unavail.  |
++-----------+
+```
+
+```text
++-----------+
+| 6C        |
+| Not allow |
++-----------+
+```
+
+Neu frontend chua dat duoc muc nay, thi xem nhu man seat map chua hoan thanh.

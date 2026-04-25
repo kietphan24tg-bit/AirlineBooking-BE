@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,8 +19,10 @@ import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.entity.BookingFareHoldEntity;
 import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.repository.BookingContactRepository;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulebooking.repository.PassengerRepository;
@@ -64,6 +67,7 @@ class BookingRevalidateServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private BookingRepository bookingRepository;
   @Mock private BookingContactRepository bookingContactRepository;
+  @Mock private BookingFareHoldRepository bookingFareHoldRepository;
   @Mock private PassengerRepository passengerRepository;
   @Mock private PromotionRepository promotionRepository;
   @Mock private FlightSeatRepository flightSeatRepository;
@@ -86,6 +90,7 @@ class BookingRevalidateServiceTest {
             userRepository,
             bookingRepository,
             bookingContactRepository,
+            bookingFareHoldRepository,
             passengerRepository,
             promotionRepository,
             flightSeatRepository,
@@ -131,10 +136,11 @@ class BookingRevalidateServiceTest {
     assertEquals("user@example.com", response.contacts().getFirst().email());
     assertEquals(10L, response.passengers().getFirst().passengerId());
     assertEquals("ADULT", response.passengers().getFirst().passengerType());
-    assertEquals("RESERVED", response.seatReservation().status());
+    assertEquals("HELD", response.seatReservation().status());
     assertEquals(1, response.seatReservation().reservedSeatCount());
     assertEquals("CREATE_PAYMENT", response.nextAction().type());
-    verify(flightSeatRepository).reserveForBooking(eq(123L), eq(11L), eq(5L), eq(1), any());
+    verify(flightSeatRepository, never())
+        .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
   }
 
   @Test
@@ -199,8 +205,9 @@ class BookingRevalidateServiceTest {
     assertNull(response.passengers().get(2).identifyType());
     assertNull(response.passengers().get(2).identifyNumber());
     verify(flightPricingService).calculateTotalPrice(new BigDecimal("1500000.00"), 1, 1, 1);
-    verify(flightInventoryAvailabilityService).countAvailableSeats(11L, 5L);
-    verify(flightSeatRepository).reserveForBooking(eq(124L), eq(11L), eq(5L), eq(2), any());
+    verify(flightInventoryAvailabilityService, times(2)).countAvailableSeats(11L, 5L);
+    verify(flightSeatRepository, never())
+        .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
   }
 
   @Test
@@ -240,8 +247,8 @@ class BookingRevalidateServiceTest {
               }
               return passengers;
             });
-    when(flightSeatRepository.reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any()))
-        .thenReturn(1);
+    when(bookingFareHoldRepository.save(any(BookingFareHoldEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, BookingFareHoldEntity.class));
 
     CreateBookingResponse response =
         service.createBooking(
@@ -468,8 +475,8 @@ class BookingRevalidateServiceTest {
               }
               return passengers;
             });
-    when(flightSeatRepository.reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any()))
-        .thenReturn(reservedSeatCount);
+    when(bookingFareHoldRepository.save(any(BookingFareHoldEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, BookingFareHoldEntity.class));
   }
 
   private void stubRevalidateSnapshotAccess(String revalidateId, String idempotencyKey) {
@@ -478,6 +485,7 @@ class BookingRevalidateServiceTest {
     when(valueOperations.get("revalidate:" + revalidateId)).thenReturn(snapshotCaptor.getValue());
     when(valueOperations.setIfAbsent(eq("idem:booking:" + idempotencyKey), any(), any()))
         .thenReturn(true);
+    when(flightFareRepository.findByIdWithDetailsForUpdate(101L)).thenReturn(Optional.of(fare));
   }
 
   private com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse stubRevalidate(

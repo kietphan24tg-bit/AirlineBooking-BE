@@ -1,0 +1,55 @@
+package com.example.modulebooking.repository;
+
+import com.example.modulebooking.entity.BookingFareHoldEntity;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface BookingFareHoldRepository extends JpaRepository<BookingFareHoldEntity, Long> {
+
+  Optional<BookingFareHoldEntity> findFirstByBookingIdAndStatusIn(
+      Long bookingId, java.util.Collection<String> statuses);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update booking_fare_holds
+          set status = 'CONFIRMED',
+              updated_at = :now
+          where booking_id = :bookingId
+            and status = 'HELD'
+          """,
+      nativeQuery = true)
+  int confirmHeldByBookingId(@Param("bookingId") Long bookingId, @Param("now") OffsetDateTime now);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update booking_fare_holds
+          set status = 'RELEASED',
+              updated_at = :now
+          where booking_id = :bookingId
+            and status = 'HELD'
+          """,
+      nativeQuery = true)
+  int releaseHeldByBookingId(@Param("bookingId") Long bookingId, @Param("now") OffsetDateTime now);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update booking_fare_holds
+          set status = 'RELEASED',
+              updated_at = :now
+          where status = 'HELD'
+            and expires_at is not null
+            and expires_at < :now
+          """,
+      nativeQuery = true)
+  int releaseExpiredHolds(@Param("now") OffsetDateTime now);
+}

@@ -2,6 +2,7 @@ package com.example.modulebooking.repository;
 
 import com.example.modulebooking.entity.FlightSeatEntity;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -71,6 +72,38 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
       @Param("fareClassId") Long fareClassId,
       @Param("quantity") int quantity,
       @Param("reservedUntil") OffsetDateTime reservedUntil);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set status = 'RESERVED',
+              booking_id = :bookingId,
+              reserved_until = :reservedUntil
+          where id in (:seatIds)
+            and status = 'AVAILABLE'
+          """,
+      nativeQuery = true)
+  int reserveSelectedForBooking(
+      @Param("bookingId") Long bookingId,
+      @Param("seatIds") Collection<Long> seatIds,
+      @Param("reservedUntil") OffsetDateTime reservedUntil);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set status = 'BOOKED',
+              booking_id = :bookingId,
+              reserved_until = null
+          where id in (:seatIds)
+            and status = 'AVAILABLE'
+          """,
+      nativeQuery = true)
+  int bookSelectedForBooking(
+      @Param("bookingId") Long bookingId, @Param("seatIds") Collection<Long> seatIds);
 
   @Modifying
   @Query(

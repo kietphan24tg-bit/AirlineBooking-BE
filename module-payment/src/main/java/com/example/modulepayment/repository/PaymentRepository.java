@@ -29,4 +29,6 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       "select p from PaymentEntity p where p.booking.id = :bookingId and p.paymentStatus = :status")
   List<PaymentEntity> findAllByBookingIdAndPaymentStatusForUpdate(
       @Param("bookingId") Long bookingId, @Param("status") String status);
+
+  boolean existsByBookingIdAndPaymentStatus(Long bookingId, String paymentStatus);
 }
