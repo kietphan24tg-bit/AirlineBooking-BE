@@ -139,16 +139,12 @@ class BookingSeatAssignmentServiceTest {
     PassengerEntity secondPassenger = passenger(2L, booking, "ADULT");
     FlightEntity flight = hold.getFlightFare().getFlight();
     FlightSeatEntity firstSeat =
-        seat(
-            100L, flight, category("PREFERRED", 2, "40000.00"), type("WINDOW", "20000.00"));
+        seat(100L, flight, category("PREFERRED", 2, "40000.00"), type("WINDOW", "20000.00"));
     FlightSeatEntity secondSeat =
-        seat(
-            101L,
-            flight,
-            category("EXTRA_LEGROOM", 4, "180000.00"),
-            type("AISLE", "20000.00"));
+        seat(101L, flight, category("EXTRA_LEGROOM", 4, "180000.00"), type("AISLE", "20000.00"));
 
-    stubBaseSelection(booking, hold, List.of(firstPassenger, secondPassenger), List.of(firstSeat, secondSeat));
+    stubBaseSelection(
+        booking, hold, List.of(firstPassenger, secondPassenger), List.of(firstSeat, secondSeat));
     when(bookingServiceRepository.sumPriceByBookingId(10L))
         .thenReturn(BigDecimal.ZERO, BigDecimal.ZERO);
     when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
@@ -184,7 +180,8 @@ class BookingSeatAssignmentServiceTest {
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
     when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
         .thenReturn(Optional.of(hold));
-    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any())).thenReturn(0L);
+    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any()))
+        .thenReturn(0L);
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(100L));
     when(flightSeatRepository.findAllById(List.of(100L))).thenReturn(List.of(seat));
     when(passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
@@ -226,7 +223,10 @@ class BookingSeatAssignmentServiceTest {
   }
 
   private void stubSingleSeatSelection(
-      BookingEntity booking, BookingFareHoldEntity hold, PassengerEntity passenger, FlightSeatEntity seat) {
+      BookingEntity booking,
+      BookingFareHoldEntity hold,
+      PassengerEntity passenger,
+      FlightSeatEntity seat) {
     stubBaseSelection(booking, hold, List.of(passenger), List.of(seat));
   }
 
@@ -239,10 +239,13 @@ class BookingSeatAssignmentServiceTest {
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
     when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
         .thenReturn(Optional.of(hold));
-    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any())).thenReturn(0L);
+    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any()))
+        .thenReturn(0L);
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any()))
         .thenReturn(
-            seats.stream().map(FlightSeatEntity::getId).collect(java.util.stream.Collectors.toSet()));
+            seats.stream()
+                .map(FlightSeatEntity::getId)
+                .collect(java.util.stream.Collectors.toSet()));
     when(flightSeatRepository.findAllById(seats.stream().map(FlightSeatEntity::getId).toList()))
         .thenReturn(seats);
     for (FlightSeatEntity seat : seats) {
@@ -299,10 +302,7 @@ class BookingSeatAssignmentServiceTest {
   }
 
   private static FlightSeatEntity seat(
-      Long id,
-      FlightEntity flight,
-      SeatCategoryEntity category,
-      SeatTypeEntity type) {
+      Long id, FlightEntity flight, SeatCategoryEntity category, SeatTypeEntity type) {
     FlightSeatEntity seat = new FlightSeatEntity();
     seat.setId(id);
     seat.setFlight(flight);

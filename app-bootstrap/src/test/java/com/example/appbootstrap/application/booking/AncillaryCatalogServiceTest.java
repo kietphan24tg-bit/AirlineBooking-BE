@@ -202,12 +202,7 @@ class AncillaryCatalogServiceTest {
                 optionEntity(
                     21L, lounge, "Domestic Lounge Pass", "Domestic lounge", "350000", true),
                 optionEntity(
-                    31L,
-                    priority,
-                    "Priority Boarding Standard",
-                    "Board earlier",
-                    "80000",
-                    true)));
+                    31L, priority, "Priority Boarding Standard", "Board earlier", "80000", true)));
 
     AncillaryCatalogService.AncillaryCatalogView view = service.getCatalogForFare(11L, 101L);
 
@@ -264,11 +259,7 @@ class AncillaryCatalogServiceTest {
   }
 
   private static FlightFareEntity fare(
-      Long flightId,
-      Long fareId,
-      String countryCode,
-      String country,
-      FareClassEntity fareClass) {
+      Long flightId, Long fareId, String countryCode, String country, FareClassEntity fareClass) {
     AirportEntity airport = new AirportEntity();
     airport.setCountryCode(countryCode);
     airport.setCountry(country);

@@ -267,7 +267,8 @@ class BookingAncillarySelectionServiceTest {
     when(passengerRepository.findByIdAndBookingId(1L, 10L)).thenReturn(Optional.of(passenger));
     when(serviceOptionRepository.findActiveByIdsWithService(anyCollection()))
         .thenReturn(List.of(loungeOption));
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(10L, List.of("HELD", "CONFIRMED")))
+    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(
+            10L, List.of("HELD", "CONFIRMED")))
         .thenReturn(Optional.of(hold));
 
     AppException exception =

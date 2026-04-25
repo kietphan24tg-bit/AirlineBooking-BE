@@ -102,7 +102,8 @@ public class BookingSeatAssignmentService {
     SeatSelectionPolicy selectionPolicy =
         SeatSelectionPolicy.fromValue(fareClass.getSeatSelectionPolicy());
     if (!selectionPolicy.allowsAdvanceSelection()) {
-      throw new AppException("SEAT_NOT_ALLOWED", "Seat selection is not allowed for selected fare", 409);
+      throw new AppException(
+          "SEAT_NOT_ALLOWED", "Seat selection is not allowed for selected fare", 409);
     }
     List<Long> requestedSeatIds =
         assignments.stream().map(SeatAssignmentRequest.AssignmentRequest::seatId).toList();
@@ -128,7 +129,9 @@ public class BookingSeatAssignmentService {
     Map<Long, BigDecimal> surchargeBySeatId =
         calculateSeatSurcharges(seats, selectionPolicy, fareClass.getIncludedSeatCategory());
     BigDecimal requestedSurchargeTotal =
-        surchargeBySeatId.values().stream().reduce(ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+        surchargeBySeatId.values().stream()
+            .reduce(ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
     if (requestedSurchargeTotal.signum() > 0 && !VND.equalsIgnoreCase(booking.getCurrency())) {
       throw new AppException(
           "SEAT_SURCHARGE_CURRENCY_UNSUPPORTED",
