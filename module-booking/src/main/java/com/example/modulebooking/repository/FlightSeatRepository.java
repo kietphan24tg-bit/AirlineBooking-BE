@@ -140,6 +140,22 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
           set status = 'AVAILABLE',
               booking_id = null,
               reserved_until = null
+          where id in (:seatIds)
+            and booking_id = :bookingId
+            and status in ('RESERVED', 'BOOKED')
+          """,
+      nativeQuery = true)
+  int releaseSelectedForBooking(
+      @Param("bookingId") Long bookingId, @Param("seatIds") Collection<Long> seatIds);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set status = 'AVAILABLE',
+              booking_id = null,
+              reserved_until = null
           where status = 'RESERVED'
             and reserved_until is not null
             and reserved_until < :now

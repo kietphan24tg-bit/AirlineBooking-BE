@@ -4,6 +4,8 @@ import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +19,34 @@ public interface PassengerSeatAssignmentRepository
   boolean existsByFlightSeatIdAndStatusIn(Long flightSeatId, Collection<String> statuses);
 
   long countByBookingIdAndStatusIn(Long bookingId, Collection<String> statuses);
+
+  @Query(
+      """
+      select psa
+      from PassengerSeatAssignmentEntity psa
+        join fetch psa.passenger
+        join fetch psa.flightSeat
+      where psa.booking.id = :bookingId
+        and psa.status in :statuses
+      order by psa.id
+      """)
+  List<PassengerSeatAssignmentEntity> findByBookingIdAndStatusIn(
+      @Param("bookingId") Long bookingId, @Param("statuses") Collection<String> statuses);
+
+  @Query(
+      """
+      select psa
+      from PassengerSeatAssignmentEntity psa
+      where psa.booking.id = :bookingId
+        and psa.passenger.id = :passengerId
+        and psa.flightSeat.id = :flightSeatId
+        and psa.status in :statuses
+      """)
+  Optional<PassengerSeatAssignmentEntity> findFirstByActiveAssignment(
+      @Param("bookingId") Long bookingId,
+      @Param("passengerId") Long passengerId,
+      @Param("flightSeatId") Long flightSeatId,
+      @Param("statuses") Collection<String> statuses);
 
   @Query(
       """

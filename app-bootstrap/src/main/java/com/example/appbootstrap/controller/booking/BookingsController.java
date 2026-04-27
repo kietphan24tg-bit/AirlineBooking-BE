@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -93,6 +94,40 @@ public class BookingsController {
       @PathVariable Long bookingId,
       @Valid @RequestBody SeatAssignmentRequest request) {
     return bookingSeatAssignmentService.assignSeats(
+        principal != null ? principal.getUserId() : null, bookingId, request);
+  }
+
+  @DeleteMapping("/bookings/{bookingId}/seat-assignments")
+  @Operation(
+      operationId = "unassignBookingSeats",
+      summary = "Release selected seat assignments for booking passengers",
+      description =
+          "Cancels concrete flight seat links for the listed passenger and seat pairs; "
+              + "applies when the booking is eligible for seat changes (same rules as assign).")
+  @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      required = true,
+      description = "Passenger-seat pairs to release from the booking",
+      content = @Content(schema = @Schema(implementation = SeatAssignmentRequest.class)))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Seats unassigned, remaining active assignments and totals returned",
+        content = @Content(schema = @Schema(implementation = SeatAssignmentResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking, passenger, seat, or active assignment not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Could not release seat on flight or business conflict",
+        content = @Content)
+  })
+  SeatAssignmentResponse unassignSeats(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody SeatAssignmentRequest request) {
+    return bookingSeatAssignmentService.unassignSeats(
         principal != null ? principal.getUserId() : null, bookingId, request);
   }
 

@@ -42,6 +42,8 @@ class OpenApiCoverageIntegrationTest {
         .isEqualTo("#/components/schemas/CreateBookingResponse");
     assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/seat-assignments", "put"))
         .isEqualTo("#/components/schemas/SeatAssignmentResponse");
+    assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/seat-assignments", "delete"))
+        .isEqualTo("#/components/schemas/SeatAssignmentResponse");
     assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/services", "put"))
         .isEqualTo("#/components/schemas/PassengerServiceSelectionResponse");
     assertThat(schemaRef(flightsSpec, "/api/flights/{flightId}/seats", "get"))

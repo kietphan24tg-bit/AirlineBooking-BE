@@ -83,6 +83,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.PUT, "/api/bookings/*/seat-assignments")
                     .permitAll()
+                    .requestMatchers(HttpMethod.DELETE, "/api/bookings/*/seat-assignments")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.PUT, "/api/bookings/*/services")
+                    .permitAll()
                     // admin api
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")

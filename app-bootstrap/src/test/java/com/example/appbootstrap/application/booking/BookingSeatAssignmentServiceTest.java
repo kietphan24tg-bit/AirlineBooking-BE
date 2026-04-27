@@ -2,7 +2,9 @@ package com.example.appbootstrap.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +16,7 @@ import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
 import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.entity.PassengerEntity;
+import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.BookingServiceRepository;
@@ -200,6 +203,95 @@ class BookingSeatAssignmentServiceTest {
 
     assertEquals("SEAT_PAYMENT_REQUIRED", exception.getCode());
     verify(passengerSeatAssignmentRepository, never()).saveAll(any());
+  }
+
+  @Test
+  void unassignSeats_releasesSeatsAndClearsSurchargeWhenNoneRemain() {
+    BookingEntity booking = booking("CONFIRMED", "5000.00");
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
+
+    PassengerEntity passenger = passenger(1L, booking, "ADULT");
+    FlightEntity flight = new FlightEntity();
+    flight.setId(1L);
+    FlightSeatEntity flightSeat = new FlightSeatEntity();
+    flightSeat.setId(100L);
+    flightSeat.setFlight(flight);
+
+    PassengerSeatAssignmentEntity psa = new PassengerSeatAssignmentEntity();
+    psa.setPassenger(passenger);
+    psa.setFlightSeat(flightSeat);
+    psa.setStatus("BOOKED");
+    psa.setSurchargeAmount(new BigDecimal("0.00"));
+    psa.setCurrency("VND");
+
+    when(passengerSeatAssignmentRepository.findFirstByActiveAssignment(
+            10L, 1L, 100L, List.of("RESERVED", "BOOKED")))
+        .thenReturn(Optional.of(psa));
+    when(passengerSeatAssignmentRepository.saveAll(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(flightSeatRepository.releaseSelectedForBooking(10L, List.of(100L))).thenReturn(1);
+    when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
+        .thenReturn(BigDecimal.ZERO);
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of());
+
+    SeatAssignmentResponse response =
+        service.unassignSeats(
+            7L,
+            10L,
+            new SeatAssignmentRequest(
+                List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 100L))));
+
+    assertEquals("NONE", response.status());
+    assertTrue(response.assignments().isEmpty());
+    assertEquals(0, response.seatSurchargeTotal().signum());
+    assertEquals("RELEASED", psa.getStatus());
+    verify(flightSeatRepository).releaseSelectedForBooking(10L, List.of(100L));
+  }
+
+  @Test
+  void unassignSeats_throwsWhenNoActiveAssignment() {
+    BookingEntity booking = booking("CONFIRMED", "5000.00");
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
+    when(passengerSeatAssignmentRepository.findFirstByActiveAssignment(
+            10L, 1L, 100L, List.of("RESERVED", "BOOKED")))
+        .thenReturn(Optional.empty());
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.unassignSeats(
+                    7L,
+                    10L,
+                    new SeatAssignmentRequest(
+                        List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 100L)))));
+
+    assertEquals("SEAT_ASSIGNMENT_NOT_FOUND", exception.getCode());
+    verify(flightSeatRepository, never()).releaseSelectedForBooking(any(), any());
+  }
+
+  @Test
+  void unassignSeats_rejectsPendingPayment() {
+    BookingEntity booking = booking("PENDING_PAYMENT", "1400.00");
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(true);
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.unassignSeats(
+                    7L,
+                    10L,
+                    new SeatAssignmentRequest(
+                        List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 100L)))));
+
+    assertEquals("BOOKING_PAYMENT_ALREADY_STARTED", exception.getCode());
+    verify(passengerSeatAssignmentRepository, never())
+        .findFirstByActiveAssignment(any(), any(), any(), any());
   }
 
   @Test

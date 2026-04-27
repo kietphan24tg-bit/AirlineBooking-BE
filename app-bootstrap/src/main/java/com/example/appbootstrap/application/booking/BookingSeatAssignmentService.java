@@ -21,6 +21,7 @@ import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -66,14 +67,7 @@ public class BookingSeatAssignmentService {
   @Transactional
   public SeatAssignmentResponse assignSeats(
       Long userId, Long bookingId, SeatAssignmentRequest request) {
-    BookingEntity booking =
-        userId == null
-            ? bookingRepository
-                .findById(bookingId)
-                .orElseThrow(() -> new AppException("BOOKING_NOT_FOUND", "Booking not found", 404))
-            : bookingRepository
-                .findByIdAndUserId(bookingId, userId)
-                .orElseThrow(() -> new AppException("BOOKING_NOT_FOUND", "Booking not found", 404));
+    BookingEntity booking = requireBooking(userId, bookingId);
     validateBookingAssignable(booking);
     BigDecimal fareTotal =
         "PENDING_PAYMENT".equals(booking.getStatus())
@@ -232,6 +226,92 @@ public class BookingSeatAssignmentService {
                         entity.getSurchargeAmount(),
                         entity.getCurrency()))
             .toList());
+  }
+
+  @Transactional
+  public SeatAssignmentResponse unassignSeats(
+      Long userId, Long bookingId, SeatAssignmentRequest request) {
+    BookingEntity booking = requireBooking(userId, bookingId);
+    validateBookingAssignable(booking);
+    BigDecimal fareTotal =
+        "PENDING_PAYMENT".equals(booking.getStatus())
+            ? bookingTotalRecalculationService.captureFareTotal(booking)
+            : null;
+
+    List<SeatAssignmentRequest.AssignmentRequest> toUnassign = request.assignments();
+    validateNoDuplicates(toUnassign);
+    OffsetDateTime now = OffsetDateTime.now();
+    List<PassengerSeatAssignmentEntity> toRelease = new ArrayList<>();
+    for (SeatAssignmentRequest.AssignmentRequest assignment : toUnassign) {
+      PassengerSeatAssignmentEntity psa =
+          passengerSeatAssignmentRepository
+              .findFirstByActiveAssignment(
+                  bookingId,
+                  assignment.passengerId(),
+                  assignment.seatId(),
+                  ACTIVE_ASSIGNMENT_STATUSES)
+              .orElseThrow(
+                  () ->
+                      new AppException(
+                          "SEAT_ASSIGNMENT_NOT_FOUND", "No active seat assignment to cancel", 404));
+      psa.setStatus("RELEASED");
+      psa.setUpdatedAt(now);
+      toRelease.add(psa);
+    }
+    passengerSeatAssignmentRepository.saveAll(toRelease);
+
+    List<Long> seatIds =
+        toUnassign.stream().map(SeatAssignmentRequest.AssignmentRequest::seatId).toList();
+    if (!seatIds.isEmpty()) {
+      int released = flightSeatRepository.releaseSelectedForBooking(bookingId, seatIds);
+      if (released != seatIds.size()) {
+        throw new AppException("SEAT_RELEASE_FAILED", "Could not release one or more seats", 409);
+      }
+    }
+
+    BigDecimal seatSurchargeTotal =
+        normalizeMoney(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(bookingId));
+    if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+      BookingTotalRecalculationService.BookingTotalBreakdown totalBreakdown =
+          bookingTotalRecalculationService.refreshTotal(booking, fareTotal);
+      seatSurchargeTotal = totalBreakdown.seatSurchargeTotal();
+    }
+
+    List<PassengerSeatAssignmentEntity> remaining =
+        passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+            bookingId, ACTIVE_ASSIGNMENT_STATUSES);
+    String displayStatus;
+    if (remaining.isEmpty()) {
+      displayStatus = "NONE";
+    } else {
+      displayStatus = remaining.get(0).getStatus();
+    }
+
+    return new SeatAssignmentResponse(
+        bookingId,
+        displayStatus,
+        seatSurchargeTotal,
+        booking.getTotalAmount(),
+        remaining.stream()
+            .map(
+                psa ->
+                    new SeatAssignmentResponse.AssignmentResponse(
+                        psa.getPassenger().getId(),
+                        psa.getFlightSeat().getId(),
+                        psa.getStatus(),
+                        psa.getSurchargeAmount(),
+                        psa.getCurrency()))
+            .toList());
+  }
+
+  private BookingEntity requireBooking(Long userId, Long bookingId) {
+    return userId == null
+        ? bookingRepository
+            .findById(bookingId)
+            .orElseThrow(() -> new AppException("BOOKING_NOT_FOUND", "Booking not found", 404))
+        : bookingRepository
+            .findByIdAndUserId(bookingId, userId)
+            .orElseThrow(() -> new AppException("BOOKING_NOT_FOUND", "Booking not found", 404));
   }
 
   private void validateBookingAssignable(BookingEntity booking) {
