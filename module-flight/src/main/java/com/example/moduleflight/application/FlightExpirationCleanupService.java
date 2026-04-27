@@ -31,12 +31,34 @@ public class FlightExpirationCleanupService {
   @Transactional
   public int deleteExpiredFlightsWithoutTickets() {
     LocalDate cutoff = LocalDate.now();
+    int seatAssignments =
+        jdbcTemplate.update(
+            """
+            delete from passenger_seat_assignments psa
+            using flight_seats fs, flights f
+            where psa.flight_seat_id = fs.id
+              and fs.flight_id = f.id
+              and f.flight_date < ?
+              and not exists (select 1 from tickets t where t.flight_id = f.id)
+            """,
+            cutoff);
     int seats =
         jdbcTemplate.update(
             """
             delete from flight_seats fs
             using flights f
             where fs.flight_id = f.id
+              and f.flight_date < ?
+              and not exists (select 1 from tickets t where t.flight_id = f.id)
+            """,
+            cutoff);
+    int fareHolds =
+        jdbcTemplate.update(
+            """
+            delete from booking_fare_holds bfh
+            using flight_fares ff, flights f
+            where bfh.flight_fare_id = ff.id
+              and ff.flight_id = f.id
               and f.flight_date < ?
               and not exists (select 1 from tickets t where t.flight_id = f.id)
             """,
@@ -61,9 +83,11 @@ public class FlightExpirationCleanupService {
             cutoff);
     if (flights > 0) {
       LOG.info(
-          "Flight cleanup: deleted flights={}, flight_seats rows={}, flight_fares rows={}, cutoffDate={}",
+          "Flight cleanup: deleted flights={}, passenger_seat_assignments rows={}, flight_seats rows={}, booking_fare_holds rows={}, flight_fares rows={}, cutoffDate={}",
           flights,
+          seatAssignments,
           seats,
+          fareHolds,
           fares,
           cutoff);
     }

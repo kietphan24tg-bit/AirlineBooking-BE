@@ -125,7 +125,9 @@ public class FlightMockDataService {
         airlinePool.size(),
         airportPool.size());
 
+    jdbcTemplate.update("delete from passenger_seat_assignments");
     jdbcTemplate.update("delete from flight_seats");
+    jdbcTemplate.update("delete from booking_fare_holds");
     flightFareRepository.deleteAllInBatch();
     flightRepository.deleteAllInBatch();
 
