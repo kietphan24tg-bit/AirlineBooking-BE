@@ -83,7 +83,9 @@ public class FlightExpirationCleanupService {
             cutoff);
     if (flights > 0) {
       LOG.info(
-          "Flight cleanup: deleted flights={}, passenger_seat_assignments rows={}, flight_seats rows={}, booking_fare_holds rows={}, flight_fares rows={}, cutoffDate={}",
+          "Flight cleanup: deleted flights={}, passenger_seat_assignments rows={}, "
+              + "flight_seats rows={}, booking_fare_holds rows={}, flight_fares rows={}, "
+              + "cutoffDate={}",
           flights,
           seatAssignments,
           seats,

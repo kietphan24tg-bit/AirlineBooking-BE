@@ -33,46 +33,66 @@ class FlightExpirationCleanupServiceTest {
     assertEquals(1, deletedFlights);
 
     InOrder inOrder = inOrder(jdbcTemplate);
-    inOrder.verify(jdbcTemplate)
-        .update(eq("""
+    inOrder
+        .verify(jdbcTemplate)
+        .update(
+            eq(
+                """
             delete from passenger_seat_assignments psa
             using flight_seats fs, flights f
             where psa.flight_seat_id = fs.id
               and fs.flight_id = f.id
               and f.flight_date < ?
               and not exists (select 1 from tickets t where t.flight_id = f.id)
-            """), any(LocalDate.class));
-    inOrder.verify(jdbcTemplate)
-        .update(eq("""
+            """),
+            any(LocalDate.class));
+    inOrder
+        .verify(jdbcTemplate)
+        .update(
+            eq(
+                """
             delete from flight_seats fs
             using flights f
             where fs.flight_id = f.id
               and f.flight_date < ?
               and not exists (select 1 from tickets t where t.flight_id = f.id)
-            """), any(LocalDate.class));
-    inOrder.verify(jdbcTemplate)
-        .update(eq("""
+            """),
+            any(LocalDate.class));
+    inOrder
+        .verify(jdbcTemplate)
+        .update(
+            eq(
+                """
             delete from booking_fare_holds bfh
             using flight_fares ff, flights f
             where bfh.flight_fare_id = ff.id
               and ff.flight_id = f.id
               and f.flight_date < ?
               and not exists (select 1 from tickets t where t.flight_id = f.id)
-            """), any(LocalDate.class));
-    inOrder.verify(jdbcTemplate)
-        .update(eq("""
+            """),
+            any(LocalDate.class));
+    inOrder
+        .verify(jdbcTemplate)
+        .update(
+            eq(
+                """
             delete from flight_fares ff
             using flights f
             where ff.flight_id = f.id
               and f.flight_date < ?
               and not exists (select 1 from tickets t where t.flight_id = f.id)
-            """), any(LocalDate.class));
-    inOrder.verify(jdbcTemplate)
-        .update(eq("""
+            """),
+            any(LocalDate.class));
+    inOrder
+        .verify(jdbcTemplate)
+        .update(
+            eq(
+                """
             delete from flights f
             where f.flight_date < ?
               and not exists (select 1 from tickets t where t.flight_id = f.id)
-            """), any(LocalDate.class));
+            """),
+            any(LocalDate.class));
     verifyNoMoreInteractions(jdbcTemplate);
   }
 }
