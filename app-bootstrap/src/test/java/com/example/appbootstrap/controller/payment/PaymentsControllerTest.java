@@ -2,6 +2,7 @@ package com.example.appbootstrap.controller.payment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
 
 import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
@@ -128,7 +129,7 @@ class PaymentsControllerTest {
 
   @Test
   void shouldMapCreatePaymentResponse() {
-    when(paymentService.createPayment(any()))
+    when(paymentService.createPayment(argThat(command -> command.userId().equals(7L))))
         .thenReturn(
             new CreatePaymentResult(
                 new CreatePaymentResult.PaymentView(
@@ -150,6 +151,32 @@ class PaymentsControllerTest {
     assertEquals(123L, response.payment().id());
     assertEquals("PENDING", response.payment().status());
     assertEquals("QR", response.action().type());
+    assertEquals("https://pay.payos.vn/web/123", response.action().paymentUrl());
+  }
+
+  @Test
+  void shouldAllowPublicCreatePaymentWhenNoPrincipal() {
+    when(paymentService.createPaymentPublic(
+            argThat(command -> command.bookingId().equals(10L) && command.userId() == null)))
+        .thenReturn(
+            new CreatePaymentResult(
+                new CreatePaymentResult.PaymentView(
+                    123L,
+                    10L,
+                    new BigDecimal("1200000"),
+                    "VND",
+                    "PAYOS",
+                    "PENDING",
+                    OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                    "plink_123",
+                    "000201PAYOSQR"),
+                new CreatePaymentResult.PaymentActionView(
+                    "QR", "000201PAYOSQR", null, "https://pay.payos.vn/web/123")));
+
+    CreatePaymentResponse response =
+        controller.createPayment(null, new CreatePaymentRequest(10L, "PAYOS"));
+
+    assertEquals(123L, response.payment().id());
     assertEquals("https://pay.payos.vn/web/123", response.action().paymentUrl());
   }
 

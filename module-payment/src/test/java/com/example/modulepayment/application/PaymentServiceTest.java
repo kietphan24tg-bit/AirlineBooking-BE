@@ -213,6 +213,38 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldCreatePendingPaymentPublicly() {
+    BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(15));
+    when(bookingRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_123",
+                "https://pay.payos.vn/web/123",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPaymentPublic(new CreatePaymentCommand(10L, null, "PAYOS"));
+
+    assertEquals(123L, result.payment().id());
+    assertEquals("PENDING_PAYMENT", booking.getStatus());
+  }
+
+  @Test
   void shouldExtendBookingWindowToAtLeastFiveMinutesOnceWhenStartingPaymentLate() {
     OffsetDateTime start = OffsetDateTime.now();
     BookingEntity booking = booking("PENDING", start.plusMinutes(2)); // < 5 minutes remaining

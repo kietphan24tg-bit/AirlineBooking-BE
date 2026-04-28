@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -129,17 +128,15 @@ public class PaymentsController {
   }
 
   @PostMapping("/payments")
-  @SecurityRequirement(name = "bearerAuth")
   @Operation(
       summary = "Create payment link",
-      description = "Creates a pending payment for the authenticated user's booking")
+      description = "Creates a pending payment for a booking")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
         description = "Payment created successfully",
         content = @Content(schema = @Schema(implementation = CreatePaymentResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
     @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content),
     @ApiResponse(responseCode = "409", description = "Booking not payable", content = @Content),
     @ApiResponse(responseCode = "410", description = "Booking expired", content = @Content),
@@ -149,8 +146,12 @@ public class PaymentsController {
       @AuthenticationPrincipal AppUserPrincipal principal,
       @Valid @RequestBody CreatePaymentRequest request) {
     CreatePaymentResult result =
-        paymentService.createPayment(
-            new CreatePaymentCommand(request.bookingId(), principal.getUserId(), request.method()));
+        principal == null
+            ? paymentService.createPaymentPublic(
+                new CreatePaymentCommand(request.bookingId(), null, request.method()))
+            : paymentService.createPayment(
+                new CreatePaymentCommand(
+                    request.bookingId(), principal.getUserId(), request.method()));
     return new CreatePaymentResponse(
         new CreatePaymentResponse.PaymentResponse(
             result.payment().id(),

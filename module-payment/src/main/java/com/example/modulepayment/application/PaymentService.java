@@ -277,6 +277,15 @@ public class PaymentService {
 
   @Transactional
   public CreatePaymentResult createPayment(CreatePaymentCommand command) {
+    return createPayment(command, true);
+  }
+
+  @Transactional
+  public CreatePaymentResult createPaymentPublic(CreatePaymentCommand command) {
+    return createPayment(command, false);
+  }
+
+  private CreatePaymentResult createPayment(CreatePaymentCommand command, boolean requireOwner) {
     String normalizedMethod = normalizeMethod(command.method());
     if (!METHOD_PAYOS.equals(normalizedMethod)) {
       throw new AppException(
@@ -288,7 +297,10 @@ public class PaymentService {
           "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
     }
 
-    BookingEntity booking = requirePayableBookingForUpdate(command.bookingId(), command.userId());
+    BookingEntity booking =
+        requireOwner
+            ? requirePayableBookingForUpdate(command.bookingId(), command.userId())
+            : requirePayableBookingForUpdatePublic(command.bookingId());
     if (!supportsCurrency(booking.getCurrency())) {
       throw new AppException(
           "UNSUPPORTED_PAYMENT_CURRENCY", "Only VND payments are supported in phase 1", 400);
@@ -441,6 +453,15 @@ public class PaymentService {
     BookingEntity booking =
         bookingRepository
             .findByIdAndUserId(bookingId, userId)
+            .orElseThrow(() -> new BookingNotFoundException(bookingId));
+    assertPayable(booking);
+    return booking;
+  }
+
+  private BookingEntity requirePayableBookingForUpdatePublic(Long bookingId) {
+    BookingEntity booking =
+        bookingRepository
+            .findByIdForUpdate(bookingId)
             .orElseThrow(() -> new BookingNotFoundException(bookingId));
     assertPayable(booking);
     return booking;
