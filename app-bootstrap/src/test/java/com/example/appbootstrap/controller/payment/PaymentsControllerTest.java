@@ -198,7 +198,8 @@ class PaymentsControllerTest {
                 null,
                 "https://pay.payos.vn/web/5"));
 
-    PaymentStatusResponse response = controller.cancelPayment(principal(), 5L, new CancelPaymentRequest("Changed my mind"));
+    PaymentStatusResponse response =
+        controller.cancelPayment(principal(), 5L, new CancelPaymentRequest("Changed my mind"));
 
     assertEquals(5L, response.id());
     assertEquals("CANCELLED", response.status());

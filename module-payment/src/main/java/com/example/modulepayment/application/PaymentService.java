@@ -3,6 +3,8 @@ package com.example.modulepayment.application;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.exception.BookingNotFoundException;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
+import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
@@ -18,8 +20,6 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
-import com.example.modulebooking.repository.BookingFareHoldRepository;
-import com.example.modulebooking.repository.FlightSeatRepository;
 
 @Service
 public class PaymentService {
@@ -162,7 +162,9 @@ public class PaymentService {
   @Transactional(readOnly = true)
   public PaymentStatusView getPaymentPublic(Long paymentId) {
     PaymentEntity payment =
-        paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException(paymentId));
+        paymentRepository
+            .findById(paymentId)
+            .orElseThrow(() -> new PaymentNotFoundException(paymentId));
     BookingEntity booking = payment.getBooking();
     return new PaymentStatusView(
         payment.getId(),
@@ -192,16 +194,16 @@ public class PaymentService {
     }
     if (!PAYMENT_STATUS_PENDING.equalsIgnoreCase(status)) {
       throw new AppException(
-          "PAYMENT_NOT_CANCELLABLE",
-          "Only pending payments can be cancelled",
-          409);
+          "PAYMENT_NOT_CANCELLABLE", "Only pending payments can be cancelled", 409);
     }
 
-    String cancellationReason = (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
+    String cancellationReason =
+        (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
 
     // We cancel by orderCode (= paymentId in this integration) to match createPaymentLink usage.
     paymentGateway.cancelPaymentLink(
-        new PaymentGateway.CancelPaymentLinkRequest(payment.getId(), payment.getId(), cancellationReason));
+        new PaymentGateway.CancelPaymentLinkRequest(
+            payment.getId(), payment.getId(), cancellationReason));
 
     OffsetDateTime now = OffsetDateTime.now();
     payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
@@ -224,16 +226,15 @@ public class PaymentService {
     }
     if (!PAYMENT_STATUS_PENDING.equalsIgnoreCase(status)) {
       throw new AppException(
-          "PAYMENT_NOT_CANCELLABLE",
-          "Only pending payments can be cancelled",
-          409);
+          "PAYMENT_NOT_CANCELLABLE", "Only pending payments can be cancelled", 409);
     }
 
     String cancellationReason =
         (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
 
     paymentGateway.cancelPaymentLink(
-        new PaymentGateway.CancelPaymentLinkRequest(payment.getId(), payment.getId(), cancellationReason));
+        new PaymentGateway.CancelPaymentLinkRequest(
+            payment.getId(), payment.getId(), cancellationReason));
 
     OffsetDateTime now = OffsetDateTime.now();
     payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);

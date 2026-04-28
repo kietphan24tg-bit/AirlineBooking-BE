@@ -206,7 +206,8 @@ class PayosPaymentGatewayTest {
                     "http://localhost:" + server.getAddress().getPort())),
             new ObjectMapper());
 
-    gateway.cancelPaymentLink(new PaymentGateway.CancelPaymentLinkRequest(123L, 123L, "Changed my mind"));
+    gateway.cancelPaymentLink(
+        new PaymentGateway.CancelPaymentLinkRequest(123L, 123L, "Changed my mind"));
 
     assertEquals("/v2/payment-requests/123/cancel", pathRef.get());
     assertTrue(bodyRef.get().contains("cancellationReason"));

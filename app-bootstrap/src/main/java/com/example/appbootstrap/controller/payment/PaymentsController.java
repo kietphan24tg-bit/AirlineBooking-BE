@@ -1,8 +1,8 @@
 package com.example.appbootstrap.controller.payment;
 
+import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
-import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -189,7 +189,8 @@ public class PaymentsController {
       @RequestBody(required = false) CancelPaymentRequest request) {
     PaymentStatusView view =
         principal == null
-            ? paymentService.cancelPaymentPublic(paymentId, request == null ? null : request.reason())
+            ? paymentService.cancelPaymentPublic(
+                paymentId, request == null ? null : request.reason())
             : paymentService.cancelPaymentForUser(
                 paymentId, principal.getUserId(), request == null ? null : request.reason());
     return new PaymentStatusResponse(

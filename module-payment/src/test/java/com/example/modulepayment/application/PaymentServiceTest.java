@@ -3,21 +3,21 @@ package com.example.modulepayment.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doNothing;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
+import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
-import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
 import com.example.modulepayment.gateway.PaymentGateway.CancelPaymentLinkRequest;
-import com.example.modulebooking.repository.BookingFareHoldRepository;
-import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
 import com.example.modulepayment.repository.BookingRepository;
 import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
@@ -126,7 +126,8 @@ class PaymentServiceTest {
   void shouldCancelPendingPaymentAndCallGateway() {
     BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(15));
     PaymentEntity payment = paymentForBooking(5L, booking, "PENDING");
-    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L))
+        .thenReturn(Optional.of(payment));
     doNothing().when(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
@@ -134,7 +135,8 @@ class PaymentServiceTest {
     PaymentStatusView view = paymentService.cancelPaymentForUser(5L, 7L, "Changed my mind");
 
     assertEquals("CANCELLED", view.status());
-    ArgumentCaptor<CancelPaymentLinkRequest> captor = ArgumentCaptor.forClass(CancelPaymentLinkRequest.class);
+    ArgumentCaptor<CancelPaymentLinkRequest> captor =
+        ArgumentCaptor.forClass(CancelPaymentLinkRequest.class);
     verify(paymentGateway).cancelPaymentLink(captor.capture());
     assertEquals(5L, captor.getValue().orderCode());
     assertEquals("Changed my mind", captor.getValue().cancellationReason());
@@ -144,7 +146,8 @@ class PaymentServiceTest {
   void shouldBeIdempotentWhenCancellingAlreadyCancelledPayment() {
     BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(15));
     PaymentEntity payment = paymentForBooking(5L, booking, "CANCELLED");
-    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L))
+        .thenReturn(Optional.of(payment));
 
     PaymentStatusView view = paymentService.cancelPaymentForUser(5L, 7L, "any");
 
@@ -157,7 +160,8 @@ class PaymentServiceTest {
   void shouldRejectCancelWhenPaymentNotPending() {
     BookingEntity booking = booking("CONFIRMED", OffsetDateTime.now().plusMinutes(15));
     PaymentEntity payment = paymentForBooking(5L, booking, "SUCCESS");
-    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L))
+        .thenReturn(Optional.of(payment));
 
     AppException exception =
         assertThrows(AppException.class, () -> paymentService.cancelPaymentForUser(5L, 7L, null));
@@ -241,7 +245,9 @@ class PaymentServiceTest {
     assertEquals(true, booking.getPnrExpiresAt().isAfter(start.plusMinutes(4)));
     assertEquals(true, booking.getPaymentWindowExtendedAt() != null);
     assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
-    verify(bookingFareHoldRepository).extendHeldExpiryByBookingId(10L, booking.getPnrExpiresAt(), booking.getPaymentWindowExtendedAt());
+    verify(bookingFareHoldRepository)
+        .extendHeldExpiryByBookingId(
+            10L, booking.getPnrExpiresAt(), booking.getPaymentWindowExtendedAt());
     verify(flightSeatRepository).extendReservedUntilForBooking(10L, booking.getPnrExpiresAt());
   }
 
