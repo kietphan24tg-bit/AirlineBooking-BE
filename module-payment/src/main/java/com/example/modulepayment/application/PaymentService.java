@@ -31,6 +31,7 @@ public class PaymentService {
   private static final String PAYMENT_STATUS_FAILED = "FAILED";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
   private static final String PAYMENT_ACTION_QR = "QR";
+  private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
 
   private final BookingRepository bookingRepository;
   private final PaymentRepository paymentRepository;
@@ -144,7 +145,7 @@ public class PaymentService {
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
-        null);
+        payment.getCheckoutUrl());
   }
 
   private static List<PaymentMethodView> filterSupportedOnly(List<PaymentMethodView> groups) {
@@ -186,7 +187,15 @@ public class PaymentService {
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
             booking.getId(), PAYMENT_STATUS_PENDING);
+    PaymentEntity reusablePending = findReusablePending(previousPending);
+    if (reusablePending != null) {
+      ensureBookingPendingPayment(booking, now);
+      return buildCreatePaymentResult(reusablePending, booking, expireAt);
+    }
+
     for (PaymentEntity existing : previousPending) {
+      // Non-reusable PENDING payments (e.g. provider link missing) are treated as failed so that we
+      // don't block creating a new payment link for the same booking.
       existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
       existing.setUpdatedAt(now);
     }
@@ -202,27 +211,74 @@ public class PaymentService {
     payment.setUpdatedAt(now);
     paymentRepository.saveAndFlush(payment);
 
-    PaymentGatewayResult gatewayResult =
-        paymentGateway.createPaymentLink(
-            new PaymentGatewayRequest(
-                payment.getId(),
-                payment.getId(),
-                payment.getAmount(),
-                payment.getCurrency(),
-                buildDescription(payment.getId()),
-                appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
-                appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
-                booking.getPnrCode(),
-                booking.getContactEmail(),
-                booking.getContactPhone(),
-                expireAt));
+    PaymentGatewayResult gatewayResult;
+    try {
+      gatewayResult =
+          paymentGateway.createPaymentLink(
+              new PaymentGatewayRequest(
+                  payment.getId(),
+                  payment.getId(),
+                  payment.getAmount(),
+                  payment.getCurrency(),
+                  buildDescription(payment.getId()),
+                  appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
+                  appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
+                  booking.getPnrCode(),
+                  booking.getContactEmail(),
+                  booking.getContactPhone(),
+                  expireAt));
+    } catch (RuntimeException exception) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      payment.setUpdatedAt(OffsetDateTime.now());
+      paymentRepository.save(payment);
+      throw exception;
+    }
 
     payment.setTransactionId(gatewayResult.paymentLinkId());
     payment.setQrData(gatewayResult.qrCode());
     payment.setType(gatewayResult.actionType());
+    payment.setCheckoutUrl(gatewayResult.checkoutUrl());
     payment.setUpdatedAt(OffsetDateTime.now());
     paymentRepository.save(payment);
 
+    ensureBookingPendingPayment(booking, OffsetDateTime.now());
+    return buildCreatePaymentResult(payment, booking, expireAt);
+  }
+
+  private void ensureBookingPendingPayment(BookingEntity booking, OffsetDateTime now) {
+    if (booking.getStatus() == null
+        || !BOOKING_STATUS_PENDING_PAYMENT.equalsIgnoreCase(booking.getStatus().trim())) {
+      booking.setStatus(BOOKING_STATUS_PENDING_PAYMENT);
+      booking.setUpdatedAt(now);
+    }
+  }
+
+  private PaymentEntity findReusablePending(List<PaymentEntity> previousPending) {
+    if (previousPending == null || previousPending.isEmpty()) {
+      return null;
+    }
+    // Prefer the newest payment to avoid returning a stale link.
+    PaymentEntity candidate =
+        previousPending.stream()
+            .filter(this::isReusablePending)
+            .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+            .findFirst()
+            .orElse(null);
+    return candidate;
+  }
+
+  private boolean isReusablePending(PaymentEntity payment) {
+    if (payment == null) {
+      return false;
+    }
+    if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
+      return false;
+    }
+    return payment.getCheckoutUrl() != null && !payment.getCheckoutUrl().isBlank();
+  }
+
+  private CreatePaymentResult buildCreatePaymentResult(
+      PaymentEntity payment, BookingEntity booking, OffsetDateTime expireAt) {
     return new CreatePaymentResult(
         new CreatePaymentResult.PaymentView(
             payment.getId(),
@@ -235,10 +291,10 @@ public class PaymentService {
             payment.getTransactionId(),
             payment.getQrData()),
         new CreatePaymentResult.PaymentActionView(
-            gatewayResult.actionType(),
-            gatewayResult.qrCode(),
+            payment.getType(),
+            payment.getQrData(),
             payment.getQrImageUrl(),
-            gatewayResult.checkoutUrl()));
+            payment.getCheckoutUrl()));
   }
 
   private BookingEntity requirePayableBooking(Long bookingId, Long userId) {

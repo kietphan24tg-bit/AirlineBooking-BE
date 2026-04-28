@@ -3,6 +3,7 @@ package com.example.modulepayment.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -148,10 +149,60 @@ class PaymentServiceTest {
     assertEquals("plink_123", result.payment().transactionId());
     assertEquals("QR", result.action().type());
     assertEquals("https://pay.payos.vn/web/123", result.action().paymentUrl());
+    assertEquals("PENDING_PAYMENT", booking.getStatus());
     ArgumentCaptor<PaymentEntity> captor = ArgumentCaptor.forClass(PaymentEntity.class);
     verify(paymentRepository).save(captor.capture());
     assertEquals("plink_123", captor.getValue().getTransactionId());
     assertEquals("000201PAYOSQR", captor.getValue().getQrData());
+    assertEquals("https://pay.payos.vn/web/123", captor.getValue().getCheckoutUrl());
+  }
+
+  @Test
+  void shouldReuseExistingPendingPaymentWhenStillValid() {
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING", expireAt);
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+    existing.setCheckoutUrl("https://pay.payos.vn/web/5");
+    existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals(5L, result.payment().id());
+    assertEquals("PENDING", result.payment().status());
+    assertEquals("https://pay.payos.vn/web/5", result.action().paymentUrl());
+    assertEquals("PENDING_PAYMENT", booking.getStatus());
+    verify(paymentGateway, never()).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldMarkPaymentFailedWhenProviderThrows() {
+    BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(15));
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any())).thenThrow(new RuntimeException("boom"));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    assertThrows(
+        RuntimeException.class,
+        () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    ArgumentCaptor<PaymentEntity> captor = ArgumentCaptor.forClass(PaymentEntity.class);
+    verify(paymentRepository).save(captor.capture());
+    assertEquals("FAILED", captor.getValue().getPaymentStatus());
   }
 
   @Test
@@ -210,7 +261,7 @@ class PaymentServiceTest {
     assertEquals(expireAt, view.expireAt());
     assertEquals("plink_x", view.transactionId());
     assertEquals("qrdata", view.qrData());
-    assertEquals(null, view.paymentUrl());
+    assertEquals("https://pay.payos.vn/web/5", view.paymentUrl());
   }
 
   @Test
@@ -260,6 +311,7 @@ class PaymentServiceTest {
     payment.setTransactionId("plink_x");
     payment.setQrData("qrdata");
     payment.setType("QR");
+    payment.setCheckoutUrl("https://pay.payos.vn/web/" + paymentId);
     payment.setCreatedAt(OffsetDateTime.parse("2026-04-01T10:00:00Z"));
     payment.setUpdatedAt(OffsetDateTime.parse("2026-04-01T10:00:00Z"));
     return payment;

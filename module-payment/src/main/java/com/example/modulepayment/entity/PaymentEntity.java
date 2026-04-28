@@ -52,6 +52,9 @@ public class PaymentEntity {
   @Column(name = "qr_image_url", length = 500)
   private String qrImageUrl;
 
+  @Column(name = "checkout_url", length = 1000)
+  private String checkoutUrl;
+
   @Column(length = 30)
   private String type;
 
