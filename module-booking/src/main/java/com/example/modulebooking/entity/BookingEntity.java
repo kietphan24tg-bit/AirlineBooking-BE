@@ -52,6 +52,9 @@ public class BookingEntity {
   @Column(name = "pnr_expires_at")
   private OffsetDateTime pnrExpiresAt;
 
+  @Column(name = "payment_window_extended_at")
+  private OffsetDateTime paymentWindowExtendedAt;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "promotion_id")
   private PromotionEntity promotion;

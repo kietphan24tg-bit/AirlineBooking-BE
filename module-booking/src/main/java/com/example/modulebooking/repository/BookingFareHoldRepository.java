@@ -44,6 +44,22 @@ public interface BookingFareHoldRepository extends JpaRepository<BookingFareHold
       value =
           """
           update booking_fare_holds
+          set expires_at = :expiresAt,
+              updated_at = :now
+          where booking_id = :bookingId
+            and status = 'HELD'
+          """,
+      nativeQuery = true)
+  int extendHeldExpiryByBookingId(
+      @Param("bookingId") Long bookingId,
+      @Param("expiresAt") OffsetDateTime expiresAt,
+      @Param("now") OffsetDateTime now);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update booking_fare_holds
           set status = 'RELEASED',
               updated_at = :now
           where status = 'HELD'

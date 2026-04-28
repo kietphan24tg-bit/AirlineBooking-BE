@@ -122,6 +122,55 @@ public class PayosPaymentGateway implements PaymentGateway {
     }
   }
 
+  @Override
+  public void cancelPaymentLink(CancelPaymentLinkRequest request) {
+    if (!paymentProperties.isPayosConfigured()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
+    }
+    if (request == null) {
+      throw new AppException("INVALID_CANCEL_REQUEST", "Cancel request is required", 400);
+    }
+
+    URI uri =
+        UriComponentsBuilder.fromUriString(resolveBaseUrl(paymentProperties))
+            .path("/v2/payment-requests/")
+            .path(String.valueOf(request.orderCode()))
+            .path("/cancel")
+            .build()
+            .toUri();
+
+    CancelPaymentLinkPayload payload = new CancelPaymentLinkPayload(request.cancellationReason());
+
+    try {
+      HttpRequest httpRequest =
+          HttpRequest.newBuilder(uri)
+              .header("Content-Type", "application/json")
+              .header("x-client-id", paymentProperties.payos().clientId())
+              .header("x-api-key", paymentProperties.payos().apiKey())
+              .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+              .build();
+
+      HttpResponse<String> response =
+          httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+      if (response.statusCode() >= 400) {
+        throw new AppException("PAYMENT_PROVIDER_ERROR", "PayOS rejected cancel request", 502);
+      }
+
+      PayosCancelPaymentResponse cancelResponse =
+          objectMapper.readValue(response.body(), PayosCancelPaymentResponse.class);
+      if (cancelResponse.code() == null || !PAYOS_SUCCESS_CODE.equals(cancelResponse.code())) {
+        throw new AppException(
+            "PAYMENT_PROVIDER_ERROR", "PayOS returned a non-success cancel response", 502);
+      }
+    } catch (IOException exception) {
+      throw new AppException("PAYMENT_PROVIDER_ERROR", "Unable to parse PayOS response", 502);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new AppException("PAYMENT_PROVIDER_ERROR", "PayOS request was interrupted", 502);
+    }
+  }
+
   static String buildSignaturePayload(
       long amount, long orderCode, String description, String returnUrl, String cancelUrl) {
     return "amount="
@@ -176,6 +225,8 @@ public class PayosPaymentGateway implements PaymentGateway {
       Long expiredAt,
       String signature) {}
 
+  record CancelPaymentLinkPayload(String cancellationReason) {}
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   record PayosCreatePaymentResponse(String code, String desc, PayosCreatePaymentData data) {}
 
@@ -187,4 +238,7 @@ public class PayosPaymentGateway implements PaymentGateway {
       @JsonProperty("checkoutUrl") String checkoutUrl,
       @JsonProperty("qrCode") String qrCode,
       @JsonProperty("createdAt") OffsetDateTime createdAt) {}
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record PayosCancelPaymentResponse(String code, String desc, Object data) {}
 }

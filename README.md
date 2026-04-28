@@ -729,6 +729,15 @@ Migration files hiện đặt tại:
 - `POST /api/bookings` dùng `revalidateId`, validate tuổi hành khách theo `flightDate`, rồi reserve ghế cho `adult + child`
 - Khi thanh toán thành công, booking chuyển sang `CONFIRMED`
 
+### Payment Expiry & Frontend UX
+- `POST /api/payments` trả về `payment.expireAt` là **`pnr_expires_at`** (deadline thanh toán/giữ chỗ), frontend nên dùng field này để **đếm ngược**.
+- `qrData` có thể dùng để render QR (tuỳ UX), nhưng nguồn điều hướng chính vẫn là `action.paymentUrl` (PayOS checkout URL).
+- Backend có thể **gia hạn cửa sổ thanh toán/giữ chỗ thêm 5 phút** (tối đa 1 lần/booking) khi người dùng bắt đầu thanh toán sát giờ, để tránh hết hạn giữa chừng.
+- Khuyến nghị UI:
+  - Remaining còn nhiều: hiển thị QR/nút thanh toán bình thường
+  - Remaining sắp hết hạn: vẫn cho thanh toán nhưng cảnh báo “Sắp hết hạn”
+  - Remaining `<= 15–30s`: (tuỳ chọn) disable thanh toán để tránh rủi ro hết hạn giữa chừng
+
 ### Seat Locking
 
 | Action | Condition | Result |

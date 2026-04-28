@@ -93,6 +93,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/payment-methods")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/payments/*")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/payments/*/cancel")
+                    .permitAll()
                     // admin api
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")

@@ -41,11 +41,29 @@ class PaymentStatusApiIntegrationTest {
   }
 
   @Test
-  void shouldRejectPaymentStatusWithoutAuthentication() throws Exception {
+  void shouldReturnPaymentStatusWithoutAuthentication() throws Exception {
+    when(paymentService.getPaymentPublic(1L))
+        .thenReturn(
+            new PaymentStatusView(
+                1L,
+                10L,
+                new BigDecimal("1200000"),
+                "VND",
+                "PAYOS",
+                "SUCCESS",
+                OffsetDateTime.parse("2026-04-08T10:00:00Z"),
+                OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                "plink_1",
+                "000201QR",
+                null,
+                null));
     mockMvc
         .perform(get("/api/payments/1"))
-        .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.id").value(1))
+        .andExpect(jsonPath("$.data.bookingId").value(10))
+        .andExpect(jsonPath("$.data.status").value("SUCCESS"));
   }
 
   @Test

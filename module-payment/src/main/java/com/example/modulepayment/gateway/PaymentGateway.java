@@ -7,6 +7,8 @@ public interface PaymentGateway {
 
   PaymentGatewayResult createPaymentLink(PaymentGatewayRequest request);
 
+  void cancelPaymentLink(CancelPaymentLinkRequest request);
+
   record PaymentGatewayRequest(
       Long paymentId,
       long orderCode,
@@ -27,4 +29,6 @@ public interface PaymentGateway {
       String status,
       String actionType,
       OffsetDateTime expiredAt) {}
+
+  record CancelPaymentLinkRequest(Long paymentId, long orderCode, String cancellationReason) {}
 }

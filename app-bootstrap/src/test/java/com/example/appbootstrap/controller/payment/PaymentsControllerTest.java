@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
@@ -177,6 +178,55 @@ class PaymentsControllerTest {
     assertEquals("SUCCESS", response.status());
     assertEquals("000201QR", response.qrData());
     assertEquals("plink_5", response.transactionId());
+  }
+
+  @Test
+  void shouldMapCancelPaymentResponse() {
+    when(paymentService.cancelPaymentForUser(5L, 7L, "Changed my mind"))
+        .thenReturn(
+            new PaymentStatusView(
+                5L,
+                10L,
+                new BigDecimal("1200000"),
+                "VND",
+                "PAYOS",
+                "CANCELLED",
+                null,
+                OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                "plink_5",
+                "000201QR",
+                null,
+                "https://pay.payos.vn/web/5"));
+
+    PaymentStatusResponse response = controller.cancelPayment(principal(), 5L, new CancelPaymentRequest("Changed my mind"));
+
+    assertEquals(5L, response.id());
+    assertEquals("CANCELLED", response.status());
+    assertEquals("plink_5", response.transactionId());
+  }
+
+  @Test
+  void shouldAllowPublicCancelWhenNoPrincipal() {
+    when(paymentService.cancelPaymentPublic(5L, "Changed my mind"))
+        .thenReturn(
+            new PaymentStatusView(
+                5L,
+                10L,
+                new BigDecimal("1200000"),
+                "VND",
+                "PAYOS",
+                "CANCELLED",
+                null,
+                OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                "plink_5",
+                "000201QR",
+                null,
+                "https://pay.payos.vn/web/5"));
+
+    PaymentStatusResponse response =
+        controller.cancelPayment(null, 5L, new CancelPaymentRequest("Changed my mind"));
+
+    assertEquals("CANCELLED", response.status());
   }
 
   @Test

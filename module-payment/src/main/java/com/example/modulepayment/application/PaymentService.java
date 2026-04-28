@@ -18,6 +18,8 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
+import com.example.modulebooking.repository.FlightSeatRepository;
 
 @Service
 public class PaymentService {
@@ -30,23 +32,32 @@ public class PaymentService {
   private static final String METHOD_PAY_LATER = "PAY_LATER";
   private static final String PAYMENT_STATUS_FAILED = "FAILED";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
+  private static final String PAYMENT_STATUS_CANCELLED = "CANCELLED";
   private static final String PAYMENT_ACTION_QR = "QR";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
+  private static final long PAYMENT_WINDOW_EXTENSION_MINUTES = 5;
+  private static final String DEFAULT_CANCELLATION_REASON = "User requested cancellation";
 
   private final BookingRepository bookingRepository;
   private final PaymentRepository paymentRepository;
   private final PaymentGateway paymentGateway;
   private final PaymentProperties paymentProperties;
+  private final BookingFareHoldRepository bookingFareHoldRepository;
+  private final FlightSeatRepository flightSeatRepository;
 
   public PaymentService(
       BookingRepository bookingRepository,
       PaymentRepository paymentRepository,
       PaymentGateway paymentGateway,
-      PaymentProperties paymentProperties) {
+      PaymentProperties paymentProperties,
+      BookingFareHoldRepository bookingFareHoldRepository,
+      FlightSeatRepository flightSeatRepository) {
     this.bookingRepository = bookingRepository;
     this.paymentRepository = paymentRepository;
     this.paymentGateway = paymentGateway;
     this.paymentProperties = paymentProperties;
+    this.bookingFareHoldRepository = bookingFareHoldRepository;
+    this.flightSeatRepository = flightSeatRepository;
   }
 
   @Transactional(readOnly = true)
@@ -148,6 +159,107 @@ public class PaymentService {
         payment.getCheckoutUrl());
   }
 
+  @Transactional(readOnly = true)
+  public PaymentStatusView getPaymentPublic(Long paymentId) {
+    PaymentEntity payment =
+        paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException(paymentId));
+    BookingEntity booking = payment.getBooking();
+    return new PaymentStatusView(
+        payment.getId(),
+        booking.getId(),
+        payment.getAmount(),
+        payment.getCurrency(),
+        payment.getPaymentMethod(),
+        payment.getPaymentStatus(),
+        payment.getPaidAt(),
+        booking.getPnrExpiresAt(),
+        payment.getTransactionId(),
+        payment.getQrData(),
+        payment.getQrImageUrl(),
+        payment.getCheckoutUrl());
+  }
+
+  @Transactional
+  public PaymentStatusView cancelPaymentForUser(Long paymentId, Long userId, String reason) {
+    PaymentEntity payment =
+        paymentRepository
+            .findByIdAndBookingUserIdForUpdate(paymentId, userId)
+            .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+
+    String status = payment.getPaymentStatus() == null ? "" : payment.getPaymentStatus().trim();
+    if (PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(status)) {
+      return buildStatusView(payment);
+    }
+    if (!PAYMENT_STATUS_PENDING.equalsIgnoreCase(status)) {
+      throw new AppException(
+          "PAYMENT_NOT_CANCELLABLE",
+          "Only pending payments can be cancelled",
+          409);
+    }
+
+    String cancellationReason = (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
+
+    // We cancel by orderCode (= paymentId in this integration) to match createPaymentLink usage.
+    paymentGateway.cancelPaymentLink(
+        new PaymentGateway.CancelPaymentLinkRequest(payment.getId(), payment.getId(), cancellationReason));
+
+    OffsetDateTime now = OffsetDateTime.now();
+    payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+    payment.setUpdatedAt(now);
+    paymentRepository.save(payment);
+
+    return buildStatusView(payment);
+  }
+
+  @Transactional
+  public PaymentStatusView cancelPaymentPublic(Long paymentId, String reason) {
+    PaymentEntity payment =
+        paymentRepository
+            .findByIdForUpdate(paymentId)
+            .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+
+    String status = payment.getPaymentStatus() == null ? "" : payment.getPaymentStatus().trim();
+    if (PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(status)) {
+      return buildStatusView(payment);
+    }
+    if (!PAYMENT_STATUS_PENDING.equalsIgnoreCase(status)) {
+      throw new AppException(
+          "PAYMENT_NOT_CANCELLABLE",
+          "Only pending payments can be cancelled",
+          409);
+    }
+
+    String cancellationReason =
+        (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
+
+    paymentGateway.cancelPaymentLink(
+        new PaymentGateway.CancelPaymentLinkRequest(payment.getId(), payment.getId(), cancellationReason));
+
+    OffsetDateTime now = OffsetDateTime.now();
+    payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+    payment.setUpdatedAt(now);
+    paymentRepository.save(payment);
+
+    return buildStatusView(payment);
+  }
+
+  private PaymentStatusView buildStatusView(PaymentEntity payment) {
+    BookingEntity booking = payment.getBooking();
+    return new PaymentStatusView(
+        payment.getId(),
+        booking == null ? null : booking.getId(),
+        payment.getAmount(),
+        payment.getCurrency(),
+        payment.getPaymentMethod(),
+        payment.getPaymentStatus(),
+        payment.getPaidAt(),
+        booking == null ? null : booking.getPnrExpiresAt(),
+        payment.getTransactionId(),
+        payment.getQrData(),
+        payment.getQrImageUrl(),
+        payment.getCheckoutUrl());
+  }
+
   private static List<PaymentMethodView> filterSupportedOnly(List<PaymentMethodView> groups) {
     return groups.stream()
         .map(
@@ -181,8 +293,9 @@ public class PaymentService {
           "UNSUPPORTED_PAYMENT_CURRENCY", "Only VND payments are supported in phase 1", 400);
     }
 
-    OffsetDateTime expireAt = booking.getPnrExpiresAt();
     OffsetDateTime now = OffsetDateTime.now();
+    maybeExtendPaymentWindowOnce(booking, now);
+    OffsetDateTime expireAt = booking.getPnrExpiresAt();
 
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
@@ -243,6 +356,32 @@ public class PaymentService {
 
     ensureBookingPendingPayment(booking, OffsetDateTime.now());
     return buildCreatePaymentResult(payment, booking, expireAt);
+  }
+
+  private void maybeExtendPaymentWindowOnce(BookingEntity booking, OffsetDateTime now) {
+    if (booking == null) {
+      return;
+    }
+    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
+    if (currentExpireAt == null) {
+      return;
+    }
+    if (booking.getPaymentWindowExtendedAt() != null) {
+      return; // one-time extension per booking
+    }
+
+    OffsetDateTime targetExpireAt = now.plusMinutes(PAYMENT_WINDOW_EXTENSION_MINUTES);
+    if (!currentExpireAt.isBefore(targetExpireAt)) {
+      return; // already has >= 5 minutes remaining
+    }
+
+    booking.setPnrExpiresAt(targetExpireAt);
+    booking.setPaymentWindowExtendedAt(now);
+    booking.setUpdatedAt(now);
+
+    // Keep all holds/reservations aligned with the new booking expiry.
+    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
+    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
   }
 
   private void ensureBookingPendingPayment(BookingEntity booking, OffsetDateTime now) {

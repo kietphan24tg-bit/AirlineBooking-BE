@@ -166,6 +166,53 @@ class PayosPaymentGatewayTest {
     assertEquals("PAYMENT_PROVIDER_ERROR", ex.getCode());
   }
 
+  @Test
+  void shouldCallCancelPaymentEndpointWithReason() throws Exception {
+    AtomicReference<String> bodyRef = new AtomicReference<>();
+    AtomicReference<String> pathRef = new AtomicReference<>();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/v2/payment-requests/123/cancel",
+        exchange -> {
+          pathRef.set(exchange.getRequestURI().getPath());
+          bodyRef.set(readBody(exchange));
+          respond(
+              exchange,
+              200,
+              """
+              {
+                "code": "00",
+                "desc": "success",
+                "data": {
+                  "status": "CANCELLED"
+                }
+              }
+              """);
+        });
+    server.start();
+
+    PayosPaymentGateway gateway =
+        new PayosPaymentGateway(
+            new PaymentProperties(
+                "payos",
+                "webhook-secret",
+                "http://localhost:3000/payment/success",
+                "http://localhost:3000/payment/cancel",
+                "http://localhost:8080",
+                new PaymentProperties.Payos(
+                    "client-id",
+                    "api-key",
+                    "checksum-key",
+                    "http://localhost:" + server.getAddress().getPort())),
+            new ObjectMapper());
+
+    gateway.cancelPaymentLink(new PaymentGateway.CancelPaymentLinkRequest(123L, 123L, "Changed my mind"));
+
+    assertEquals("/v2/payment-requests/123/cancel", pathRef.get());
+    assertTrue(bodyRef.get().contains("cancellationReason"));
+    assertTrue(bodyRef.get().contains("Changed my mind"));
+  }
+
   private static String readBody(HttpExchange exchange) throws IOException {
     return new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
   }

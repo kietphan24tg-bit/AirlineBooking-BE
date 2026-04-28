@@ -163,6 +163,19 @@ public interface FlightSeatRepository extends JpaRepository<FlightSeatEntity, Lo
       nativeQuery = true)
   int releaseExpiredReservations(@Param("now") OffsetDateTime now);
 
+  @Modifying
+  @Query(
+      value =
+          """
+          update flight_seats
+          set reserved_until = :reservedUntil
+          where booking_id = :bookingId
+            and status = 'RESERVED'
+          """,
+      nativeQuery = true)
+  int extendReservedUntilForBooking(
+      @Param("bookingId") Long bookingId, @Param("reservedUntil") OffsetDateTime reservedUntil);
+
   @Query(
       value =
           """

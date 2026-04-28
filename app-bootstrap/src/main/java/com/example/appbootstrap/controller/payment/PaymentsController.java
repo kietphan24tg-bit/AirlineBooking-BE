@@ -2,6 +2,7 @@ package com.example.appbootstrap.controller.payment;
 
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
+import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -94,7 +95,6 @@ public class PaymentsController {
   }
 
   @GetMapping("/payments/{paymentId}")
-  @SecurityRequirement(name = "bearerAuth")
   @Operation(
       summary = "Get payment status",
       description =
@@ -104,13 +104,15 @@ public class PaymentsController {
         responseCode = "200",
         description = "Payment status returned",
         content = @Content(schema = @Schema(implementation = PaymentStatusResponse.class))),
-    @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
     @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content)
   })
   PaymentStatusResponse getPaymentStatus(
       @AuthenticationPrincipal AppUserPrincipal principal,
       @PathVariable @Positive(message = "paymentId must be positive") Long paymentId) {
-    PaymentStatusView view = paymentService.getPaymentForUser(paymentId, principal.getUserId());
+    PaymentStatusView view =
+        principal == null
+            ? paymentService.getPaymentPublic(paymentId)
+            : paymentService.getPaymentForUser(paymentId, principal.getUserId());
     return new PaymentStatusResponse(
         view.id(),
         view.bookingId(),
@@ -165,5 +167,43 @@ public class PaymentsController {
             result.action().qrData(),
             result.action().qrImageUrl(),
             result.action().paymentUrl()));
+  }
+
+  @PostMapping("/payments/{paymentId}/cancel")
+  @Operation(
+      summary = "Cancel a pending payment",
+      description = "Cancels the PayOS payment link for a pending payment")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Payment cancelled",
+        content = @Content(schema = @Schema(implementation = PaymentStatusResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content),
+    @ApiResponse(responseCode = "409", description = "Payment not cancellable", content = @Content),
+    @ApiResponse(responseCode = "502", description = "Provider error", content = @Content)
+  })
+  PaymentStatusResponse cancelPayment(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId,
+      @RequestBody(required = false) CancelPaymentRequest request) {
+    PaymentStatusView view =
+        principal == null
+            ? paymentService.cancelPaymentPublic(paymentId, request == null ? null : request.reason())
+            : paymentService.cancelPaymentForUser(
+                paymentId, principal.getUserId(), request == null ? null : request.reason());
+    return new PaymentStatusResponse(
+        view.id(),
+        view.bookingId(),
+        view.amount(),
+        view.currency(),
+        view.method(),
+        view.status(),
+        view.paidAt(),
+        view.expireAt(),
+        view.transactionId(),
+        view.qrData(),
+        view.qrImageUrl(),
+        view.paymentUrl());
   }
 }

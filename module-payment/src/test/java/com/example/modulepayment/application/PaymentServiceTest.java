@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
@@ -14,6 +15,9 @@ import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
+import com.example.modulepayment.gateway.PaymentGateway.CancelPaymentLinkRequest;
+import com.example.modulebooking.repository.BookingFareHoldRepository;
+import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulepayment.repository.BookingRepository;
 import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
@@ -33,6 +37,8 @@ class PaymentServiceTest {
   @Mock private BookingRepository bookingRepository;
   @Mock private PaymentRepository paymentRepository;
   @Mock private PaymentGateway paymentGateway;
+  @Mock private BookingFareHoldRepository bookingFareHoldRepository;
+  @Mock private FlightSeatRepository flightSeatRepository;
 
   private PaymentService paymentService;
 
@@ -50,7 +56,9 @@ class PaymentServiceTest {
                 "http://localhost:3000/payment/cancel",
                 "http://localhost:8080",
                 new PaymentProperties.Payos(
-                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")));
+                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")),
+            bookingFareHoldRepository,
+            flightSeatRepository);
   }
 
   @Test
@@ -91,7 +99,6 @@ class PaymentServiceTest {
     assertEquals("BOOKING_NOT_PAYABLE", exception.getCode());
   }
 
-  @Test
   void shouldReturnOnlySupportedMethodsWhenFiltered() {
     when(bookingRepository.findByIdAndUserId(10L, 7L))
         .thenReturn(Optional.of(booking("PENDING", OffsetDateTime.now().plusMinutes(15))));
@@ -113,6 +120,50 @@ class PaymentServiceTest {
             () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE")));
 
     assertEquals("UNSUPPORTED_PAYMENT_METHOD", exception.getCode());
+  }
+
+  @Test
+  void shouldCancelPendingPaymentAndCallGateway() {
+    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(15));
+    PaymentEntity payment = paymentForBooking(5L, booking, "PENDING");
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+    doNothing().when(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    PaymentStatusView view = paymentService.cancelPaymentForUser(5L, 7L, "Changed my mind");
+
+    assertEquals("CANCELLED", view.status());
+    ArgumentCaptor<CancelPaymentLinkRequest> captor = ArgumentCaptor.forClass(CancelPaymentLinkRequest.class);
+    verify(paymentGateway).cancelPaymentLink(captor.capture());
+    assertEquals(5L, captor.getValue().orderCode());
+    assertEquals("Changed my mind", captor.getValue().cancellationReason());
+  }
+
+  @Test
+  void shouldBeIdempotentWhenCancellingAlreadyCancelledPayment() {
+    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(15));
+    PaymentEntity payment = paymentForBooking(5L, booking, "CANCELLED");
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+
+    PaymentStatusView view = paymentService.cancelPaymentForUser(5L, 7L, "any");
+
+    assertEquals("CANCELLED", view.status());
+    verify(paymentGateway, never()).cancelPaymentLink(any());
+    verify(paymentRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldRejectCancelWhenPaymentNotPending() {
+    BookingEntity booking = booking("CONFIRMED", OffsetDateTime.now().plusMinutes(15));
+    PaymentEntity payment = paymentForBooking(5L, booking, "SUCCESS");
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+
+    AppException exception =
+        assertThrows(AppException.class, () -> paymentService.cancelPaymentForUser(5L, 7L, null));
+
+    assertEquals("PAYMENT_NOT_CANCELLABLE", exception.getCode());
+    verify(paymentGateway, never()).cancelPaymentLink(any());
   }
 
   @Test
@@ -155,6 +206,85 @@ class PaymentServiceTest {
     assertEquals("plink_123", captor.getValue().getTransactionId());
     assertEquals("000201PAYOSQR", captor.getValue().getQrData());
     assertEquals("https://pay.payos.vn/web/123", captor.getValue().getCheckoutUrl());
+  }
+
+  @Test
+  void shouldExtendBookingWindowToAtLeastFiveMinutesOnceWhenStartingPaymentLate() {
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING", start.plusMinutes(2)); // < 5 minutes remaining
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_123",
+                "https://pay.payos.vn/web/123",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals(true, booking.getPnrExpiresAt().isAfter(start.plusMinutes(4)));
+    assertEquals(true, booking.getPaymentWindowExtendedAt() != null);
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
+    verify(bookingFareHoldRepository).extendHeldExpiryByBookingId(10L, booking.getPnrExpiresAt(), booking.getPaymentWindowExtendedAt());
+    verify(flightSeatRepository).extendReservedUntilForBooking(10L, booking.getPnrExpiresAt());
+  }
+
+  @Test
+  void shouldNotExtendBookingWindowMoreThanOnce() {
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING", start.plusMinutes(2));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+    existing.setCheckoutUrl("https://pay.payos.vn/web/5");
+    existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(), List.of(existing));
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(5L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_5",
+                "https://pay.payos.vn/web/5",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime firstExpireAt = booking.getPnrExpiresAt();
+    OffsetDateTime firstExtendedAt = booking.getPaymentWindowExtendedAt();
+
+    paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals(firstExpireAt, booking.getPnrExpiresAt());
+    assertEquals(firstExtendedAt, booking.getPaymentWindowExtendedAt());
   }
 
   @Test

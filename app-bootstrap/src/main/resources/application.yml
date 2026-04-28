@@ -130,8 +130,8 @@ app:
         provider: ${APP_PAYMENT_PROVIDER:payos}
         # Unused for PayOS (webhook HMAC uses payos.checksum-key). Retained for existing env binding.
         webhook-secret: ${APP_PAYMENT_WEBHOOK_SECRET:change-me}
-        return-url: ${APP_PAYMENT_RETURN_URL:http://localhost:3000/payment/success}
-        cancel-url: ${APP_PAYMENT_CANCEL_URL:http://localhost:3000/payment/cancel}
+        return-url: ${APP_PAYMENT_RETURN_URL:http://localhost:5173/payment/success}
+        cancel-url: ${APP_PAYMENT_CANCEL_URL:http://localhost:5173/payment/cancel}
         # Public origin for absolute icon URLs returned by GET /api/payment-methods
         # (e.g. https://api.example.com)
         icon-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
