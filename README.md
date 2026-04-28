@@ -406,7 +406,7 @@ Theo tài liệu API trong `docs/api/endpoints.md`, hệ thống còn bao phủ 
 
 - `GET /api/flights/search`, `POST /api/flights/revalidate-fare`
 - `POST /api/bookings`, `POST /api/bookings/:id/seats`, `POST /api/bookings/:id/services`
-- `POST /api/payments`, `GET /api/payments/:id/status`, `POST /api/payments/webhook`
+- `POST /api/payments`, `GET /api/payments/{paymentId}`, `POST /api/payments/webhooks/payos`
 - `POST /api/checkin`, `GET /api/checkin/boarding-pass/:booking_id`
 - `GET /api/tickets`, `GET /api/tickets/:ticket_number`, `GET /api/tickets/lookup`
 

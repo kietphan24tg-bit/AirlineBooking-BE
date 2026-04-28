@@ -99,6 +99,7 @@ class OpenApiCoverageIntegrationTest {
         Arguments.of("services", "/api/services"),
         Arguments.of("payments", "/api/payment-methods"),
         Arguments.of("payments", "/api/payments"),
+        Arguments.of("payments", "/api/payments/{paymentId}"),
         Arguments.of("payments", "/api/payments/webhooks/payos"));
   }
 }

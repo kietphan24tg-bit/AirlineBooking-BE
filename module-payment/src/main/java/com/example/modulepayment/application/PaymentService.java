@@ -5,6 +5,7 @@ import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.exception.BookingNotFoundException;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
+import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayRequest;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
@@ -51,8 +52,23 @@ public class PaymentService {
   public List<PaymentMethodView> getPaymentMethods(
       Long bookingId, Long userId, boolean onlySupported) {
     BookingEntity booking = requirePayableBooking(bookingId, userId);
+    return buildPaymentMethodsForBooking(booking, onlySupported);
+  }
+
+  @Transactional(readOnly = true)
+  public List<PaymentMethodView> getPaymentMethodsPublic(Long bookingId, boolean onlySupported) {
+    BookingEntity booking = requirePayableBookingPublic(bookingId);
+    return buildPaymentMethodsForBooking(booking, onlySupported);
+  }
+
+  private List<PaymentMethodView> buildPaymentMethodsForBooking(
+      BookingEntity booking, boolean onlySupported) {
     boolean payosSupported =
         paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
+    String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
+    String stripeIcon = iconUrl("/assets/payment-icons/stripe.svg");
+    String vnpayIcon = iconUrl("/assets/payment-icons/vnpay.svg");
+    String momoIcon = iconUrl("/assets/payment-icons/momo.svg");
     List<PaymentMethodView> groups =
         List.of(
             new PaymentMethodView(
@@ -63,24 +79,24 @@ public class PaymentService {
                         METHOD_STRIPE_CARD,
                         "Thẻ tín dụng / ghi nợ quốc tế",
                         "STRIPE",
-                        "visa_mastercard.png",
+                        stripeIcon,
                         false,
                         null),
                     new PaymentMethodView.PaymentMethodItemView(
                         METHOD_PAYOS_QR,
                         "Mobile Banking (VietQR)",
                         "PAYOS",
-                        "vietqr.png",
+                        vietqrIcon,
                         payosSupported,
                         null),
                     new PaymentMethodView.PaymentMethodItemView(
-                        METHOD_VNPAY, "Thanh toán VNPay", "VNPAY", "vnpay.png", false, null))),
+                        METHOD_VNPAY, "Thanh toán VNPay", "VNPAY", vnpayIcon, false, null))),
             new PaymentMethodView(
                 "EWALLET",
                 "Ví điện tử",
                 List.of(
                     new PaymentMethodView.PaymentMethodItemView(
-                        METHOD_MOMO, "Ví MoMo", "MOMO", null, false, null))),
+                        METHOD_MOMO, "Ví MoMo", "MOMO", momoIcon, false, null))),
             new PaymentMethodView(
                 "PAY_LATER",
                 "Thanh toán sau",
@@ -93,6 +109,42 @@ public class PaymentService {
                         false,
                         new PaymentMethodView.PaymentMethodMetaView(30, 0)))));
     return onlySupported ? filterSupportedOnly(groups) : groups;
+  }
+
+  private String iconUrl(String path) {
+    String base = paymentProperties.iconBaseUrl();
+    if (base == null || base.isBlank()) {
+      return path;
+    }
+    String normalizedBase = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+    return normalizedBase + path;
+  }
+
+  /**
+   * Returns payment status for the authenticated owner of the related booking.
+   *
+   * <p>Wrong owner returns {@link PaymentNotFoundException} (404) to avoid leaking existence.
+   */
+  @Transactional(readOnly = true)
+  public PaymentStatusView getPaymentForUser(Long paymentId, Long userId) {
+    PaymentEntity payment =
+        paymentRepository
+            .findByIdAndBookingUserId(paymentId, userId)
+            .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+    BookingEntity booking = payment.getBooking();
+    return new PaymentStatusView(
+        payment.getId(),
+        booking.getId(),
+        payment.getAmount(),
+        payment.getCurrency(),
+        payment.getPaymentMethod(),
+        payment.getPaymentStatus(),
+        payment.getPaidAt(),
+        booking.getPnrExpiresAt(),
+        payment.getTransactionId(),
+        payment.getQrData(),
+        payment.getQrImageUrl(),
+        null);
   }
 
   private static List<PaymentMethodView> filterSupportedOnly(List<PaymentMethodView> groups) {
@@ -194,6 +246,13 @@ public class PaymentService {
         bookingRepository
             .findByIdAndUserId(bookingId, userId)
             .orElseThrow(() -> new BookingNotFoundException(bookingId));
+    assertPayable(booking);
+    return booking;
+  }
+
+  private BookingEntity requirePayableBookingPublic(Long bookingId) {
+    BookingEntity booking =
+        bookingRepository.findById(bookingId).orElseThrow(() -> new BookingNotFoundException(bookingId));
     assertPayable(booking);
     return booking;
   }

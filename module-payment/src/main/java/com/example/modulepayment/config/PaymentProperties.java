@@ -12,6 +12,7 @@ public record PaymentProperties(
     @Deprecated(since = "1.0", forRemoval = false) String webhookSecret,
     String returnUrl,
     String cancelUrl,
+    String iconBaseUrl,
     Payos payos) {
 
   public boolean isPayosConfigured() {

@@ -79,8 +79,9 @@ class PayosPaymentGatewayTest {
             new PaymentProperties(
                 "payos",
                 "webhook-secret",
-                "http://localhost:3000/payment/success",
-                "http://localhost:3000/payment/cancel",
+                "http://localhost:5173/payment/success",
+                "http://localhost:5173/payment/cancel",
+                "https://airline-booking-staging.onrender.com/",
                 new PaymentProperties.Payos(
                     "client-id",
                     "api-key",
@@ -136,6 +137,7 @@ class PayosPaymentGatewayTest {
                 "webhook-secret",
                 "http://localhost:3000/payment/success",
                 "http://localhost:3000/payment/cancel",
+                "http://localhost:8080",
                 new PaymentProperties.Payos(
                     "client-id",
                     "api-key",

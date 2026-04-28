@@ -7,11 +7,13 @@ import static org.mockito.Mockito.when;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
+import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentService;
+import com.example.modulepayment.application.PaymentStatusView;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.math.BigDecimal;
@@ -50,7 +52,7 @@ class PaymentsControllerTest {
                             "PAYOS_QR",
                             "Mobile Banking (VietQR)",
                             "PAYOS",
-                            "vietqr.png",
+                            "http://localhost:8080/assets/payment-icons/vietqr.svg",
                             true,
                             null))),
                 new PaymentMethodView(
@@ -70,9 +72,34 @@ class PaymentsControllerTest {
     assertEquals("CARD", response.groups().getFirst().type());
     assertEquals("PAYOS_QR", response.groups().getFirst().methods().getFirst().code());
     assertEquals("PAYOS", response.groups().getFirst().methods().getFirst().provider());
-    assertEquals("vietqr.png", response.groups().getFirst().methods().getFirst().icon());
+    assertEquals(
+        "http://localhost:8080/assets/payment-icons/vietqr.svg",
+        response.groups().getFirst().methods().getFirst().icon());
     assertEquals(true, response.groups().getFirst().methods().getFirst().supported());
     assertEquals(30, response.groups().get(1).methods().getFirst().meta().holdDurationMinutes());
+  }
+
+  @Test
+  void shouldAllowPublicPaymentMethodsWhenNoPrincipal() {
+    when(paymentService.getPaymentMethodsPublic(10L, true))
+        .thenReturn(
+            List.of(
+                new PaymentMethodView(
+                    "CARD",
+                    "Thẻ & ngân hàng",
+                    List.of(
+                        new PaymentMethodView.PaymentMethodItemView(
+                            "PAYOS_QR",
+                            "Mobile Banking (VietQR)",
+                            "PAYOS",
+                            "vietqr.png",
+                            true,
+                            null)))));
+
+    PaymentMethodsResponse response = controller.getPaymentMethods(null, 10L, true);
+
+    assertEquals(1, response.groups().size());
+    assertEquals("PAYOS_QR", response.groups().getFirst().methods().getFirst().code());
   }
 
   @Test
@@ -88,7 +115,7 @@ class PaymentsControllerTest {
                             "PAYOS_QR",
                             "Mobile Banking (VietQR)",
                             "PAYOS",
-                            "vietqr.png",
+                            "http://localhost:8080/assets/payment-icons/vietqr.svg",
                             true,
                             null)))));
 
@@ -123,6 +150,33 @@ class PaymentsControllerTest {
     assertEquals("PENDING", response.payment().status());
     assertEquals("QR", response.action().type());
     assertEquals("https://pay.payos.vn/web/123", response.action().paymentUrl());
+  }
+
+  @Test
+  void shouldMapPaymentStatusResponse() {
+    when(paymentService.getPaymentForUser(5L, 7L))
+        .thenReturn(
+            new PaymentStatusView(
+                5L,
+                10L,
+                new BigDecimal("1200000"),
+                "VND",
+                "PAYOS",
+                "SUCCESS",
+                OffsetDateTime.parse("2026-04-08T10:00:00Z"),
+                OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                "plink_5",
+                "000201QR",
+                null,
+                null));
+
+    PaymentStatusResponse response = controller.getPaymentStatus(principal(), 5L);
+
+    assertEquals(5L, response.id());
+    assertEquals(10L, response.bookingId());
+    assertEquals("SUCCESS", response.status());
+    assertEquals("000201QR", response.qrData());
+    assertEquals("plink_5", response.transactionId());
   }
 
   @Test

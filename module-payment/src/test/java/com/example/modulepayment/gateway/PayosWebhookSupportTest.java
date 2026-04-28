@@ -40,6 +40,7 @@ class PayosWebhookSupportTest {
                 "webhook-secret",
                 "http://localhost:3000/payment/success",
                 "http://localhost:3000/payment/cancel",
+                "http://localhost:8080",
                 new PaymentProperties.Payos(
                     "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")));
 
@@ -82,6 +83,7 @@ class PayosWebhookSupportTest {
                 "webhook-secret",
                 "http://localhost:3000/payment/success",
                 "http://localhost:3000/payment/cancel",
+                "http://localhost:8080",
                 new PaymentProperties.Payos(
                     "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")));
 

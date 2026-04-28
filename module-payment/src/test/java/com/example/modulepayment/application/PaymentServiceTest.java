@@ -10,6 +10,7 @@ import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
+import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
 import com.example.modulepayment.repository.BookingRepository;
@@ -46,6 +47,7 @@ class PaymentServiceTest {
                 "webhook-secret",
                 "http://localhost:3000/payment/success",
                 "http://localhost:3000/payment/cancel",
+                "http://localhost:8080",
                 new PaymentProperties.Payos(
                     "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")));
   }
@@ -191,6 +193,48 @@ class PaymentServiceTest {
     verify(paymentRepository).save(any(PaymentEntity.class));
   }
 
+  @Test
+  void shouldReturnPaymentStatusForBookingOwner() {
+    OffsetDateTime expireAt = OffsetDateTime.parse("2026-04-08T15:30:00Z");
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    booking.setId(10L);
+    PaymentEntity payment = paymentForBooking(5L, booking, "PENDING");
+    when(paymentRepository.findByIdAndBookingUserId(5L, 7L)).thenReturn(Optional.of(payment));
+
+    PaymentStatusView view = paymentService.getPaymentForUser(5L, 7L);
+
+    assertEquals(5L, view.id());
+    assertEquals(10L, view.bookingId());
+    assertEquals("PAYOS", view.method());
+    assertEquals("PENDING", view.status());
+    assertEquals(expireAt, view.expireAt());
+    assertEquals("plink_x", view.transactionId());
+    assertEquals("qrdata", view.qrData());
+    assertEquals(null, view.paymentUrl());
+  }
+
+  @Test
+  void shouldRejectPaymentStatusWhenPaymentMissing() {
+    when(paymentRepository.findByIdAndBookingUserId(99L, 7L)).thenReturn(Optional.empty());
+
+    PaymentNotFoundException exception =
+        assertThrows(
+            PaymentNotFoundException.class, () -> paymentService.getPaymentForUser(99L, 7L));
+
+    assertEquals("PAYMENT_NOT_FOUND", exception.getCode());
+  }
+
+  @Test
+  void shouldRejectPaymentStatusWhenWrongOwner() {
+    when(paymentRepository.findByIdAndBookingUserId(5L, 7L)).thenReturn(Optional.empty());
+
+    PaymentNotFoundException exception =
+        assertThrows(
+            PaymentNotFoundException.class, () -> paymentService.getPaymentForUser(5L, 7L));
+
+    assertEquals("PAYMENT_NOT_FOUND", exception.getCode());
+  }
+
   private static BookingEntity booking(String status, OffsetDateTime pnrExpiresAt) {
     BookingEntity booking = new BookingEntity();
     booking.setId(10L);
@@ -202,5 +246,21 @@ class PaymentServiceTest {
     booking.setContactPhone("0901234567");
     booking.setPnrExpiresAt(pnrExpiresAt);
     return booking;
+  }
+
+  private static PaymentEntity paymentForBooking(Long paymentId, BookingEntity booking, String status) {
+    PaymentEntity payment = new PaymentEntity();
+    payment.setId(paymentId);
+    payment.setBooking(booking);
+    payment.setAmount(new BigDecimal("1200000"));
+    payment.setCurrency("VND");
+    payment.setPaymentMethod("PAYOS");
+    payment.setPaymentStatus(status);
+    payment.setTransactionId("plink_x");
+    payment.setQrData("qrdata");
+    payment.setType("QR");
+    payment.setCreatedAt(OffsetDateTime.parse("2026-04-01T10:00:00Z"));
+    payment.setUpdatedAt(OffsetDateTime.parse("2026-04-01T10:00:00Z"));
+    return payment;
   }
 }
