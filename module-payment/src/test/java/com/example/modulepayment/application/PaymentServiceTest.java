@@ -248,7 +248,8 @@ class PaymentServiceTest {
     return booking;
   }
 
-  private static PaymentEntity paymentForBooking(Long paymentId, BookingEntity booking, String status) {
+  private static PaymentEntity paymentForBooking(
+      Long paymentId, BookingEntity booking, String status) {
     PaymentEntity payment = new PaymentEntity();
     payment.setId(paymentId);
     payment.setBooking(booking);

@@ -252,7 +252,9 @@ public class PaymentService {
 
   private BookingEntity requirePayableBookingPublic(Long bookingId) {
     BookingEntity booking =
-        bookingRepository.findById(bookingId).orElseThrow(() -> new BookingNotFoundException(bookingId));
+        bookingRepository
+            .findById(bookingId)
+            .orElseThrow(() -> new BookingNotFoundException(bookingId));
     assertPayable(booking);
     return booking;
   }
