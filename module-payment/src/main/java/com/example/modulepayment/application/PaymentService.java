@@ -2,21 +2,33 @@ package com.example.modulepayment.application;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.entity.BookingFareHoldEntity;
 import com.example.modulebooking.exception.BookingNotFoundException;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
+import com.example.modulebooking.repository.BookingServiceRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
+import com.example.moduleflight.entity.AirlineEntity;
+import com.example.moduleflight.entity.AirportEntity;
+import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayRequest;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
+import com.example.modulepayment.gateway.StripePaymentGateway;
 import com.example.modulepayment.repository.BookingRepository;
 import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -26,6 +38,7 @@ public class PaymentService {
 
   private static final String METHOD_PAYOS = "PAYOS";
   private static final String METHOD_PAYOS_QR = "PAYOS_QR";
+  private static final String METHOD_STRIPE = "STRIPE";
   private static final String METHOD_STRIPE_CARD = "STRIPE_CARD";
   private static final String METHOD_VNPAY = "VNPAY";
   private static final String METHOD_MOMO = "MOMO";
@@ -34,30 +47,40 @@ public class PaymentService {
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
   private static final String PAYMENT_STATUS_CANCELLED = "CANCELLED";
   private static final String PAYMENT_ACTION_QR = "QR";
+  private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYMENT_WINDOW_EXTENSION_MINUTES = 5;
   private static final String DEFAULT_CANCELLATION_REASON = "User requested cancellation";
 
   private final BookingRepository bookingRepository;
   private final PaymentRepository paymentRepository;
-  private final PaymentGateway paymentGateway;
+  private final PaymentGateway payosPaymentGateway;
+  private final StripePaymentGateway stripePaymentGateway;
   private final PaymentProperties paymentProperties;
   private final BookingFareHoldRepository bookingFareHoldRepository;
   private final FlightSeatRepository flightSeatRepository;
+  private final BookingServiceRepository bookingServiceRepository;
+  private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
 
   public PaymentService(
       BookingRepository bookingRepository,
       PaymentRepository paymentRepository,
-      PaymentGateway paymentGateway,
+      @Qualifier("payosPaymentGateway") PaymentGateway payosPaymentGateway,
+      StripePaymentGateway stripePaymentGateway,
       PaymentProperties paymentProperties,
       BookingFareHoldRepository bookingFareHoldRepository,
-      FlightSeatRepository flightSeatRepository) {
+      FlightSeatRepository flightSeatRepository,
+      BookingServiceRepository bookingServiceRepository,
+      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
     this.bookingRepository = bookingRepository;
     this.paymentRepository = paymentRepository;
-    this.paymentGateway = paymentGateway;
+    this.payosPaymentGateway = payosPaymentGateway;
+    this.stripePaymentGateway = stripePaymentGateway;
     this.paymentProperties = paymentProperties;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
     this.flightSeatRepository = flightSeatRepository;
+    this.bookingServiceRepository = bookingServiceRepository;
+    this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
   }
 
   @Transactional(readOnly = true)
@@ -77,6 +100,8 @@ public class PaymentService {
       BookingEntity booking, boolean onlySupported) {
     boolean payosSupported =
         paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
+    boolean stripeSupported =
+        paymentProperties.isStripeConfigured() && supportsCurrency(booking.getCurrency());
     String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
     String stripeIcon = iconUrl("/assets/payment-icons/stripe.svg");
     String vnpayIcon = iconUrl("/assets/payment-icons/vnpay.svg");
@@ -92,7 +117,7 @@ public class PaymentService {
                         "Thẻ tín dụng / ghi nợ quốc tế",
                         "STRIPE",
                         stripeIcon,
-                        false,
+                        stripeSupported,
                         null),
                     new PaymentMethodView.PaymentMethodItemView(
                         METHOD_PAYOS_QR,
@@ -156,7 +181,8 @@ public class PaymentService {
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
-        payment.getCheckoutUrl());
+        payment.getCheckoutUrl(),
+        buildPaymentDetails(booking));
   }
 
   @Transactional(readOnly = true)
@@ -178,7 +204,8 @@ public class PaymentService {
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
-        payment.getCheckoutUrl());
+        payment.getCheckoutUrl(),
+        buildPaymentDetails(booking));
   }
 
   @Transactional
@@ -200,10 +227,7 @@ public class PaymentService {
     String cancellationReason =
         (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
 
-    // We cancel by orderCode (= paymentId in this integration) to match createPaymentLink usage.
-    paymentGateway.cancelPaymentLink(
-        new PaymentGateway.CancelPaymentLinkRequest(
-            payment.getId(), payment.getId(), cancellationReason));
+    cancelWithProvider(payment, cancellationReason);
 
     OffsetDateTime now = OffsetDateTime.now();
     payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
@@ -232,9 +256,7 @@ public class PaymentService {
     String cancellationReason =
         (reason == null || reason.isBlank()) ? DEFAULT_CANCELLATION_REASON : reason.trim();
 
-    paymentGateway.cancelPaymentLink(
-        new PaymentGateway.CancelPaymentLinkRequest(
-            payment.getId(), payment.getId(), cancellationReason));
+    cancelWithProvider(payment, cancellationReason);
 
     OffsetDateTime now = OffsetDateTime.now();
     payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
@@ -258,7 +280,8 @@ public class PaymentService {
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
-        payment.getCheckoutUrl());
+        payment.getCheckoutUrl(),
+        booking == null ? null : buildPaymentDetails(booking));
   }
 
   private static List<PaymentMethodView> filterSupportedOnly(List<PaymentMethodView> groups) {
@@ -287,15 +310,11 @@ public class PaymentService {
 
   private CreatePaymentResult createPayment(CreatePaymentCommand command, boolean requireOwner) {
     String normalizedMethod = normalizeMethod(command.method());
-    if (!METHOD_PAYOS.equals(normalizedMethod)) {
-      throw new AppException(
-          "UNSUPPORTED_PAYMENT_METHOD", "Only PAYOS is supported in phase 1", 400);
+    if (!METHOD_PAYOS.equals(normalizedMethod) && !METHOD_STRIPE_CARD.equals(normalizedMethod)) {
+      throw new AppException("UNSUPPORTED_PAYMENT_METHOD", "Payment method is not supported", 400);
     }
 
-    if (!paymentProperties.isPayosConfigured()) {
-      throw new AppException(
-          "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
-    }
+    assertProviderConfigured(normalizedMethod);
 
     BookingEntity booking =
         requireOwner
@@ -307,7 +326,7 @@ public class PaymentService {
     }
 
     OffsetDateTime now = OffsetDateTime.now();
-    maybeExtendPaymentWindowOnce(booking, now);
+    maybeExtendPaymentWindow(booking, now);
     OffsetDateTime expireAt = booking.getPnrExpiresAt();
 
     List<PaymentEntity> previousPending =
@@ -332,7 +351,7 @@ public class PaymentService {
     payment.setCurrency(booking.getCurrency());
     payment.setPaymentMethod(normalizedMethod);
     payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
-    payment.setType(PAYMENT_ACTION_QR);
+    payment.setType(actionTypeForMethod(normalizedMethod));
     payment.setCreatedAt(now);
     payment.setUpdatedAt(now);
     paymentRepository.saveAndFlush(payment);
@@ -340,19 +359,25 @@ public class PaymentService {
     PaymentGatewayResult gatewayResult;
     try {
       gatewayResult =
-          paymentGateway.createPaymentLink(
-              new PaymentGatewayRequest(
-                  payment.getId(),
-                  payment.getId(),
-                  payment.getAmount(),
-                  payment.getCurrency(),
-                  buildDescription(payment.getId()),
-                  appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
-                  appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
-                  booking.getPnrCode(),
-                  booking.getContactEmail(),
-                  booking.getContactPhone(),
-                  expireAt));
+          gatewayFor(normalizedMethod)
+              .createPaymentLink(
+                  new PaymentGatewayRequest(
+                      payment.getId(),
+                      payment.getId(),
+                      payment.getAmount(),
+                      payment.getCurrency(),
+                      buildDescription(payment.getId()),
+                      appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
+                      appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
+                      booking.getPnrCode(),
+                      booking.getContactEmail(),
+                      booking.getContactPhone(),
+                      expireAt,
+                      booking.getId(),
+                      providerForMethod(normalizedMethod),
+                      buildProductName(booking),
+                      buildProductDescription(booking),
+                      buildStripeMetadata(booking)));
     } catch (RuntimeException exception) {
       payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
       payment.setUpdatedAt(OffsetDateTime.now());
@@ -371,7 +396,7 @@ public class PaymentService {
     return buildCreatePaymentResult(payment, booking, expireAt);
   }
 
-  private void maybeExtendPaymentWindowOnce(BookingEntity booking, OffsetDateTime now) {
+  private void maybeExtendPaymentWindow(BookingEntity booking, OffsetDateTime now) {
     if (booking == null) {
       return;
     }
@@ -388,6 +413,7 @@ public class PaymentService {
       return; // already has >= 5 minutes remaining
     }
 
+    targetExpireAt = currentExpireAt.plusMinutes(PAYMENT_WINDOW_EXTENSION_MINUTES);
     booking.setPnrExpiresAt(targetExpireAt);
     booking.setPaymentWindowExtendedAt(now);
     booking.setUpdatedAt(now);
@@ -441,7 +467,8 @@ public class PaymentService {
             payment.getPaymentStatus(),
             expireAt,
             payment.getTransactionId(),
-            payment.getQrData()),
+            payment.getQrData(),
+            buildPaymentDetails(booking)),
         new CreatePaymentResult.PaymentActionView(
             payment.getType(),
             payment.getQrData(),
@@ -518,6 +545,9 @@ public class PaymentService {
     if (METHOD_PAYOS_QR.equalsIgnoreCase(method)) {
       return METHOD_PAYOS;
     }
+    if (METHOD_STRIPE.equalsIgnoreCase(method)) {
+      return METHOD_STRIPE_CARD;
+    }
     return method.trim().toUpperCase(Locale.ROOT);
   }
 
@@ -531,5 +561,166 @@ public class PaymentService {
   private String buildDescription(Long paymentId) {
     long compactId = paymentId % 10_000_000L;
     return "AB" + String.format("%07d", compactId);
+  }
+
+  private void assertProviderConfigured(String method) {
+    if (METHOD_PAYOS.equals(method) && !paymentProperties.isPayosConfigured()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
+    }
+    if (METHOD_STRIPE_CARD.equals(method) && !paymentProperties.isStripeConfigured()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Stripe provider is not fully configured", 500);
+    }
+  }
+
+  private PaymentGateway gatewayFor(String method) {
+    if (METHOD_STRIPE_CARD.equals(method)) {
+      return stripePaymentGateway::createCheckoutSession;
+    }
+    return payosPaymentGateway;
+  }
+
+  private String actionTypeForMethod(String method) {
+    return METHOD_STRIPE_CARD.equals(method) ? PAYMENT_ACTION_CHECKOUT : PAYMENT_ACTION_QR;
+  }
+
+  private String providerForMethod(String method) {
+    return METHOD_STRIPE_CARD.equals(method) ? METHOD_STRIPE : METHOD_PAYOS;
+  }
+
+  private void cancelWithProvider(PaymentEntity payment, String cancellationReason) {
+    if (METHOD_STRIPE_CARD.equalsIgnoreCase(payment.getPaymentMethod())) {
+      stripePaymentGateway.expireCheckoutSession(payment.getTransactionId());
+      return;
+    }
+    payosPaymentGateway.cancelPaymentLink(
+        new PaymentGateway.CancelPaymentLinkRequest(
+            payment.getId(), payment.getId(), cancellationReason));
+  }
+
+  private PaymentDetailsView buildPaymentDetails(BookingEntity booking) {
+    Optional<BookingFareHoldEntity> holdResult =
+        bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(
+            booking.getId(), List.of("HELD", "CONFIRMED"));
+    BookingFareHoldEntity hold = holdResult == null ? null : holdResult.orElse(null);
+    FlightFareEntity fare = hold == null ? null : hold.getFlightFare();
+    FlightEntity flight = fare == null ? null : fare.getFlight();
+    BigDecimal baseFare = multiply(nonNullMoney(fare == null ? null : fare.getBasePrice()), hold);
+    BigDecimal tax = multiply(nonNullMoney(fare == null ? null : fare.getTotalTaxAmount()), hold);
+    BigDecimal discount = nonNullMoney(booking.getDiscountAmount());
+    BigDecimal serviceFee =
+        nonNullMoney(bookingServiceRepository.sumPriceByBookingId(booking.getId()));
+    BigDecimal seatFee =
+        nonNullMoney(
+            passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(booking.getId()));
+    BigDecimal total = nonNullMoney(booking.getTotalAmount());
+
+    return new PaymentDetailsView(
+        buildFlightView(flight),
+        new PaymentDetailsView.PriceBreakdownView(
+            baseFare, discount, tax, serviceFee, seatFee, total, booking.getCurrency()));
+  }
+
+  private PaymentDetailsView.FlightView buildFlightView(FlightEntity flight) {
+    if (flight == null) {
+      return null;
+    }
+    AirlineEntity airline = flight.getAirline();
+    AirportEntity departure = flight.getDepartureAirport();
+    AirportEntity arrival = flight.getArrivalAirport();
+    String flightName =
+        String.join(
+                " ",
+                List.of(
+                    nullToBlank(airline == null ? null : airline.getCode()),
+                    nullToBlank(flight.getFlightNumber())))
+            .trim();
+    return new PaymentDetailsView.FlightView(
+        flight.getFlightNumber(),
+        flightName.isBlank() ? flight.getFlightNumber() : flightName,
+        airline == null ? null : airline.getName(),
+        departure == null ? null : departure.getCode(),
+        departure == null ? null : departure.getCity(),
+        departure == null ? null : departure.getName(),
+        arrival == null ? null : arrival.getCode(),
+        arrival == null ? null : arrival.getCity(),
+        arrival == null ? null : arrival.getName(),
+        flight.getFlightDate(),
+        flight.getDepartureTime(),
+        flight.getArrivalTime());
+  }
+
+  private String buildProductName(BookingEntity booking) {
+    PaymentDetailsView.FlightView flight = buildPaymentDetails(booking).flight();
+    if (flight == null || flight.flightName() == null || flight.flightName().isBlank()) {
+      return "Airline booking " + booking.getPnrCode();
+    }
+    return flight.flightName() + " - " + booking.getPnrCode();
+  }
+
+  private String buildProductDescription(BookingEntity booking) {
+    PaymentDetailsView details = buildPaymentDetails(booking);
+    PaymentDetailsView.FlightView flight = details.flight();
+    PaymentDetailsView.PriceBreakdownView price = details.price();
+    if (flight == null) {
+      return "Payment for booking " + booking.getPnrCode();
+    }
+    return nullToBlank(flight.departureCode())
+        + " to "
+        + nullToBlank(flight.arrivalCode())
+        + " - booking "
+        + booking.getPnrCode()
+        + " | Base "
+        + price.baseFare()
+        + ", discount "
+        + price.discount()
+        + ", tax "
+        + price.tax()
+        + ", services "
+        + price.serviceFee()
+        + ", seats "
+        + price.seatFee()
+        + ", total "
+        + price.total()
+        + " "
+        + price.currency();
+  }
+
+  private Map<String, String> buildStripeMetadata(BookingEntity booking) {
+    PaymentDetailsView details = buildPaymentDetails(booking);
+    PaymentDetailsView.FlightView flight = details.flight();
+    PaymentDetailsView.PriceBreakdownView price = details.price();
+    return Map.ofEntries(
+        Map.entry("pnrCode", nullToBlank(booking.getPnrCode())),
+        Map.entry("flightNumber", nullToBlank(flight == null ? null : flight.flightNumber())),
+        Map.entry("flightName", nullToBlank(flight == null ? null : flight.flightName())),
+        Map.entry("airline", nullToBlank(flight == null ? null : flight.airline())),
+        Map.entry("departureCode", nullToBlank(flight == null ? null : flight.departureCode())),
+        Map.entry("departureCity", nullToBlank(flight == null ? null : flight.departureCity())),
+        Map.entry("arrivalCode", nullToBlank(flight == null ? null : flight.arrivalCode())),
+        Map.entry("arrivalCity", nullToBlank(flight == null ? null : flight.arrivalCity())),
+        Map.entry("baseFare", price.baseFare().toPlainString()),
+        Map.entry("discount", price.discount().toPlainString()),
+        Map.entry("tax", price.tax().toPlainString()),
+        Map.entry("serviceFee", price.serviceFee().toPlainString()),
+        Map.entry("seatFee", price.seatFee().toPlainString()),
+        Map.entry("total", price.total().toPlainString()),
+        Map.entry("currency", nullToBlank(price.currency())));
+  }
+
+  private BigDecimal multiply(BigDecimal value, BookingFareHoldEntity hold) {
+    int quantity = hold == null ? 1 : Math.max(hold.getQuantity(), 1);
+    return value.multiply(BigDecimal.valueOf(quantity)).setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private BigDecimal nonNullMoney(BigDecimal value) {
+    return value == null
+        ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+        : value.setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private String nullToBlank(String value) {
+    return value == null ? "" : value;
   }
 }

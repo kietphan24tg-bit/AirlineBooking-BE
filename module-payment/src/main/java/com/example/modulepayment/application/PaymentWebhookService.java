@@ -8,6 +8,8 @@ import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
 import com.example.modulepayment.gateway.PayosWebhookSupport.NormalizedPayosWebhookEvent;
+import com.example.modulepayment.gateway.StripeWebhookSupport;
+import com.example.modulepayment.gateway.StripeWebhookSupport.NormalizedStripeWebhookEvent;
 import com.example.modulepayment.repository.PaymentRepository;
 import com.example.modulepayment.repository.PaymentWebhookEventRepository;
 import java.math.BigDecimal;
@@ -34,10 +36,16 @@ public class PaymentWebhookService {
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
   private static final String PAYMENT_STATUS_SUCCESS = "SUCCESS";
   private static final String PROVIDER_PAYOS = "PAYOS";
+  private static final String PROVIDER_STRIPE = "STRIPE";
+  private static final String STRIPE_EVENT_CHECKOUT_COMPLETED = "checkout.session.completed";
+  private static final String STRIPE_EVENT_CHECKOUT_EXPIRED = "checkout.session.expired";
+  private static final String STRIPE_EVENT_PAYMENT_FAILED = "payment_intent.payment_failed";
+  private static final String STRIPE_PAYMENT_STATUS_PAID = "paid";
 
   private final PaymentRepository paymentRepository;
   private final PaymentWebhookEventRepository paymentWebhookEventRepository;
   private final PayosWebhookSupport payosWebhookSupport;
+  private final StripeWebhookSupport stripeWebhookSupport;
   private final FlightSeatRepository flightSeatRepository;
   private final BookingFareHoldRepository bookingFareHoldRepository;
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
@@ -46,12 +54,14 @@ public class PaymentWebhookService {
       PaymentRepository paymentRepository,
       PaymentWebhookEventRepository paymentWebhookEventRepository,
       PayosWebhookSupport payosWebhookSupport,
+      StripeWebhookSupport stripeWebhookSupport,
       FlightSeatRepository flightSeatRepository,
       BookingFareHoldRepository bookingFareHoldRepository,
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
+    this.stripeWebhookSupport = stripeWebhookSupport;
     this.flightSeatRepository = flightSeatRepository;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
@@ -181,6 +191,113 @@ public class PaymentWebhookService {
         OUTCOME_PROCESSED);
   }
 
+  @Transactional
+  public void handleStripeWebhook(String rawPayload, String signatureHeader) {
+    NormalizedStripeWebhookEvent event =
+        stripeWebhookSupport.parseAndVerify(rawPayload, signatureHeader);
+    if (paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+        event.provider(), event.idempotencyKey())) {
+      return;
+    }
+
+    PaymentEntity payment = findPaymentForStripeWebhook(event);
+    if (payment == null) {
+      saveStripeAudit(
+          null,
+          null,
+          event,
+          OUTCOME_REJECTED,
+          "PAYMENT_NOT_FOUND",
+          "Payment not found for webhook");
+      return;
+    }
+
+    BookingEntity booking = payment.getBooking();
+    if (!isPending(payment)) {
+      saveStripeAudit(
+          payment,
+          booking,
+          event,
+          OUTCOME_REJECTED,
+          "PAYMENT_NOT_PENDING",
+          "Webhook rejected: payment is not pending");
+      return;
+    }
+
+    OffsetDateTime now = OffsetDateTime.now();
+    payment.setUpdatedAt(now);
+
+    if (STRIPE_EVENT_PAYMENT_FAILED.equals(event.eventType())) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      paymentRepository.save(payment);
+      saveStripeAudit(payment, booking, event, OUTCOME_FAILED_EVENT, null, null);
+      return;
+    }
+
+    if (STRIPE_EVENT_CHECKOUT_EXPIRED.equals(event.eventType())) {
+      expirePaymentAndBooking(payment, booking, now);
+      saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
+      return;
+    }
+
+    if (!STRIPE_EVENT_CHECKOUT_COMPLETED.equals(event.eventType())
+        || !STRIPE_PAYMENT_STATUS_PAID.equalsIgnoreCase(event.paymentStatus())) {
+      saveStripeAudit(
+          payment,
+          booking,
+          event,
+          OUTCOME_REJECTED,
+          "UNSUPPORTED_EVENT",
+          "Stripe webhook event is not actionable");
+      return;
+    }
+
+    if (!matchesStripeAmount(payment, event)) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      paymentRepository.save(payment);
+      saveStripeAudit(
+          payment,
+          booking,
+          event,
+          OUTCOME_REJECTED,
+          "PAYMENT_AMOUNT_MISMATCH",
+          "Webhook amount does not match payment amount");
+      return;
+    }
+
+    if (!matchesStripeCurrency(payment, event)) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      paymentRepository.save(payment);
+      saveStripeAudit(
+          payment,
+          booking,
+          event,
+          OUTCOME_REJECTED,
+          "PAYMENT_CURRENCY_MISMATCH",
+          "Webhook currency does not match payment currency");
+      return;
+    }
+
+    if (booking.getPnrExpiresAt() != null
+        && event.occurredAt().isAfter(booking.getPnrExpiresAt())) {
+      expirePaymentAndBooking(payment, booking, now);
+      saveStripeAudit(
+          payment, booking, event, OUTCOME_REJECTED, "BOOKING_EXPIRED", "Booking expired");
+      return;
+    }
+
+    confirmSuccessfulPayment(payment, booking, event.occurredAt(), event.sessionId(), now);
+    saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
+
+    log.info(
+        "Stripe webhook processed: paymentId={}, bookingId={}, transactionId={}, eventType={}, outcome={}",
+        payment.getId(),
+        booking.getId(),
+        event.sessionId(),
+        event.eventType(),
+        OUTCOME_PROCESSED);
+  }
+
   private LookupResult findPaymentForWebhook(NormalizedPayosWebhookEvent event) {
     PaymentEntity byTransactionId = null;
     PaymentEntity byOrderCode = null;
@@ -219,6 +336,38 @@ public class PaymentWebhookService {
         && payment.getCurrency().equalsIgnoreCase(event.currency());
   }
 
+  private PaymentEntity findPaymentForStripeWebhook(NormalizedStripeWebhookEvent event) {
+    PaymentEntity byTransactionId = null;
+    PaymentEntity byPaymentId = null;
+    if (event.sessionId() != null && !event.sessionId().isBlank()) {
+      byTransactionId =
+          paymentRepository.findByTransactionIdForUpdate(event.sessionId()).orElse(null);
+    }
+    if (event.paymentId() != null) {
+      byPaymentId = paymentRepository.findByIdForUpdate(event.paymentId()).orElse(null);
+    }
+    if (byTransactionId != null
+        && byPaymentId != null
+        && !Objects.equals(byTransactionId.getId(), byPaymentId.getId())) {
+      return null;
+    }
+    return byTransactionId != null ? byTransactionId : byPaymentId;
+  }
+
+  private boolean matchesStripeAmount(PaymentEntity payment, NormalizedStripeWebhookEvent event) {
+    if (event.amount() == null) {
+      return false;
+    }
+    BigDecimal eventAmount = BigDecimal.valueOf(event.amount());
+    return payment.getAmount() != null && payment.getAmount().compareTo(eventAmount) == 0;
+  }
+
+  private boolean matchesStripeCurrency(PaymentEntity payment, NormalizedStripeWebhookEvent event) {
+    return payment.getCurrency() != null
+        && event.currency() != null
+        && payment.getCurrency().equalsIgnoreCase(event.currency());
+  }
+
   private boolean bookingExpired(BookingEntity booking, NormalizedPayosWebhookEvent event) {
     return booking.getPnrExpiresAt() != null
         && event.occurredAt().isAfter(booking.getPnrExpiresAt());
@@ -227,6 +376,36 @@ public class PaymentWebhookService {
   private boolean isPending(PaymentEntity payment) {
     String status = payment.getPaymentStatus();
     return status != null && PAYMENT_STATUS_PENDING.equalsIgnoreCase(status.trim());
+  }
+
+  private void expirePaymentAndBooking(
+      PaymentEntity payment, BookingEntity booking, OffsetDateTime now) {
+    payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
+    booking.setStatus(BOOKING_STATUS_EXPIRED);
+    booking.setUpdatedAt(now);
+    bookingFareHoldRepository.releaseHeldByBookingId(booking.getId(), now);
+    flightSeatRepository.releaseReservedForBooking(booking.getId());
+    passengerSeatAssignmentRepository.releaseReservedByBookingId(booking.getId(), now);
+    paymentRepository.save(payment);
+  }
+
+  private void confirmSuccessfulPayment(
+      PaymentEntity payment,
+      BookingEntity booking,
+      OffsetDateTime paidAt,
+      String transactionId,
+      OffsetDateTime now) {
+    payment.setPaymentStatus(PAYMENT_STATUS_SUCCESS);
+    payment.setPaidAt(paidAt);
+    if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
+      payment.setTransactionId(transactionId);
+    }
+    booking.setStatus(BOOKING_STATUS_CONFIRMED);
+    booking.setUpdatedAt(now);
+    bookingFareHoldRepository.confirmHeldByBookingId(booking.getId(), now);
+    flightSeatRepository.bookReservedForBooking(booking.getId());
+    passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
+    paymentRepository.save(payment);
   }
 
   private void saveAudit(
@@ -243,6 +422,33 @@ public class PaymentWebhookService {
     audit.setBooking(booking);
     audit.setTransactionId(event.paymentLinkId());
     audit.setOrderCode(event.orderCode());
+    audit.setEventType(event.eventType());
+    audit.setProcessingStatus(processingStatus);
+    audit.setFinal(true);
+    audit.setSignature(event.signature());
+    audit.setSignatureValid(true);
+    audit.setRawPayload(event.rawPayload());
+    audit.setErrorCode(errorCode);
+    audit.setErrorMessage(errorMessage);
+    audit.setReceivedAt(event.occurredAt());
+    audit.setProcessedAt(OffsetDateTime.now());
+    paymentWebhookEventRepository.save(audit);
+  }
+
+  private void saveStripeAudit(
+      PaymentEntity payment,
+      BookingEntity booking,
+      NormalizedStripeWebhookEvent event,
+      String processingStatus,
+      String errorCode,
+      String errorMessage) {
+    PaymentWebhookEventEntity audit = new PaymentWebhookEventEntity();
+    audit.setProvider(PROVIDER_STRIPE);
+    audit.setIdempotencyKey(event.idempotencyKey());
+    audit.setPayment(payment);
+    audit.setBooking(booking);
+    audit.setTransactionId(event.sessionId() == null ? event.paymentIntentId() : event.sessionId());
+    audit.setOrderCode(event.paymentId());
     audit.setEventType(event.eventType());
     audit.setProcessingStatus(processingStatus);
     audit.setFinal(true);

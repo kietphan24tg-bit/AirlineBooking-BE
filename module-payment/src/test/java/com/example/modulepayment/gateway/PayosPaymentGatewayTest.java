@@ -86,7 +86,8 @@ class PayosPaymentGatewayTest {
                     "client-id",
                     "api-key",
                     "checksum-key",
-                    "http://localhost:" + server.getAddress().getPort())),
+                    "http://localhost:" + server.getAddress().getPort()),
+                null),
             new ObjectMapper());
 
     PaymentGateway.PaymentGatewayResult result =
@@ -142,7 +143,8 @@ class PayosPaymentGatewayTest {
                     "client-id",
                     "api-key",
                     "checksum-key",
-                    "http://localhost:" + server.getAddress().getPort())),
+                    "http://localhost:" + server.getAddress().getPort()),
+                null),
             new ObjectMapper());
 
     AppException ex =
@@ -203,7 +205,8 @@ class PayosPaymentGatewayTest {
                     "client-id",
                     "api-key",
                     "checksum-key",
-                    "http://localhost:" + server.getAddress().getPort())),
+                    "http://localhost:" + server.getAddress().getPort()),
+                null),
             new ObjectMapper());
 
     gateway.cancelPaymentLink(

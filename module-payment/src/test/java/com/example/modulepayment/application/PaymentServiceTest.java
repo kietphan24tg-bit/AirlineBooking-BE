@@ -10,17 +10,26 @@ import static org.mockito.Mockito.when;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
+import com.example.modulebooking.entity.BookingFareHoldEntity;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
+import com.example.modulebooking.repository.BookingServiceRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
+import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
+import com.example.moduleflight.entity.AirlineEntity;
+import com.example.moduleflight.entity.AirportEntity;
+import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.CancelPaymentLinkRequest;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
+import com.example.modulepayment.gateway.StripePaymentGateway;
 import com.example.modulepayment.repository.BookingRepository;
 import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,8 +46,11 @@ class PaymentServiceTest {
   @Mock private BookingRepository bookingRepository;
   @Mock private PaymentRepository paymentRepository;
   @Mock private PaymentGateway paymentGateway;
+  @Mock private StripePaymentGateway stripePaymentGateway;
   @Mock private BookingFareHoldRepository bookingFareHoldRepository;
   @Mock private FlightSeatRepository flightSeatRepository;
+  @Mock private BookingServiceRepository bookingServiceRepository;
+  @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
 
   private PaymentService paymentService;
 
@@ -49,6 +61,7 @@ class PaymentServiceTest {
             bookingRepository,
             paymentRepository,
             paymentGateway,
+            stripePaymentGateway,
             new PaymentProperties(
                 "payos",
                 "webhook-secret",
@@ -56,9 +69,12 @@ class PaymentServiceTest {
                 "http://localhost:3000/payment/cancel",
                 "http://localhost:8080",
                 new PaymentProperties.Payos(
-                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")),
+                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn"),
+                null),
             bookingFareHoldRepository,
-            flightSeatRepository);
+            flightSeatRepository,
+            bookingServiceRepository,
+            passengerSeatAssignmentRepository);
   }
 
   @Test
@@ -113,11 +129,46 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldCreateStripeCheckoutPayment() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(35));
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(stripePaymentGateway.createCheckoutSession(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "cs_test_123",
+                "https://checkout.stripe.com/c/pay/cs_test_123",
+                null,
+                "open",
+                "CHECKOUT",
+                booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        stripeService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE_CARD"));
+
+    assertEquals("STRIPE_CARD", result.payment().method());
+    assertEquals("cs_test_123", result.payment().transactionId());
+    assertEquals("CHECKOUT", result.action().type());
+    assertEquals("https://checkout.stripe.com/c/pay/cs_test_123", result.action().paymentUrl());
+  }
+
+  @Test
   void shouldRejectUnsupportedMethod() {
     AppException exception =
         assertThrows(
             AppException.class,
-            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE")));
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "MOMO")));
 
     assertEquals("UNSUPPORTED_PAYMENT_METHOD", exception.getCode());
   }
@@ -245,7 +296,7 @@ class PaymentServiceTest {
   }
 
   @Test
-  void shouldExtendBookingWindowToAtLeastFiveMinutesOnceWhenStartingPaymentLate() {
+  void shouldExtendBookingWindowByFiveMinutesWhenStartingPaymentLate() {
     OffsetDateTime start = OffsetDateTime.now();
     BookingEntity booking = booking("PENDING", start.plusMinutes(2)); // < 5 minutes remaining
 
@@ -274,7 +325,7 @@ class PaymentServiceTest {
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
 
-    assertEquals(true, booking.getPnrExpiresAt().isAfter(start.plusMinutes(4)));
+    assertEquals(start.plusMinutes(7), booking.getPnrExpiresAt());
     assertEquals(true, booking.getPaymentWindowExtendedAt() != null);
     assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
     verify(bookingFareHoldRepository)
@@ -284,9 +335,11 @@ class PaymentServiceTest {
   }
 
   @Test
-  void shouldNotExtendBookingWindowMoreThanOnce() {
+  void shouldReusePendingPaymentWithoutExtendingAgainWhenAlreadyExtended() {
     OffsetDateTime start = OffsetDateTime.now();
-    BookingEntity booking = booking("PENDING", start.plusMinutes(2));
+    BookingEntity booking = booking("PENDING", start.plusMinutes(3));
+    OffsetDateTime previousExtendedAt = start.minusMinutes(2);
+    booking.setPaymentWindowExtendedAt(previousExtendedAt);
 
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
 
@@ -295,34 +348,18 @@ class PaymentServiceTest {
     existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
 
     when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
-        .thenReturn(List.of(), List.of(existing));
-    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
-        .thenAnswer(
-            invocation -> {
-              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
-              payment.setId(5L);
-              return payment;
-            });
-    when(paymentGateway.createPaymentLink(any()))
-        .thenReturn(
-            new PaymentGatewayResult(
-                "plink_5",
-                "https://pay.payos.vn/web/5",
-                "000201PAYOSQR",
-                "PENDING",
-                "QR",
-                booking.getPnrExpiresAt()));
-    when(paymentRepository.save(any(PaymentEntity.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+        .thenReturn(List.of(existing));
 
-    paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
-    OffsetDateTime firstExpireAt = booking.getPnrExpiresAt();
-    OffsetDateTime firstExtendedAt = booking.getPaymentWindowExtendedAt();
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
 
-    paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
-
-    assertEquals(firstExpireAt, booking.getPnrExpiresAt());
-    assertEquals(firstExtendedAt, booking.getPaymentWindowExtendedAt());
+    assertEquals(5L, result.payment().id());
+    assertEquals(start.plusMinutes(3), booking.getPnrExpiresAt());
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
+    assertEquals(previousExtendedAt, booking.getPaymentWindowExtendedAt());
+    verify(paymentGateway, never()).createPaymentLink(any());
+    verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
+    verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
   }
 
   @Test
@@ -433,6 +470,36 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldReturnPaymentDetailsForStatus() {
+    OffsetDateTime expireAt = OffsetDateTime.parse("2026-04-08T15:30:00Z");
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    booking.setId(10L);
+    booking.setDiscountAmount(new BigDecimal("50000"));
+    PaymentEntity payment = paymentForBooking(5L, booking, "PENDING");
+    BookingFareHoldEntity hold = fareHold(booking);
+
+    when(paymentRepository.findByIdAndBookingUserId(5L, 7L)).thenReturn(Optional.of(payment));
+    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(
+            10L, List.of("HELD", "CONFIRMED")))
+        .thenReturn(Optional.of(hold));
+    when(bookingServiceRepository.sumPriceByBookingId(10L)).thenReturn(new BigDecimal("100000"));
+    when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
+        .thenReturn(new BigDecimal("50000"));
+
+    PaymentStatusView view = paymentService.getPaymentForUser(5L, 7L);
+
+    assertEquals("VN123", view.details().flight().flightNumber());
+    assertEquals("HAN", view.details().flight().departureCode());
+    assertEquals("SGN", view.details().flight().arrivalCode());
+    assertEquals(new BigDecimal("1000000.00"), view.details().price().baseFare());
+    assertEquals(new BigDecimal("100000.00"), view.details().price().tax());
+    assertEquals(new BigDecimal("50000.00"), view.details().price().discount());
+    assertEquals(new BigDecimal("100000.00"), view.details().price().serviceFee());
+    assertEquals(new BigDecimal("50000.00"), view.details().price().seatFee());
+    assertEquals(new BigDecimal("1200000.00"), view.details().price().total());
+  }
+
+  @Test
   void shouldRejectPaymentStatusWhenPaymentMissing() {
     when(paymentRepository.findByIdAndBookingUserId(99L, 7L)).thenReturn(Optional.empty());
 
@@ -461,10 +528,73 @@ class PaymentServiceTest {
     booking.setStatus(status);
     booking.setCurrency("VND");
     booking.setTotalAmount(new BigDecimal("1200000"));
+    booking.setDiscountAmount(BigDecimal.ZERO);
     booking.setContactEmail("user@example.com");
     booking.setContactPhone("0901234567");
     booking.setPnrExpiresAt(pnrExpiresAt);
     return booking;
+  }
+
+  private PaymentService paymentService(PaymentProperties properties) {
+    return new PaymentService(
+        bookingRepository,
+        paymentRepository,
+        paymentGateway,
+        stripePaymentGateway,
+        properties,
+        bookingFareHoldRepository,
+        flightSeatRepository,
+        bookingServiceRepository,
+        passengerSeatAssignmentRepository);
+  }
+
+  private static PaymentProperties stripeProperties() {
+    return new PaymentProperties(
+        "stripe",
+        "webhook-secret",
+        "http://localhost:3000/payment/success",
+        "http://localhost:3000/payment/cancel",
+        "http://localhost:8080",
+        new PaymentProperties.Payos(
+            "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn"),
+        new PaymentProperties.Stripe("sk_test_123", "whsec_123", "2026-02-25.clover"));
+  }
+
+  private static BookingFareHoldEntity fareHold(BookingEntity booking) {
+    AirlineEntity airline = new AirlineEntity();
+    airline.setCode("VN");
+    airline.setName("Vietnam Airlines");
+
+    AirportEntity departure = new AirportEntity();
+    departure.setCode("HAN");
+    departure.setCity("Hanoi");
+    departure.setName("Noi Bai International Airport");
+
+    AirportEntity arrival = new AirportEntity();
+    arrival.setCode("SGN");
+    arrival.setCity("Ho Chi Minh City");
+    arrival.setName("Tan Son Nhat International Airport");
+
+    FlightEntity flight = new FlightEntity();
+    flight.setAirline(airline);
+    flight.setFlightNumber("VN123");
+    flight.setDepartureAirport(departure);
+    flight.setArrivalAirport(arrival);
+    flight.setFlightDate(LocalDate.parse("2026-05-01"));
+    flight.setDepartureTime(OffsetDateTime.parse("2026-05-01T02:00:00Z"));
+    flight.setArrivalTime(OffsetDateTime.parse("2026-05-01T04:00:00Z"));
+
+    FlightFareEntity fare = new FlightFareEntity();
+    fare.setFlight(flight);
+    fare.setBasePrice(new BigDecimal("1000000"));
+    fare.setTotalTaxAmount(new BigDecimal("100000"));
+
+    BookingFareHoldEntity hold = new BookingFareHoldEntity();
+    hold.setBooking(booking);
+    hold.setFlightFare(fare);
+    hold.setQuantity(1);
+    hold.setStatus("HELD");
+    return hold;
   }
 
   private static PaymentEntity paymentForBooking(

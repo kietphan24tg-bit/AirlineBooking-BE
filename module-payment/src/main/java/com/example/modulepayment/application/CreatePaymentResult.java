@@ -14,7 +14,22 @@ public record CreatePaymentResult(PaymentView payment, PaymentActionView action)
       String status,
       OffsetDateTime expireAt,
       String transactionId,
-      String qrData) {}
+      String qrData,
+      PaymentDetailsView details) {
+
+    public PaymentView(
+        Long id,
+        Long bookingId,
+        BigDecimal amount,
+        String currency,
+        String method,
+        String status,
+        OffsetDateTime expireAt,
+        String transactionId,
+        String qrData) {
+      this(id, bookingId, amount, currency, method, status, expireAt, transactionId, qrData, null);
+    }
+  }
 
   public record PaymentActionView(
       String type, String qrData, String qrImageUrl, String paymentUrl) {}

@@ -74,6 +74,7 @@ public class SecurityConfig {
                         "/error",
                         "/api/auth/**",
                         "/api/payments/webhooks/payos",
+                        "/api/payments/webhooks/stripe",
                         "/api/flights/**",
                         "/api/airports/**",
                         "/api/services",

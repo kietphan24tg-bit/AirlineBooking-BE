@@ -11,7 +11,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = "app.payment.stripe.webhook-secret=whsec_test")
 @AutoConfigureMockMvc
 class PayosWebhookSecurityIntegrationTest {
 
@@ -42,6 +44,18 @@ class PayosWebhookSecurityIntegrationTest {
                       "signature": "invalid"
                     }
                     """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("PAYMENT_WEBHOOK_INVALID_SIGNATURE"));
+  }
+
+  @Test
+  void shouldExposeStripeWebhookWithoutAuthentication() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/payments/webhooks/stripe")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Stripe-Signature", "invalid")
+                .content("{\"id\":\"evt_invalid\",\"type\":\"checkout.session.completed\"}"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.error.code").value("PAYMENT_WEBHOOK_INVALID_SIGNATURE"));
   }

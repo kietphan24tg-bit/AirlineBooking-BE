@@ -16,6 +16,8 @@ import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
 import com.example.modulepayment.gateway.PayosWebhookSupport.NormalizedPayosWebhookEvent;
+import com.example.modulepayment.gateway.StripeWebhookSupport;
+import com.example.modulepayment.gateway.StripeWebhookSupport.NormalizedStripeWebhookEvent;
 import com.example.modulepayment.repository.PaymentRepository;
 import com.example.modulepayment.repository.PaymentWebhookEventRepository;
 import java.math.BigDecimal;
@@ -34,6 +36,7 @@ class PaymentWebhookServiceTest {
   @Mock private PaymentRepository paymentRepository;
   @Mock private PaymentWebhookEventRepository paymentWebhookEventRepository;
   @Mock private PayosWebhookSupport payosWebhookSupport;
+  @Mock private StripeWebhookSupport stripeWebhookSupport;
   @Mock private FlightSeatRepository flightSeatRepository;
   @Mock private BookingFareHoldRepository bookingFareHoldRepository;
   @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
@@ -47,6 +50,7 @@ class PaymentWebhookServiceTest {
             paymentRepository,
             paymentWebhookEventRepository,
             payosWebhookSupport,
+            stripeWebhookSupport,
             flightSeatRepository,
             bookingFareHoldRepository,
             passengerSeatAssignmentRepository);
@@ -114,6 +118,50 @@ class PaymentWebhookServiceTest {
 
     verify(paymentRepository, never()).findByTransactionIdForUpdate(any());
     verify(paymentWebhookEventRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldMarkStripeCheckoutPaymentSuccessAndConfirmBooking() {
+    NormalizedStripeWebhookEvent event =
+        new NormalizedStripeWebhookEvent(
+            "STRIPE",
+            "checkout.session.completed",
+            123L,
+            "cs_test_123",
+            "pi_test_123",
+            1200000L,
+            "vnd",
+            "paid",
+            OffsetDateTime.parse("2025-08-10T03:03:09Z"),
+            "evt_123",
+            "t=1,v1=sig",
+            "{\"id\":\"evt_123\"}");
+    PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
+    payment.setPaymentMethod("STRIPE_CARD");
+    payment.setTransactionId("cs_test_123");
+
+    when(stripeWebhookSupport.parseAndVerify("payload", "signature")).thenReturn(event);
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("STRIPE", "evt_123"))
+        .thenReturn(false);
+    when(paymentRepository.findByTransactionIdForUpdate("cs_test_123"))
+        .thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentWebhookService.handleStripeWebhook("payload", "signature");
+
+    assertEquals("SUCCESS", payment.getPaymentStatus());
+    assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    verify(bookingFareHoldRepository).confirmHeldByBookingId(any(), any());
+    verify(flightSeatRepository).bookReservedForBooking(10L);
+    verify(passengerSeatAssignmentRepository).bookReservedByBookingId(any(), any());
+    ArgumentCaptor<PaymentWebhookEventEntity> captor =
+        ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
+    verify(paymentWebhookEventRepository).save(captor.capture());
+    assertEquals("STRIPE", captor.getValue().getProvider());
+    assertEquals("evt_123", captor.getValue().getIdempotencyKey());
+    assertEquals("PROCESSED", captor.getValue().getProcessingStatus());
   }
 
   @Test

@@ -21,4 +21,35 @@ public record PaymentStatusView(
     String transactionId,
     String qrData,
     String qrImageUrl,
-    String paymentUrl) {}
+    String paymentUrl,
+    PaymentDetailsView details) {
+
+  public PaymentStatusView(
+      Long id,
+      Long bookingId,
+      BigDecimal amount,
+      String currency,
+      String method,
+      String status,
+      OffsetDateTime paidAt,
+      OffsetDateTime expireAt,
+      String transactionId,
+      String qrData,
+      String qrImageUrl,
+      String paymentUrl) {
+    this(
+        id,
+        bookingId,
+        amount,
+        currency,
+        method,
+        status,
+        paidAt,
+        expireAt,
+        transactionId,
+        qrData,
+        qrImageUrl,
+        paymentUrl,
+        null);
+  }
+}

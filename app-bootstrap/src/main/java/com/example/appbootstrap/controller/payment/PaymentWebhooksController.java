@@ -12,6 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -50,6 +51,36 @@ public class PaymentWebhooksController {
       paymentWebhookService.handlePayosWebhook(rawPayload);
     } catch (DataIntegrityViolationException ignored) {
       // Concurrent duplicate webhook with same idempotency key: treat as acknowledged for PayOS.
+    }
+    return new PaymentWebhookResponse(true);
+  }
+
+  @PostMapping(path = "/stripe", consumes = MediaType.APPLICATION_JSON_VALUE)
+  @Operation(
+      summary = "Receive Stripe webhook",
+      description = "Verifies and processes Stripe Checkout payment webhooks")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Webhook received",
+        content = @Content(schema = @Schema(implementation = PaymentWebhookResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Invalid webhook payload", content = @Content),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Invalid webhook signature",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "500",
+        description = "Webhook processing failed",
+        content = @Content)
+  })
+  PaymentWebhookResponse handleStripeWebhook(
+      @RequestBody String rawPayload,
+      @RequestHeader(name = "Stripe-Signature", required = false) String signatureHeader) {
+    try {
+      paymentWebhookService.handleStripeWebhook(rawPayload, signatureHeader);
+    } catch (DataIntegrityViolationException ignored) {
+      // Concurrent duplicate webhook with same idempotency key: treat as acknowledged for Stripe.
     }
     return new PaymentWebhookResponse(true);
   }

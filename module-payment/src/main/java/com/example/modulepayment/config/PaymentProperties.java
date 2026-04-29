@@ -13,7 +13,8 @@ public record PaymentProperties(
     String returnUrl,
     String cancelUrl,
     String iconBaseUrl,
-    Payos payos) {
+    Payos payos,
+    Stripe stripe) {
 
   public boolean isPayosConfigured() {
     return payos != null
@@ -25,5 +26,11 @@ public record PaymentProperties(
         && !payos.checksumKey().isBlank();
   }
 
+  public boolean isStripeConfigured() {
+    return stripe != null && stripe.secretKey() != null && !stripe.secretKey().isBlank();
+  }
+
   public record Payos(String clientId, String apiKey, String checksumKey, String baseUrl) {}
+
+  public record Stripe(String secretKey, String webhookSecret, String apiVersion) {}
 }

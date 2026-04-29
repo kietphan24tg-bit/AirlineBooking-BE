@@ -42,7 +42,8 @@ class PayosWebhookSupportTest {
                 "http://localhost:3000/payment/cancel",
                 "http://localhost:8080",
                 new PaymentProperties.Payos(
-                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")));
+                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn"),
+                null));
 
     PayosWebhookSupport.NormalizedPayosWebhookEvent result =
         support.parseAndVerify(
@@ -85,7 +86,8 @@ class PayosWebhookSupportTest {
                 "http://localhost:3000/payment/cancel",
                 "http://localhost:8080",
                 new PaymentProperties.Payos(
-                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn")));
+                    "client-id", "api-key", "checksum-key", "https://api-merchant.payos.vn"),
+                null));
 
     AppException exception =
         assertThrows(

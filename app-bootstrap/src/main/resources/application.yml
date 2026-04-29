@@ -140,6 +140,10 @@ app:
             api-key: ${PAYOS_API_KEY:}
             checksum-key: ${PAYOS_CHECKSUM_KEY:}
             base-url: ${PAYOS_BASE_URL:https://api-merchant.payos.vn}
+        stripe:
+            secret-key: ${STRIPE_SECRET_KEY:}
+            webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+            api-version: ${STRIPE_API_VERSION:2026-02-25.clover}
     mail:
         from: ${APP_MAIL_FROM:noreply@airline-booking.local}
     password-reset:

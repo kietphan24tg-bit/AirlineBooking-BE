@@ -8,6 +8,7 @@ import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.CreatePaymentCommand;
 import com.example.modulepayment.application.CreatePaymentResult;
+import com.example.modulepayment.application.PaymentDetailsView;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
@@ -124,7 +125,8 @@ public class PaymentsController {
         view.transactionId(),
         view.qrData(),
         view.qrImageUrl(),
-        view.paymentUrl());
+        view.paymentUrl(),
+        toStatusDetails(view.details()));
   }
 
   @PostMapping("/payments")
@@ -162,7 +164,8 @@ public class PaymentsController {
             result.payment().status(),
             result.payment().expireAt(),
             result.payment().transactionId(),
-            result.payment().qrData()),
+            result.payment().qrData(),
+            toCreateDetails(result.payment().details())),
         new CreatePaymentResponse.PaymentActionResponse(
             result.action().type(),
             result.action().qrData(),
@@ -206,6 +209,93 @@ public class PaymentsController {
         view.transactionId(),
         view.qrData(),
         view.qrImageUrl(),
-        view.paymentUrl());
+        view.paymentUrl(),
+        toStatusDetails(view.details()));
+  }
+
+  private CreatePaymentResponse.PaymentDetailsResponse toCreateDetails(PaymentDetailsView details) {
+    if (details == null) {
+      return null;
+    }
+    return new CreatePaymentResponse.PaymentDetailsResponse(
+        toCreateFlight(details.flight()), toCreatePrice(details.price()));
+  }
+
+  private PaymentStatusResponse.PaymentDetailsResponse toStatusDetails(PaymentDetailsView details) {
+    if (details == null) {
+      return null;
+    }
+    return new PaymentStatusResponse.PaymentDetailsResponse(
+        toStatusFlight(details.flight()), toStatusPrice(details.price()));
+  }
+
+  private CreatePaymentResponse.FlightResponse toCreateFlight(
+      PaymentDetailsView.FlightView flight) {
+    if (flight == null) {
+      return null;
+    }
+    return new CreatePaymentResponse.FlightResponse(
+        flight.flightNumber(),
+        flight.flightName(),
+        flight.airline(),
+        flight.departureCode(),
+        flight.departureCity(),
+        flight.departureName(),
+        flight.arrivalCode(),
+        flight.arrivalCity(),
+        flight.arrivalName(),
+        flight.flightDate(),
+        flight.departureTime(),
+        flight.arrivalTime());
+  }
+
+  private PaymentStatusResponse.FlightResponse toStatusFlight(
+      PaymentDetailsView.FlightView flight) {
+    if (flight == null) {
+      return null;
+    }
+    return new PaymentStatusResponse.FlightResponse(
+        flight.flightNumber(),
+        flight.flightName(),
+        flight.airline(),
+        flight.departureCode(),
+        flight.departureCity(),
+        flight.departureName(),
+        flight.arrivalCode(),
+        flight.arrivalCity(),
+        flight.arrivalName(),
+        flight.flightDate(),
+        flight.departureTime(),
+        flight.arrivalTime());
+  }
+
+  private CreatePaymentResponse.PriceBreakdownResponse toCreatePrice(
+      PaymentDetailsView.PriceBreakdownView price) {
+    if (price == null) {
+      return null;
+    }
+    return new CreatePaymentResponse.PriceBreakdownResponse(
+        price.baseFare(),
+        price.discount(),
+        price.tax(),
+        price.serviceFee(),
+        price.seatFee(),
+        price.total(),
+        price.currency());
+  }
+
+  private PaymentStatusResponse.PriceBreakdownResponse toStatusPrice(
+      PaymentDetailsView.PriceBreakdownView price) {
+    if (price == null) {
+      return null;
+    }
+    return new PaymentStatusResponse.PriceBreakdownResponse(
+        price.baseFare(),
+        price.discount(),
+        price.tax(),
+        price.serviceFee(),
+        price.seatFee(),
+        price.total(),
+        price.currency());
   }
 }
