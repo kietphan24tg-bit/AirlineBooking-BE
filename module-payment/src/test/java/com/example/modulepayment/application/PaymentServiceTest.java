@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -382,6 +383,115 @@ class PaymentServiceTest {
     assertEquals("https://pay.payos.vn/web/5", result.action().paymentUrl());
     assertEquals("PENDING_PAYMENT", booking.getStatus());
     verify(paymentGateway, never()).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldCancelPayosPendingPaymentWhenSwitchingToStripe() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+    existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
+    doNothing().when(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(stripePaymentGateway.createCheckoutSession(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "cs_test_123",
+                "https://checkout.stripe.com/c/pay/cs_test_123",
+                null,
+                "open",
+                "CHECKOUT",
+                expireAt));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        stripeService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE_CARD"));
+
+    assertEquals("CANCELLED", existing.getPaymentStatus());
+    assertEquals("STRIPE_CARD", result.payment().method());
+    assertEquals(123L, result.payment().id());
+    assertEquals(expireAt, result.payment().expireAt());
+    verify(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+    verify(stripePaymentGateway).createCheckoutSession(any());
+  }
+
+  @Test
+  void shouldExpireStripePendingPaymentWhenSwitchingToPayos() {
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+    existing.setPaymentMethod("STRIPE_CARD");
+    existing.setTransactionId("cs_old_123");
+    existing.setType("CHECKOUT");
+    existing.setCheckoutUrl("https://checkout.stripe.com/c/pay/cs_old_123");
+    existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
+    doNothing().when(stripePaymentGateway).expireCheckoutSession("cs_old_123");
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_123",
+                "https://pay.payos.vn/web/123",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                expireAt));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals("CANCELLED", existing.getPaymentStatus());
+    assertEquals("PAYOS", result.payment().method());
+    assertEquals(123L, result.payment().id());
+    assertEquals(expireAt, result.payment().expireAt());
+    verify(stripePaymentGateway).expireCheckoutSession("cs_old_123");
+    verify(paymentGateway).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldNotCreateNewPaymentWhenCancellingPreviousMethodFails() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(15));
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
+    doThrow(new RuntimeException("cancel failed"))
+        .when(paymentGateway)
+        .cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+
+    assertThrows(
+        RuntimeException.class,
+        () -> stripeService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE_CARD")));
+
+    assertEquals("PENDING", existing.getPaymentStatus());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+    verify(stripePaymentGateway, never()).createCheckoutSession(any());
   }
 
   @Test

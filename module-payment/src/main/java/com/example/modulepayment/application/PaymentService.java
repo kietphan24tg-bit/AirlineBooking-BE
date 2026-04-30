@@ -332,16 +332,24 @@ public class PaymentService {
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
             booking.getId(), PAYMENT_STATUS_PENDING);
-    PaymentEntity reusablePending = findReusablePending(previousPending);
+    PaymentEntity reusablePending = findReusablePending(previousPending, normalizedMethod);
     if (reusablePending != null) {
       ensureBookingPendingPayment(booking, now);
       return buildCreatePaymentResult(reusablePending, booking, expireAt);
     }
 
     for (PaymentEntity existing : previousPending) {
-      // Non-reusable PENDING payments (e.g. provider link missing) are treated as failed so that we
-      // don't block creating a new payment link for the same booking.
-      existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      if (isSamePaymentMethod(existing, normalizedMethod)) {
+        // Non-reusable PENDING payments for the requested method (e.g. provider link missing) are
+        // treated as failed so that we don't block creating a new payment link for the same
+        // booking.
+        existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      } else if (isReusablePending(existing)) {
+        cancelWithProvider(existing, "Payment method changed");
+        existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+      } else {
+        existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      }
       existing.setUpdatedAt(now);
     }
 
@@ -431,18 +439,27 @@ public class PaymentService {
     }
   }
 
-  private PaymentEntity findReusablePending(List<PaymentEntity> previousPending) {
+  private PaymentEntity findReusablePending(List<PaymentEntity> previousPending, String method) {
     if (previousPending == null || previousPending.isEmpty()) {
       return null;
     }
     // Prefer the newest payment to avoid returning a stale link.
     PaymentEntity candidate =
         previousPending.stream()
+            .filter(payment -> isSamePaymentMethod(payment, method))
             .filter(this::isReusablePending)
             .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
             .findFirst()
             .orElse(null);
     return candidate;
+  }
+
+  private boolean isSamePaymentMethod(PaymentEntity payment, String method) {
+    if (payment == null || method == null) {
+      return false;
+    }
+    String paymentMethod = payment.getPaymentMethod();
+    return paymentMethod != null && method.equalsIgnoreCase(paymentMethod.trim());
   }
 
   private boolean isReusablePending(PaymentEntity payment) {
