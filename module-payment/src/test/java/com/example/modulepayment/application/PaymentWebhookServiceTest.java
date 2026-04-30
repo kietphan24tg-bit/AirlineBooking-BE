@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.common.exception.AppException;
+import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
@@ -40,6 +41,8 @@ class PaymentWebhookServiceTest {
   @Mock private FlightSeatRepository flightSeatRepository;
   @Mock private BookingFareHoldRepository bookingFareHoldRepository;
   @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
+  @Mock private TicketIssuanceService ticketIssuanceService;
+  @Mock private BookingConfirmationNotifier bookingConfirmationNotifier;
 
   private PaymentWebhookService paymentWebhookService;
 
@@ -53,7 +56,9 @@ class PaymentWebhookServiceTest {
             stripeWebhookSupport,
             flightSeatRepository,
             bookingFareHoldRepository,
-            passengerSeatAssignmentRepository);
+            passengerSeatAssignmentRepository,
+            ticketIssuanceService,
+            bookingConfirmationNotifier);
   }
 
   @Test
@@ -88,6 +93,8 @@ class PaymentWebhookServiceTest {
     verify(bookingFareHoldRepository).confirmHeldByBookingId(any(), any());
     verify(flightSeatRepository).bookReservedForBooking(10L);
     verify(passengerSeatAssignmentRepository).bookReservedByBookingId(any(), any());
+    verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(bookingConfirmationNotifier).sendIfNeeded(10L);
     ArgumentCaptor<PaymentWebhookEventEntity> captor =
         ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
     verify(paymentWebhookEventRepository).save(captor.capture());
@@ -156,6 +163,8 @@ class PaymentWebhookServiceTest {
     verify(bookingFareHoldRepository).confirmHeldByBookingId(any(), any());
     verify(flightSeatRepository).bookReservedForBooking(10L);
     verify(passengerSeatAssignmentRepository).bookReservedByBookingId(any(), any());
+    verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(bookingConfirmationNotifier).sendIfNeeded(10L);
     ArgumentCaptor<PaymentWebhookEventEntity> captor =
         ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
     verify(paymentWebhookEventRepository).save(captor.capture());

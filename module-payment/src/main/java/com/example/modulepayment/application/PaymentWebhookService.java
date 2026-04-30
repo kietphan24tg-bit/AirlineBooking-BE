@@ -1,5 +1,6 @@
 package com.example.modulepayment.application;
 
+import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.FlightSeatRepository;
@@ -49,6 +50,8 @@ public class PaymentWebhookService {
   private final FlightSeatRepository flightSeatRepository;
   private final BookingFareHoldRepository bookingFareHoldRepository;
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
+  private final TicketIssuanceService ticketIssuanceService;
+  private final BookingConfirmationNotifier bookingConfirmationNotifier;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
@@ -57,7 +60,9 @@ public class PaymentWebhookService {
       StripeWebhookSupport stripeWebhookSupport,
       FlightSeatRepository flightSeatRepository,
       BookingFareHoldRepository bookingFareHoldRepository,
-      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
+      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
+      TicketIssuanceService ticketIssuanceService,
+      BookingConfirmationNotifier bookingConfirmationNotifier) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
@@ -65,6 +70,8 @@ public class PaymentWebhookService {
     this.flightSeatRepository = flightSeatRepository;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
+    this.ticketIssuanceService = ticketIssuanceService;
+    this.bookingConfirmationNotifier = bookingConfirmationNotifier;
   }
 
   @Transactional
@@ -180,6 +187,8 @@ public class PaymentWebhookService {
     flightSeatRepository.bookReservedForBooking(booking.getId());
     passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
+    ticketIssuanceService.issueTicketsForConfirmedBooking(booking.getId());
+    bookingConfirmationNotifier.sendIfNeeded(booking.getId());
     saveAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
 
     log.info(
@@ -406,6 +415,8 @@ public class PaymentWebhookService {
     flightSeatRepository.bookReservedForBooking(booking.getId());
     passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
+    ticketIssuanceService.issueTicketsForConfirmedBooking(booking.getId());
+    bookingConfirmationNotifier.sendIfNeeded(booking.getId());
   }
 
   private void saveAudit(

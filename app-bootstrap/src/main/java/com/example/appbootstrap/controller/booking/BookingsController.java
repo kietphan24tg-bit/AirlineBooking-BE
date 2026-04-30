@@ -3,12 +3,15 @@ package com.example.appbootstrap.controller.booking;
 import com.example.appbootstrap.application.booking.BookingAncillarySelectionService;
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
+import com.example.appbootstrap.controller.booking.dto.BookingTicketsResponse;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionRequest;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
+import com.example.modulebooking.application.BookingTicketsView;
+import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,6 +23,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,14 +40,17 @@ public class BookingsController {
   private final BookingRevalidateService bookingRevalidateService;
   private final BookingSeatAssignmentService bookingSeatAssignmentService;
   private final BookingAncillarySelectionService bookingAncillarySelectionService;
+  private final TicketIssuanceService ticketIssuanceService;
 
   public BookingsController(
       BookingRevalidateService bookingRevalidateService,
       BookingSeatAssignmentService bookingSeatAssignmentService,
-      BookingAncillarySelectionService bookingAncillarySelectionService) {
+      BookingAncillarySelectionService bookingAncillarySelectionService,
+      TicketIssuanceService ticketIssuanceService) {
     this.bookingRevalidateService = bookingRevalidateService;
     this.bookingSeatAssignmentService = bookingSeatAssignmentService;
     this.bookingAncillarySelectionService = bookingAncillarySelectionService;
+    this.ticketIssuanceService = ticketIssuanceService;
   }
 
   @PostMapping("/bookings")
@@ -70,6 +77,30 @@ public class BookingsController {
       @Valid @RequestBody CreateBookingRequest request) {
     return bookingRevalidateService.createBooking(
         principal != null ? principal.getUserId() : null, request);
+  }
+
+  @GetMapping("/bookings/{bookingId}/tickets")
+  @Operation(
+      summary = "Issue and get tickets for a confirmed booking",
+      description =
+          "Issues missing tickets idempotently, then returns the booking PNR and ticket details "
+              + "after payment webhook confirmation.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Issued tickets returned",
+        content = @Content(schema = @Schema(implementation = BookingTicketsResponse.class))),
+    @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Booking is not confirmed or tickets are not issued yet",
+        content = @Content)
+  })
+  BookingTicketsResponse getTickets(
+      @AuthenticationPrincipal AppUserPrincipal principal, @PathVariable Long bookingId) {
+    return toBookingTicketsResponse(
+        ticketIssuanceService.issueTicketsForBooking(
+            principal != null ? principal.getUserId() : null, bookingId));
   }
 
   @PutMapping("/bookings/{bookingId}/seat-assignments")
@@ -160,5 +191,30 @@ public class BookingsController {
       @Valid @RequestBody PassengerServiceSelectionRequest request) {
     return bookingAncillarySelectionService.updateServices(
         principal != null ? principal.getUserId() : null, bookingId, request);
+  }
+
+  private BookingTicketsResponse toBookingTicketsResponse(BookingTicketsView view) {
+    return new BookingTicketsResponse(
+        view.bookingId(),
+        view.pnrCode(),
+        view.tickets().stream().map(this::ticketResponse).toList());
+  }
+
+  private BookingTicketsResponse.TicketResponse ticketResponse(
+      BookingTicketsView.TicketView ticket) {
+    return new BookingTicketsResponse.TicketResponse(
+        ticket.id(),
+        ticket.ticketNumber(),
+        ticket.status(),
+        ticket.issuedAt(),
+        new BookingTicketsResponse.PassengerResponse(
+            ticket.passenger().id(),
+            ticket.passenger().firstName(),
+            ticket.passenger().lastName(),
+            ticket.passenger().passengerType()),
+        ticket.seat() == null
+            ? null
+            : new BookingTicketsResponse.SeatResponse(
+                ticket.seat().id(), ticket.seat().seatNumber()));
   }
 }
