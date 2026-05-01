@@ -13,11 +13,7 @@ public record BookingTicketsView(Long bookingId, String pnrCode, List<TicketView
       PassengerView passenger,
       SeatView seat) {}
 
-  public record PassengerView(
-      Long id,
-      String firstName,
-      String lastName,
-      String passengerType) {}
+  public record PassengerView(Long id, String firstName, String lastName, String passengerType) {}
 
   public record SeatView(Long id, String seatNumber) {}
 }

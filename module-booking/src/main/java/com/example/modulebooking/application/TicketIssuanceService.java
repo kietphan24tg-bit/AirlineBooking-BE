@@ -104,7 +104,8 @@ public class TicketIssuanceService {
     FlightFareEntity fare = fareHold.getFlightFare();
     FlightEntity flight = fare.getFlight();
     FareClassEntity fareClass = fare.getFareClass();
-    List<PassengerEntity> passengers = passengerRepository.findByBookingIdOrderById(booking.getId());
+    List<PassengerEntity> passengers =
+        passengerRepository.findByBookingIdOrderById(booking.getId());
     Map<Long, FlightSeatEntity> bookedSeats = bookedSeatByPassengerId(booking.getId());
     Set<Long> ticketedPassengerIds =
         ticketRepository.findByBookingIdWithDetails(booking.getId()).stream()
@@ -177,9 +178,7 @@ public class TicketIssuanceService {
 
   private BookingTicketsView toView(BookingEntity booking, List<TicketEntity> tickets) {
     return new BookingTicketsView(
-        booking.getId(),
-        booking.getPnrCode(),
-        tickets.stream().map(this::ticketView).toList());
+        booking.getId(), booking.getPnrCode(), tickets.stream().map(this::ticketView).toList());
   }
 
   private BookingTicketsView.TicketView ticketView(TicketEntity ticket) {
