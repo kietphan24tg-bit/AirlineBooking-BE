@@ -7,8 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.appbootstrap.config.MailProperties;
-import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingContactEntity;
+import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.TicketEntity;

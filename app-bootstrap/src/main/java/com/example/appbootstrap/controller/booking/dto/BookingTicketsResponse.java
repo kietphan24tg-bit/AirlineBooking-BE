@@ -16,10 +16,7 @@ public record BookingTicketsResponse(Long bookingId, String pnrCode, List<Ticket
       SeatResponse seat) {}
 
   public record PassengerResponse(
-      Long id,
-      String firstName,
-      String lastName,
-      String passengerType) {}
+      Long id, String firstName, String lastName, String passengerType) {}
 
   public record SeatResponse(Long id, String seatNumber) {}
 }
