@@ -52,6 +52,7 @@ public class PaymentWebhookService {
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
   private final TicketIssuanceService ticketIssuanceService;
   private final BookingConfirmationNotifier bookingConfirmationNotifier;
+  private final TicketFinancialSnapshotService ticketFinancialSnapshotService;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
@@ -62,7 +63,8 @@ public class PaymentWebhookService {
       BookingFareHoldRepository bookingFareHoldRepository,
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
       TicketIssuanceService ticketIssuanceService,
-      BookingConfirmationNotifier bookingConfirmationNotifier) {
+      BookingConfirmationNotifier bookingConfirmationNotifier,
+      TicketFinancialSnapshotService ticketFinancialSnapshotService) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
@@ -72,6 +74,7 @@ public class PaymentWebhookService {
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
     this.ticketIssuanceService = ticketIssuanceService;
     this.bookingConfirmationNotifier = bookingConfirmationNotifier;
+    this.ticketFinancialSnapshotService = ticketFinancialSnapshotService;
   }
 
   @Transactional
@@ -181,6 +184,12 @@ public class PaymentWebhookService {
     if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
       payment.setTransactionId(event.paymentLinkId());
     }
+    if (event.counterAccountBankId() != null && !event.counterAccountBankId().isBlank()) {
+      payment.setRefundCounterAccountBankId(event.counterAccountBankId());
+      payment.setRefundCounterAccountBankName(event.counterAccountBankName());
+      payment.setRefundCounterAccountName(event.counterAccountName());
+      payment.setRefundCounterAccountNumber(event.counterAccountNumber());
+    }
     booking.setStatus(BOOKING_STATUS_CONFIRMED);
     booking.setUpdatedAt(now);
     bookingFareHoldRepository.confirmHeldByBookingId(booking.getId(), now);
@@ -188,6 +197,7 @@ public class PaymentWebhookService {
     passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
     ticketIssuanceService.issueTicketsForConfirmedBooking(booking.getId());
+    ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
     bookingConfirmationNotifier.sendIfNeeded(booking.getId());
     saveAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
 
@@ -295,7 +305,8 @@ public class PaymentWebhookService {
       return;
     }
 
-    confirmSuccessfulPayment(payment, booking, event.occurredAt(), event.sessionId(), now);
+    confirmSuccessfulPayment(
+        payment, booking, event.occurredAt(), event.sessionId(), event.paymentIntentId(), now);
     saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
 
     log.info(
@@ -403,11 +414,15 @@ public class PaymentWebhookService {
       BookingEntity booking,
       OffsetDateTime paidAt,
       String transactionId,
+      String providerPaymentReference,
       OffsetDateTime now) {
     payment.setPaymentStatus(PAYMENT_STATUS_SUCCESS);
     payment.setPaidAt(paidAt);
     if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
       payment.setTransactionId(transactionId);
+    }
+    if (providerPaymentReference != null && !providerPaymentReference.isBlank()) {
+      payment.setProviderPaymentReference(providerPaymentReference);
     }
     booking.setStatus(BOOKING_STATUS_CONFIRMED);
     booking.setUpdatedAt(now);
@@ -416,6 +431,7 @@ public class PaymentWebhookService {
     passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
     ticketIssuanceService.issueTicketsForConfirmedBooking(booking.getId());
+    ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
     bookingConfirmationNotifier.sendIfNeeded(booking.getId());
   }
 

@@ -3,6 +3,10 @@ package com.example.appbootstrap.controller.booking;
 import com.example.appbootstrap.application.booking.BookingAncillarySelectionService;
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
+import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
+import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
+import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
+import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingTicketsResponse;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
@@ -13,6 +17,9 @@ import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.modulebooking.application.BookingTicketsView;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
+import com.example.modulepayment.application.BookingCancellationPreviewView;
+import com.example.modulepayment.application.BookingCancellationResultView;
+import com.example.modulepayment.application.BookingCancellationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,16 +48,19 @@ public class BookingsController {
   private final BookingSeatAssignmentService bookingSeatAssignmentService;
   private final BookingAncillarySelectionService bookingAncillarySelectionService;
   private final TicketIssuanceService ticketIssuanceService;
+  private final BookingCancellationService bookingCancellationService;
 
   public BookingsController(
       BookingRevalidateService bookingRevalidateService,
       BookingSeatAssignmentService bookingSeatAssignmentService,
       BookingAncillarySelectionService bookingAncillarySelectionService,
-      TicketIssuanceService ticketIssuanceService) {
+      TicketIssuanceService ticketIssuanceService,
+      BookingCancellationService bookingCancellationService) {
     this.bookingRevalidateService = bookingRevalidateService;
     this.bookingSeatAssignmentService = bookingSeatAssignmentService;
     this.bookingAncillarySelectionService = bookingAncillarySelectionService;
     this.ticketIssuanceService = ticketIssuanceService;
+    this.bookingCancellationService = bookingCancellationService;
   }
 
   @PostMapping("/bookings")
@@ -193,6 +203,66 @@ public class BookingsController {
         principal != null ? principal.getUserId() : null, bookingId, request);
   }
 
+  @PostMapping("/bookings/{bookingId}/cancellations/preview")
+  @Operation(
+      summary = "Preview booking ticket cancellation",
+      description =
+          "Returns passenger-level refund totals before confirming cancellation for the selected passengers.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Cancellation preview returned",
+        content =
+            @Content(schema = @Schema(implementation = BookingCancellationPreviewResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(responseCode = "404", description = "Booking or ticket not found", content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Booking or ticket is not eligible for cancellation",
+        content = @Content)
+  })
+  BookingCancellationPreviewResponse previewCancellation(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody BookingCancellationPreviewRequest request) {
+    BookingCancellationPreviewView view =
+        bookingCancellationService.preview(principal == null ? null : principal.getUserId(), bookingId, request.passengerIds());
+    return toPreviewResponse(view);
+  }
+
+  @PostMapping("/bookings/{bookingId}/cancellations")
+  @Operation(
+      summary = "Confirm booking ticket cancellation",
+      description =
+          "Refunds the selected passengers for a confirmed booking and updates tickets, seats, and services.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Cancellation processed",
+        content = @Content(schema = @Schema(implementation = BookingCancellationResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(responseCode = "404", description = "Booking or ticket not found", content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Cancellation cannot be completed",
+        content = @Content)
+  })
+  BookingCancellationResponse cancelBooking(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody BookingCancellationRequest request) {
+    BookingCancellationResultView view =
+        bookingCancellationService.cancel(
+            principal == null ? null : principal.getUserId(),
+            bookingId,
+            request.passengerIds(),
+            request.reason(),
+            request.idempotencyKey(),
+            request.expectedNetRefund(),
+            request.expectedRefundFee());
+    return toCancellationResponse(view);
+  }
+
   private BookingTicketsResponse toBookingTicketsResponse(BookingTicketsView view) {
     return new BookingTicketsResponse(
         view.bookingId(),
@@ -216,5 +286,75 @@ public class BookingsController {
             ? null
             : new BookingTicketsResponse.SeatResponse(
                 ticket.seat().id(), ticket.seat().seatNumber()));
+  }
+
+  private BookingCancellationPreviewResponse toPreviewResponse(BookingCancellationPreviewView view) {
+    return new BookingCancellationPreviewResponse(
+        view.bookingId(),
+        view.bookingStatus(),
+        view.paymentStatus(),
+        view.currency(),
+        view.items().stream()
+            .map(
+                item ->
+                    new BookingCancellationPreviewResponse.ItemResponse(
+                        item.ticketId(),
+                        item.passengerId(),
+                        item.passengerType(),
+                        item.passengerName(),
+                        item.eligible(),
+                        item.reason(),
+                        item.fareGross(),
+                        item.promoAllocated(),
+                        item.fareNet(),
+                        item.seatRefund(),
+                        item.serviceRefund(),
+                        item.refundFee(),
+                        item.netRefund()))
+            .toList(),
+        new BookingCancellationPreviewResponse.SummaryResponse(
+            view.summary().fareGross(),
+            view.summary().promoAllocated(),
+            view.summary().fareNet(),
+            view.summary().seatRefund(),
+            view.summary().serviceRefund(),
+            view.summary().refundFee(),
+            view.summary().netRefund()));
+  }
+
+  private BookingCancellationResponse toCancellationResponse(BookingCancellationResultView view) {
+    return new BookingCancellationResponse(
+        view.cancellationId(),
+        view.refundStatus(),
+        view.provider(),
+        view.providerRefundId(),
+        view.bookingStatus(),
+        view.paymentStatus(),
+        view.currency(),
+        view.items().stream()
+            .map(
+                item ->
+                    new BookingCancellationResponse.ItemResponse(
+                        item.ticketId(),
+                        item.passengerId(),
+                        item.passengerType(),
+                        item.passengerName(),
+                        item.ticketStatus(),
+                        item.fareGross(),
+                        item.promoAllocated(),
+                        item.fareNet(),
+                        item.seatRefund(),
+                        item.serviceRefund(),
+                        item.refundFee(),
+                        item.netRefund()))
+            .toList(),
+        new BookingCancellationResponse.SummaryResponse(
+            view.summary().fareGross(),
+            view.summary().promoAllocated(),
+            view.summary().fareNet(),
+            view.summary().seatRefund(),
+            view.summary().serviceRefund(),
+            view.summary().refundFee(),
+            view.summary().netRefund()));
   }
 }

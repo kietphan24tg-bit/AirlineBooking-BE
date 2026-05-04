@@ -75,6 +75,10 @@ public class PayosWebhookSupport {
           requireNonBlank(webhookData.paymentLinkId(), "data.paymentLinkId"),
           webhookData.amount(),
           requireNonBlank(webhookData.currency(), "data.currency"),
+          webhookData.counterAccountBankId(),
+          webhookData.counterAccountBankName(),
+          webhookData.counterAccountName(),
+          webhookData.counterAccountNumber(),
           occurredAt,
           signature,
           rawPayload);
@@ -196,6 +200,10 @@ public class PayosWebhookSupport {
       String paymentLinkId,
       Long amount,
       String currency,
+      String counterAccountBankId,
+      String counterAccountBankName,
+      String counterAccountName,
+      String counterAccountNumber,
       OffsetDateTime occurredAt,
       String signature,
       String rawPayload) {

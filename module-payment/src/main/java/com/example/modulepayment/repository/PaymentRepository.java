@@ -41,5 +41,28 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
   List<PaymentEntity> findAllByBookingIdAndPaymentStatusForUpdate(
       @Param("bookingId") Long bookingId, @Param("status") String status);
 
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      where p.booking.id = :bookingId
+        and p.paymentStatus in :statuses
+      order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
+      """)
+  List<PaymentEntity> findByBookingIdAndPaymentStatusInOrderByLatest(
+      @Param("bookingId") Long bookingId, @Param("statuses") List<String> statuses);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      where p.booking.id = :bookingId
+        and p.paymentStatus in :statuses
+      order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
+      """)
+  List<PaymentEntity> findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+      @Param("bookingId") Long bookingId, @Param("statuses") List<String> statuses);
+
   boolean existsByBookingIdAndPaymentStatus(Long bookingId, String paymentStatus);
 }

@@ -14,6 +14,12 @@ import org.springframework.data.repository.query.Param;
 public interface PassengerSeatAssignmentRepository
     extends JpaRepository<PassengerSeatAssignmentEntity, Long> {
 
+  interface PassengerSeatSurchargeView {
+    Long getPassengerId();
+
+    BigDecimal getTotalSurcharge();
+  }
+
   boolean existsByPassengerIdAndStatusIn(Long passengerId, Collection<String> statuses);
 
   boolean existsByFlightSeatIdAndStatusIn(Long flightSeatId, Collection<String> statuses);
@@ -32,6 +38,22 @@ public interface PassengerSeatAssignmentRepository
       """)
   List<PassengerSeatAssignmentEntity> findByBookingIdAndStatusIn(
       @Param("bookingId") Long bookingId, @Param("statuses") Collection<String> statuses);
+
+  @Query(
+      """
+      select psa
+      from PassengerSeatAssignmentEntity psa
+        join fetch psa.passenger
+        join fetch psa.flightSeat
+      where psa.booking.id = :bookingId
+        and psa.passenger.id in :passengerIds
+        and psa.status in :statuses
+      order by psa.id
+      """)
+  List<PassengerSeatAssignmentEntity> findByBookingIdAndPassengerIdInAndStatusIn(
+      @Param("bookingId") Long bookingId,
+      @Param("passengerIds") Collection<Long> passengerIds,
+      @Param("statuses") Collection<String> statuses);
 
   @Query(
       """
@@ -56,6 +78,17 @@ public interface PassengerSeatAssignmentRepository
         and psa.status in ('RESERVED', 'BOOKED')
       """)
   BigDecimal sumActiveSurchargeByBookingId(@Param("bookingId") Long bookingId);
+
+  @Query(
+      """
+      select psa.passenger.id as passengerId, coalesce(sum(psa.surchargeAmount), 0) as totalSurcharge
+      from PassengerSeatAssignmentEntity psa
+      where psa.booking.id = :bookingId
+        and psa.status = 'BOOKED'
+      group by psa.passenger.id
+      """)
+  List<PassengerSeatSurchargeView> sumBookedSurchargeByBookingIdGroupedByPassenger(
+      @Param("bookingId") Long bookingId);
 
   @Modifying
   @Query(

@@ -43,6 +43,7 @@ class PaymentWebhookServiceTest {
   @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
   @Mock private TicketIssuanceService ticketIssuanceService;
   @Mock private BookingConfirmationNotifier bookingConfirmationNotifier;
+  @Mock private TicketFinancialSnapshotService ticketFinancialSnapshotService;
 
   private PaymentWebhookService paymentWebhookService;
 
@@ -58,7 +59,8 @@ class PaymentWebhookServiceTest {
             bookingFareHoldRepository,
             passengerSeatAssignmentRepository,
             ticketIssuanceService,
-            bookingConfirmationNotifier);
+            bookingConfirmationNotifier,
+            ticketFinancialSnapshotService);
   }
 
   @Test
@@ -71,6 +73,10 @@ class PaymentWebhookServiceTest {
             "plink_123",
             1200000L,
             "VND",
+            "970415",
+            "VietinBank",
+            "NGUYEN VAN A",
+            "0123456789",
             OffsetDateTime.parse("2025-08-10T03:03:09Z"),
             "signature",
             "{\"code\":\"00\"}");
@@ -94,6 +100,7 @@ class PaymentWebhookServiceTest {
     verify(flightSeatRepository).bookReservedForBooking(10L);
     verify(passengerSeatAssignmentRepository).bookReservedByBookingId(any(), any());
     verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(ticketFinancialSnapshotService).ensureSnapshotsForBooking(payment.getBooking());
     verify(bookingConfirmationNotifier).sendIfNeeded(10L);
     ArgumentCaptor<PaymentWebhookEventEntity> captor =
         ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
@@ -112,6 +119,10 @@ class PaymentWebhookServiceTest {
             "plink_123",
             1200000L,
             "VND",
+            null,
+            null,
+            null,
+            null,
             OffsetDateTime.parse("2025-08-10T03:03:09Z"),
             "signature",
             "{\"code\":\"00\"}");
@@ -125,6 +136,7 @@ class PaymentWebhookServiceTest {
 
     verify(paymentRepository, never()).findByTransactionIdForUpdate(any());
     verify(paymentWebhookEventRepository, never()).save(any());
+    verify(ticketFinancialSnapshotService, never()).ensureSnapshotsForBooking(any(BookingEntity.class));
   }
 
   @Test
@@ -164,6 +176,7 @@ class PaymentWebhookServiceTest {
     verify(flightSeatRepository).bookReservedForBooking(10L);
     verify(passengerSeatAssignmentRepository).bookReservedByBookingId(any(), any());
     verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(ticketFinancialSnapshotService).ensureSnapshotsForBooking(payment.getBooking());
     verify(bookingConfirmationNotifier).sendIfNeeded(10L);
     ArgumentCaptor<PaymentWebhookEventEntity> captor =
         ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
@@ -183,6 +196,10 @@ class PaymentWebhookServiceTest {
             "plink_123",
             1200000L,
             "VND",
+            null,
+            null,
+            null,
+            null,
             OffsetDateTime.parse("2025-08-10T03:03:09Z"),
             "signature",
             "{\"code\":\"00\"}");
@@ -214,6 +231,10 @@ class PaymentWebhookServiceTest {
             "plink_123",
             1200000L,
             "VND",
+            null,
+            null,
+            null,
+            null,
             OffsetDateTime.parse("2025-08-10T03:03:09Z"),
             "signature",
             "{\"code\":\"00\"}");
@@ -249,6 +270,10 @@ class PaymentWebhookServiceTest {
             "plink_123",
             1200000L,
             "VND",
+            null,
+            null,
+            null,
+            null,
             OffsetDateTime.parse("2025-08-10T03:03:09Z"),
             "signature",
             "{\"code\":\"01\"}");

@@ -46,6 +46,21 @@ public class PaymentEntity {
   @Column(name = "transaction_id", unique = true, length = 100)
   private String transactionId;
 
+  @Column(name = "provider_payment_reference", length = 255)
+  private String providerPaymentReference;
+
+  @Column(name = "refund_counter_account_bank_id", length = 50)
+  private String refundCounterAccountBankId;
+
+  @Column(name = "refund_counter_account_bank_name", length = 255)
+  private String refundCounterAccountBankName;
+
+  @Column(name = "refund_counter_account_name", length = 255)
+  private String refundCounterAccountName;
+
+  @Column(name = "refund_counter_account_number", length = 100)
+  private String refundCounterAccountNumber;
+
   @Column(name = "qr_data", columnDefinition = "text")
   private String qrData;
 

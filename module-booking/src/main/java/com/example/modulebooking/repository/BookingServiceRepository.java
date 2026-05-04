@@ -12,6 +12,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BookingServiceRepository extends JpaRepository<BookingServiceEntity, Long> {
 
+  interface PassengerServiceTotalView {
+    Long getPassengerId();
+
+    BigDecimal getTotalPrice();
+  }
+
   List<BookingServiceEntity> findAllByBookingId(Long bookingId);
 
   void deleteByBookingIdAndPassengerIdIn(Long bookingId, Collection<Long> passengerIds);
@@ -23,4 +29,14 @@ public interface BookingServiceRepository extends JpaRepository<BookingServiceEn
       where bs.booking.id = :bookingId
       """)
   BigDecimal sumPriceByBookingId(@Param("bookingId") Long bookingId);
+
+  @Query(
+      """
+      select bs.passenger.id as passengerId, coalesce(sum(bs.price), 0) as totalPrice
+      from BookingServiceEntity bs
+      where bs.booking.id = :bookingId
+      group by bs.passenger.id
+      """)
+  List<PassengerServiceTotalView> sumPriceByBookingIdGroupedByPassenger(
+      @Param("bookingId") Long bookingId);
 }

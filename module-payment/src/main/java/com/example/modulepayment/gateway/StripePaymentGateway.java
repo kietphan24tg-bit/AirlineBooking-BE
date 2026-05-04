@@ -2,9 +2,11 @@ package com.example.modulepayment.gateway;
 
 import com.example.common.exception.AppException;
 import com.example.modulepayment.config.PaymentProperties;
+import com.stripe.model.Refund;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -142,6 +144,57 @@ public class StripePaymentGateway {
     }
   }
 
+  public String resolvePaymentIntent(String sessionId) {
+    if (!paymentProperties.isStripeConfigured()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Stripe provider is not fully configured", 500);
+    }
+    if (sessionId == null || sessionId.isBlank()) {
+      throw new AppException(
+          "REFUND_PAYMENT_REFERENCE_MISSING", "Stripe session id is required", 409);
+    }
+    try {
+      Session session = Session.retrieve(sessionId, requestOptions());
+      String paymentIntentId = session.getPaymentIntent();
+      if (paymentIntentId == null || paymentIntentId.isBlank()) {
+        throw new AppException(
+            "REFUND_PAYMENT_REFERENCE_MISSING",
+            "Stripe payment intent is not available for refund",
+            409);
+      }
+      return paymentIntentId;
+    } catch (StripeException exception) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_ERROR", "Stripe rejected payment reference lookup", 502);
+    }
+  }
+
+  public RefundResult createRefund(
+      String paymentIntentId, BigDecimal amount, String currency, String reason) {
+    if (!paymentProperties.isStripeConfigured()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Stripe provider is not fully configured", 500);
+    }
+    if (paymentIntentId == null || paymentIntentId.isBlank()) {
+      throw new AppException(
+          "REFUND_PAYMENT_REFERENCE_MISSING", "Stripe payment intent is required", 409);
+    }
+    try {
+      RefundCreateParams.Builder params =
+          RefundCreateParams.builder()
+              .setPaymentIntent(paymentIntentId)
+              .setAmount(toStripeAmount(amount, currency))
+              .setReason(RefundCreateParams.Reason.REQUESTED_BY_CUSTOMER);
+      if (reason != null && !reason.isBlank()) {
+        params.putMetadata("reason", reason.trim());
+      }
+      Refund refund = Refund.create(params.build(), requestOptions());
+      return new RefundResult(refund.getId(), refund.getStatus());
+    } catch (StripeException exception) {
+      throw new AppException("PAYMENT_PROVIDER_ERROR", "Stripe rejected refund request", 502);
+    }
+  }
+
   static long toStripeAmount(BigDecimal amount, String currency) {
     if (amount == null) {
       throw new AppException("INVALID_PAYMENT_AMOUNT", "Payment amount is required", 400);
@@ -178,4 +231,6 @@ public class StripePaymentGateway {
   private static String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value;
   }
+
+  public record RefundResult(String refundId, String status) {}
 }
