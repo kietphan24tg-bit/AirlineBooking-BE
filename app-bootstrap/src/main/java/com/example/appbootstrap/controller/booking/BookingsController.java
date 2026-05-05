@@ -226,7 +226,8 @@ public class BookingsController {
       @PathVariable Long bookingId,
       @Valid @RequestBody BookingCancellationPreviewRequest request) {
     BookingCancellationPreviewView view =
-        bookingCancellationService.preview(principal == null ? null : principal.getUserId(), bookingId, request.passengerIds());
+        bookingCancellationService.preview(
+            principal == null ? null : principal.getUserId(), bookingId, request.ticketIds());
     return toPreviewResponse(view);
   }
 
@@ -255,7 +256,7 @@ public class BookingsController {
         bookingCancellationService.cancel(
             principal == null ? null : principal.getUserId(),
             bookingId,
-            request.passengerIds(),
+            request.ticketIds(),
             request.reason(),
             request.idempotencyKey(),
             request.expectedNetRefund(),

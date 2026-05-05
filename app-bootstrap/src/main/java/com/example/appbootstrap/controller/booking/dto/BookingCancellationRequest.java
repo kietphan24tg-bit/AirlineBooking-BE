@@ -9,9 +9,9 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record BookingCancellationRequest(
-    @NotEmpty(message = "passengerIds is required")
-        List<@NotNull(message = "passengerIds contains null") @Positive(message = "passengerId must be positive") Long>
-            passengerIds,
+    @NotEmpty(message = "ticketIds is required")
+        List<@NotNull(message = "ticketIds contains null") @Positive(message = "ticketId must be positive") Long>
+            ticketIds,
     String reason,
     @NotBlank(message = "idempotencyKey is required") String idempotencyKey,
     @NotNull(message = "expectedNetRefund is required")

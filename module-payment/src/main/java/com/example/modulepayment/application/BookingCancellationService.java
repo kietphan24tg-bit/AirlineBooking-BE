@@ -95,17 +95,15 @@ public class BookingCancellationService {
   }
 
   @Transactional
-  public BookingCancellationPreviewView preview(Long userId, Long bookingId, List<Long> passengerIds) {
-    requireUser(userId);
-    List<Long> normalizedPassengerIds = normalizePassengerIds(passengerIds);
+  public BookingCancellationPreviewView preview(Long userId, Long bookingId, List<Long> ticketIds) {
+    List<Long> normalizedTicketIds = normalizeTicketIds(ticketIds);
     ticketIssuanceService.issueTicketsForBooking(userId, bookingId);
 
-    BookingEntity booking = requireBookingForUser(bookingId, userId, false);
+    BookingEntity booking = requirePreviewBooking(bookingId, userId);
     validateBookingCancellable(booking);
     PaymentEntity payment = requireRefundablePayment(booking.getId(), false);
     ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
-    PreparedCancellation prepared =
-        prepareCancellation(booking, payment, normalizedPassengerIds, false);
+    PreparedCancellation prepared = preparePreviewCancellation(booking, payment, normalizedTicketIds);
     return prepared.preview();
   }
 
@@ -113,7 +111,7 @@ public class BookingCancellationService {
   public BookingCancellationResultView cancel(
       Long userId,
       Long bookingId,
-      List<Long> passengerIds,
+      List<Long> ticketIds,
       String reason,
       String idempotencyKey,
       BigDecimal expectedNetRefund,
@@ -122,10 +120,10 @@ public class BookingCancellationService {
     if (!StringUtils.hasText(idempotencyKey)) {
       throw new AppException("VALIDATION_FAILED", "idempotencyKey is required", 400);
     }
-    List<Long> normalizedPassengerIds = normalizePassengerIds(passengerIds);
+    List<Long> normalizedTicketIds = normalizeTicketIds(ticketIds);
     String normalizedReason = normalizeReason(reason);
     String requestHash =
-        requestHash(normalizedPassengerIds, normalizedReason, expectedNetRefund, expectedRefundFee);
+        requestHash(normalizedTicketIds, normalizedReason, expectedNetRefund, expectedRefundFee);
 
     BookingCancellationEntity existing =
         bookingCancellationRepository
@@ -147,8 +145,7 @@ public class BookingCancellationService {
     validateBookingCancellable(booking);
     PaymentEntity payment = requireRefundablePayment(booking.getId(), true);
     ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
-    PreparedCancellation prepared =
-        prepareCancellation(booking, payment, normalizedPassengerIds, true);
+    PreparedCancellation prepared = prepareCancellation(booking, payment, normalizedTicketIds, true);
 
     validateExpectedTotals(prepared.preview(), expectedNetRefund, expectedRefundFee);
 
@@ -191,18 +188,15 @@ public class BookingCancellationService {
   }
 
   private PreparedCancellation prepareCancellation(
-      BookingEntity booking, PaymentEntity payment, List<Long> passengerIds, boolean forUpdate) {
+      BookingEntity booking, PaymentEntity payment, List<Long> ticketIds, boolean forUpdate) {
     List<TicketEntity> selectedTickets =
         forUpdate
-            ? ticketRepository.findByBookingIdAndPassengerIdInWithDetailsForUpdate(
-                booking.getId(), passengerIds)
-            : ticketRepository.findByBookingIdWithDetails(booking.getId()).stream()
-                .filter(ticket -> passengerIds.contains(ticket.getPassenger().getId()))
-                .sorted(Comparator.comparing(TicketEntity::getId))
-                .toList();
-    if (selectedTickets.size() != passengerIds.size()) {
+            ? ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(
+                booking.getId(), ticketIds)
+            : ticketRepository.findByBookingIdAndTicketIdInWithDetails(booking.getId(), ticketIds);
+    if (selectedTickets.size() != ticketIds.size()) {
       throw new AppException(
-          "TICKET_NOT_FOUND", "One or more selected passengers do not have a ticket", 404);
+          "TICKET_NOT_FOUND", "One or more selected tickets do not belong to this booking", 404);
     }
 
     Map<Long, TicketFinancialSnapshotEntity> snapshotByTicketId =
@@ -283,6 +277,102 @@ public class BookingCancellationService {
                 refundFee,
                 netRefund));
     return new PreparedCancellation(booking, payment, selectedTickets, preview);
+  }
+
+  private PreparedCancellation preparePreviewCancellation(
+      BookingEntity booking, PaymentEntity payment, List<Long> ticketIds) {
+    List<TicketEntity> selectedTickets =
+        ticketRepository.findByBookingIdAndTicketIdInWithDetails(booking.getId(), ticketIds);
+    if (selectedTickets.size() != ticketIds.size()) {
+      throw new AppException(
+          "TICKET_NOT_FOUND", "One or more selected tickets do not belong to this booking", 404);
+    }
+    return prepareCancellationPreviewFromTickets(booking, payment, selectedTickets);
+  }
+
+  private PreparedCancellation prepareCancellationPreviewFromTickets(
+      BookingEntity booking, PaymentEntity payment, List<TicketEntity> selectedTickets) {
+    List<TicketEntity> orderedTickets =
+        selectedTickets.stream().sorted(Comparator.comparing(TicketEntity::getId)).toList();
+
+    Map<Long, TicketFinancialSnapshotEntity> snapshotByTicketId =
+        ticketFinancialSnapshotRepository.findByBookingIdWithDetails(booking.getId()).stream()
+            .collect(
+                LinkedHashMap::new,
+                (map, snapshot) -> map.put(snapshot.getTicket().getId(), snapshot),
+                Map::putAll);
+
+    List<BookingCancellationPreviewView.ItemView> items = new ArrayList<>();
+    BigDecimal fareGross = ZERO;
+    BigDecimal promoAllocated = ZERO;
+    BigDecimal fareNet = ZERO;
+    BigDecimal seatRefund = ZERO;
+    BigDecimal serviceRefund = ZERO;
+    BigDecimal refundFee = ZERO;
+    BigDecimal netRefund = ZERO;
+
+    for (TicketEntity ticket : orderedTickets) {
+      validateTicketCancellable(ticket);
+      TicketFinancialSnapshotEntity snapshot = snapshotByTicketId.get(ticket.getId());
+      if (snapshot == null) {
+        throw new AppException(
+            "CANCELLATION_SNAPSHOT_MISSING",
+            "Ticket financial snapshot is missing",
+            409);
+      }
+      if (!snapshot.isRefundable()) {
+        throw new AppException(
+            "TICKET_NOT_REFUNDABLE", "Selected ticket is not refundable", 409);
+      }
+      BigDecimal itemNetRefund =
+          normalizeMoney(
+              snapshot
+                  .getFareNetAmount()
+                  .add(snapshot.getSeatRefundAmount())
+                  .add(snapshot.getServiceRefundAmount())
+                  .subtract(snapshot.getRefundFeeAmount()));
+      String passengerName =
+          ticket.getPassenger().getFirstName() + " " + ticket.getPassenger().getLastName();
+      items.add(
+          new BookingCancellationPreviewView.ItemView(
+              ticket.getId(),
+              ticket.getPassenger().getId(),
+              ticket.getPassenger().getPassengerType(),
+              passengerName.trim(),
+              true,
+              null,
+              snapshot.getFareGrossAmount(),
+              snapshot.getPromoAllocatedAmount(),
+              snapshot.getFareNetAmount(),
+              snapshot.getSeatRefundAmount(),
+              snapshot.getServiceRefundAmount(),
+              snapshot.getRefundFeeAmount(),
+              itemNetRefund));
+      fareGross = normalizeMoney(fareGross.add(snapshot.getFareGrossAmount()));
+      promoAllocated = normalizeMoney(promoAllocated.add(snapshot.getPromoAllocatedAmount()));
+      fareNet = normalizeMoney(fareNet.add(snapshot.getFareNetAmount()));
+      seatRefund = normalizeMoney(seatRefund.add(snapshot.getSeatRefundAmount()));
+      serviceRefund = normalizeMoney(serviceRefund.add(snapshot.getServiceRefundAmount()));
+      refundFee = normalizeMoney(refundFee.add(snapshot.getRefundFeeAmount()));
+      netRefund = normalizeMoney(netRefund.add(itemNetRefund));
+    }
+
+    BookingCancellationPreviewView preview =
+        new BookingCancellationPreviewView(
+            booking.getId(),
+            booking.getStatus(),
+            payment.getPaymentStatus(),
+            payment.getCurrency(),
+            items,
+            new BookingCancellationPreviewView.SummaryView(
+                fareGross,
+                promoAllocated,
+                fareNet,
+                seatRefund,
+                serviceRefund,
+                refundFee,
+                netRefund));
+    return new PreparedCancellation(booking, payment, orderedTickets, preview);
   }
 
   private void applySuccessfulCancellation(
@@ -445,6 +535,15 @@ public class BookingCancellationService {
         .orElseThrow(() -> new AppException("BOOKING_NOT_FOUND", "Booking not found", 404));
   }
 
+  private BookingEntity requirePreviewBooking(Long bookingId, Long userId) {
+    if (userId != null) {
+      return requireBookingForUser(bookingId, userId, false);
+    }
+    return bookingRepository
+        .findById(bookingId)
+        .orElseThrow(() -> new AppException("BOOKING_NOT_FOUND", "Booking not found", 404));
+  }
+
   private void validateBookingCancellable(BookingEntity booking) {
     String status = normalize(booking.getStatus());
     if (BOOKING_STATUS_CHECKED_IN_LOCKED.equals(status)) {
@@ -457,20 +556,20 @@ public class BookingCancellationService {
     }
   }
 
-  private List<Long> normalizePassengerIds(Collection<Long> passengerIds) {
-    if (passengerIds == null || passengerIds.isEmpty()) {
-      throw new AppException("VALIDATION_FAILED", "passengerIds is required", 400);
+  private List<Long> normalizeTicketIds(Collection<Long> ticketIds) {
+    if (ticketIds == null || ticketIds.isEmpty()) {
+      throw new AppException("VALIDATION_FAILED", "ticketIds is required", 400);
     }
     List<Long> normalized = new ArrayList<>();
     Set<Long> seen = new HashSet<>();
-    for (Long passengerId : passengerIds) {
-      if (passengerId == null || passengerId <= 0) {
-        throw new AppException("VALIDATION_FAILED", "passengerIds must be positive", 400);
+    for (Long ticketId : ticketIds) {
+      if (ticketId == null || ticketId <= 0) {
+        throw new AppException("VALIDATION_FAILED", "ticketIds must be positive", 400);
       }
-      if (!seen.add(passengerId)) {
-        throw new AppException("VALIDATION_FAILED", "passengerIds must be unique", 400);
+      if (!seen.add(ticketId)) {
+        throw new AppException("VALIDATION_FAILED", "ticketIds must be unique", 400);
       }
-      normalized.add(passengerId);
+      normalized.add(ticketId);
     }
     normalized.sort(Long::compareTo);
     return normalized;
@@ -491,12 +590,12 @@ public class BookingCancellationService {
   }
 
   private String requestHash(
-      List<Long> passengerIds,
+      List<Long> ticketIds,
       String reason,
       BigDecimal expectedNetRefund,
       BigDecimal expectedRefundFee) {
     String payload =
-        passengerIds.stream().map(String::valueOf).collect(Collectors.joining(","))
+        ticketIds.stream().map(String::valueOf).collect(Collectors.joining(","))
             + "|"
             + (reason == null ? "" : reason)
             + "|"

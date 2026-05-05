@@ -7,9 +7,11 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 
 import com.example.common.exception.AppException;
 import com.example.modulebooking.application.TicketIssuanceService;
@@ -51,6 +53,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
 
 @ExtendWith(MockitoExtension.class)
 class BookingCancellationServiceTest {
@@ -87,11 +90,14 @@ class BookingCancellationServiceTest {
             ticketFinancialSnapshotService,
             paymentRefundService);
 
-    when(bookingRepository.save(any(BookingEntity.class)))
+    Mockito.lenient()
+        .when(bookingRepository.save(any(BookingEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, BookingEntity.class));
-    when(paymentRepository.save(any(PaymentEntity.class)))
+    Mockito.lenient()
+        .when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
-    when(bookingCancellationRepository.save(any(BookingCancellationEntity.class)))
+    Mockito.lenient()
+        .when(bookingCancellationRepository.save(any(BookingCancellationEntity.class)))
         .thenAnswer(
             invocation -> {
               BookingCancellationEntity cancellation =
@@ -164,13 +170,14 @@ class BookingCancellationServiceTest {
             true);
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
-    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(10L, anyList()))
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(eq(10L), anyList()))
         .thenReturn(List.of(payment));
-    when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(adultTicket, childTicket));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(7001L)))
+        .thenReturn(List.of(adultTicket));
     when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
         .thenReturn(List.of(adultSnapshot, childSnapshot));
 
-    BookingCancellationPreviewView result = service.preview(7L, 10L, List.of(1001L));
+    BookingCancellationPreviewView result = service.preview(7L, 10L, List.of(7001L));
 
     assertEquals(10L, result.bookingId());
     assertEquals("CONFIRMED", result.bookingStatus());
@@ -239,9 +246,9 @@ class BookingCancellationServiceTest {
     when(bookingCancellationRepository.findByBookingIdAndIdempotencyKeyWithItems(10L, "idem-1"))
         .thenReturn(Optional.empty());
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
-    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(10L, anyList()))
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(eq(10L), anyList()))
         .thenReturn(List.of(payment));
-    when(ticketRepository.findByBookingIdAndPassengerIdInWithDetailsForUpdate(10L, List.of(1001L)))
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(10L, List.of(7001L)))
         .thenReturn(List.of(cancelledTicket));
     when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
         .thenReturn(List.of(cancelledSnapshot, remainingSnapshot));
@@ -263,7 +270,7 @@ class BookingCancellationServiceTest {
         service.cancel(
             7L,
             10L,
-            List.of(1001L),
+            List.of(7001L),
             "Need to cancel",
             "idem-1",
             new BigDecimal("820000"),
@@ -312,9 +319,9 @@ class BookingCancellationServiceTest {
             10L, "idem-full"))
         .thenReturn(Optional.empty());
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
-    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(10L, anyList()))
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(eq(10L), anyList()))
         .thenReturn(List.of(payment));
-    when(ticketRepository.findByBookingIdAndPassengerIdInWithDetailsForUpdate(10L, List.of(1001L)))
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(10L, List.of(7001L)))
         .thenReturn(List.of(ticket));
     when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
         .thenReturn(List.of(snapshot));
@@ -335,7 +342,7 @@ class BookingCancellationServiceTest {
         service.cancel(
             7L,
             10L,
-            List.of(1001L),
+            List.of(7001L),
             "Cancel all",
             "idem-full",
             new BigDecimal("1000000"),
@@ -378,16 +385,34 @@ class BookingCancellationServiceTest {
             false);
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
-    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(10L, anyList()))
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(eq(10L), anyList()))
         .thenReturn(List.of(payment));
-    when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(7001L)))
+        .thenReturn(List.of(ticket));
     when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
         .thenReturn(List.of(snapshot));
 
     AppException exception =
-        assertThrows(AppException.class, () -> service.preview(7L, 10L, List.of(1001L)));
+        assertThrows(AppException.class, () -> service.preview(7L, 10L, List.of(7001L)));
 
     assertEquals("TICKET_NOT_REFUNDABLE", exception.getCode());
+  }
+
+  @Test
+  void previewShouldRejectTicketOutsideBooking() {
+    BookingEntity booking = booking("CONFIRMED");
+    PaymentEntity payment = payment(booking, "SUCCESS");
+
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(eq(10L), anyList()))
+        .thenReturn(List.of(payment));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(7001L)))
+        .thenReturn(List.of());
+
+    AppException exception =
+        assertThrows(AppException.class, () -> service.preview(7L, 10L, List.of(7001L)));
+
+    assertEquals("TICKET_NOT_FOUND", exception.getCode());
   }
 
   @Test
@@ -422,9 +447,9 @@ class BookingCancellationServiceTest {
             10L, "idem-stale"))
         .thenReturn(Optional.empty());
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
-    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(10L, anyList()))
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(eq(10L), anyList()))
         .thenReturn(List.of(payment));
-    when(ticketRepository.findByBookingIdAndPassengerIdInWithDetailsForUpdate(10L, List.of(1001L)))
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(10L, List.of(7001L)))
         .thenReturn(List.of(ticket));
     when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
         .thenReturn(List.of(snapshot));
@@ -436,7 +461,7 @@ class BookingCancellationServiceTest {
                 service.cancel(
                     7L,
                     10L,
-                    List.of(1001L),
+                    List.of(7001L),
                     "Need to cancel",
                     "idem-stale",
                     new BigDecimal("1"),
@@ -445,6 +470,36 @@ class BookingCancellationServiceTest {
     assertEquals("CANCELLATION_PREVIEW_STALE", exception.getCode());
     verify(bookingCancellationRepository, never()).save(any(BookingCancellationEntity.class));
     verify(paymentRefundService, never()).refund(anyLong(), any(), any(PaymentEntity.class), any(), any());
+  }
+
+  @Test
+  void cancelShouldRejectTicketOutsideBooking() {
+    BookingEntity booking = booking("CONFIRMED");
+    PaymentEntity payment = payment(booking, "SUCCESS");
+
+    when(bookingCancellationRepository.findByBookingIdAndIdempotencyKeyWithItems(
+            10L, "idem-missing-ticket"))
+        .thenReturn(Optional.empty());
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(eq(10L), anyList()))
+        .thenReturn(List.of(payment));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(10L, List.of(7001L)))
+        .thenReturn(List.of());
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.cancel(
+                    7L,
+                    10L,
+                    List.of(7001L),
+                    "Need to cancel",
+                    "idem-missing-ticket",
+                    new BigDecimal("0"),
+                    new BigDecimal("0")));
+
+    assertEquals("TICKET_NOT_FOUND", exception.getCode());
   }
 
   @Test
@@ -472,7 +527,7 @@ class BookingCancellationServiceTest {
     existing.setIdempotencyKey("idem-existing");
     existing.setRequestHash(
         requestHash(
-            List.of(1001L), "Need to cancel", new BigDecimal("820000"), new BigDecimal("150000")));
+            List.of(7001L), "Need to cancel", new BigDecimal("820000"), new BigDecimal("150000")));
     existing.setProvider("PAYOS");
     existing.setRefundStatus("SUCCEEDED");
     existing.setProviderRefundId("refund_existing");
@@ -507,7 +562,7 @@ class BookingCancellationServiceTest {
         service.cancel(
             7L,
             10L,
-            List.of(1001L),
+            List.of(7001L),
             "Need to cancel",
             "idem-existing",
             new BigDecimal("820000"),
@@ -551,9 +606,9 @@ class BookingCancellationServiceTest {
             10L, "idem-failed"))
         .thenReturn(Optional.empty());
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
-    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(10L, anyList()))
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(eq(10L), anyList()))
         .thenReturn(List.of(payment));
-    when(ticketRepository.findByBookingIdAndPassengerIdInWithDetailsForUpdate(10L, List.of(1001L)))
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(10L, List.of(7001L)))
         .thenReturn(List.of(ticket));
     when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
         .thenReturn(List.of(snapshot));
@@ -570,7 +625,7 @@ class BookingCancellationServiceTest {
         service.cancel(
             7L,
             10L,
-            List.of(1001L),
+            List.of(7001L),
             "Need to cancel",
             "idem-failed",
             new BigDecimal("750000"),
@@ -581,7 +636,7 @@ class BookingCancellationServiceTest {
     assertEquals("SUCCESS", result.paymentStatus());
     assertEquals("ISSUED", ticket.getStatus());
     assertEquals("SUCCESS", payment.getPaymentStatus());
-    verify(bookingCancellationRepository).save(any(BookingCancellationEntity.class));
+    verify(bookingCancellationRepository, times(2)).save(any(BookingCancellationEntity.class));
   }
 
   private static BookingEntity booking(String status) {
@@ -725,12 +780,12 @@ class BookingCancellationServiceTest {
   }
 
   private static String requestHash(
-      List<Long> passengerIds,
+      List<Long> ticketIds,
       String reason,
       BigDecimal expectedNetRefund,
       BigDecimal expectedRefundFee) {
     String payload =
-        passengerIds.stream().map(String::valueOf).collect(Collectors.joining(","))
+        ticketIds.stream().map(String::valueOf).collect(Collectors.joining(","))
             + "|"
             + (reason == null ? "" : reason)
             + "|"

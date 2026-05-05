@@ -94,6 +94,9 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.PUT, "/api/bookings/*/services")
                     .permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST, "/api/bookings/*/cancellations/preview")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/payment-methods")
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/payments")
