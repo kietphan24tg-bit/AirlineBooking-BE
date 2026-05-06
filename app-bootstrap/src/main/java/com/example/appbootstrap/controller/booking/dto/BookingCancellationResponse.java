@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record BookingCancellationResponse(
+    Long bookingId,
+    String pnrCode,
+    String contactEmail,
     Long cancellationId,
     String refundStatus,
     String provider,
@@ -11,6 +14,9 @@ public record BookingCancellationResponse(
     String bookingStatus,
     String paymentStatus,
     String currency,
+    String refundEstimateTitle,
+    String refundEstimateMessage,
+    String refundEstimateNote,
     List<ItemResponse> items,
     SummaryResponse summary) {
 

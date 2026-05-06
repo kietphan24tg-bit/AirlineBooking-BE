@@ -38,6 +38,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -68,6 +70,7 @@ public class BookingCancellationService {
   private final TicketIssuanceService ticketIssuanceService;
   private final TicketFinancialSnapshotService ticketFinancialSnapshotService;
   private final PaymentRefundService paymentRefundService;
+  private final BookingCancellationNotifier bookingCancellationNotifier;
 
   public BookingCancellationService(
       BookingRepository bookingRepository,
@@ -80,7 +83,8 @@ public class BookingCancellationService {
       BookingServiceRepository bookingServiceRepository,
       TicketIssuanceService ticketIssuanceService,
       TicketFinancialSnapshotService ticketFinancialSnapshotService,
-      PaymentRefundService paymentRefundService) {
+      PaymentRefundService paymentRefundService,
+      BookingCancellationNotifier bookingCancellationNotifier) {
     this.bookingRepository = bookingRepository;
     this.paymentRepository = paymentRepository;
     this.ticketRepository = ticketRepository;
@@ -92,6 +96,7 @@ public class BookingCancellationService {
     this.ticketIssuanceService = ticketIssuanceService;
     this.ticketFinancialSnapshotService = ticketFinancialSnapshotService;
     this.paymentRefundService = paymentRefundService;
+    this.bookingCancellationNotifier = bookingCancellationNotifier;
   }
 
   @Transactional
@@ -174,6 +179,7 @@ public class BookingCancellationService {
               normalizedReason);
 
       applySuccessfulCancellation(prepared, cancellation, refundResult, now);
+      registerSuccessNotification(cancellation.getId());
       return toResultView(cancellation, booking, payment);
     } catch (RuntimeException exception) {
       cancellation.setRefundStatus(CANCELLATION_STATUS_FAILED);
@@ -612,6 +618,8 @@ public class BookingCancellationService {
 
   private BookingCancellationResultView toResultView(
       BookingCancellationEntity cancellation, BookingEntity booking, PaymentEntity payment) {
+    BookingCancellationRefundEstimate refundEstimate =
+        BookingCancellationRefundEstimate.forProvider(cancellation.getProvider());
     List<BookingCancellationResultView.ItemView> items =
         cancellation.getItems().stream()
             .sorted(Comparator.comparing(BookingCancellationItemEntity::getId))
@@ -633,6 +641,9 @@ public class BookingCancellationService {
                         item.getNetRefundAmount()))
             .toList();
     return new BookingCancellationResultView(
+        booking.getId(),
+        booking.getPnrCode(),
+        booking.getContactEmail(),
         cancellation.getId(),
         cancellation.getRefundStatus(),
         cancellation.getProvider(),
@@ -640,6 +651,9 @@ public class BookingCancellationService {
         booking.getStatus(),
         payment.getPaymentStatus(),
         cancellation.getCurrency(),
+        refundEstimate.title(),
+        refundEstimate.message(),
+        refundEstimate.note(),
         items,
         new BookingCancellationResultView.SummaryView(
             cancellation.getFareGrossTotal(),
@@ -649,6 +663,28 @@ public class BookingCancellationService {
             cancellation.getServiceRefundTotal(),
             cancellation.getRefundFeeTotal(),
             cancellation.getNetRefundTotal()));
+  }
+
+  private void registerSuccessNotification(Long cancellationId) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      sendSuccessNotificationSafely(cancellationId);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            sendSuccessNotificationSafely(cancellationId);
+          }
+        });
+  }
+
+  private void sendSuccessNotificationSafely(Long cancellationId) {
+    try {
+      bookingCancellationNotifier.sendCancellationSucceeded(cancellationId);
+    } catch (RuntimeException ignored) {
+      // Notification failures must not affect a successful cancellation flow.
+    }
   }
 
   private BigDecimal normalizeMoney(BigDecimal value) {

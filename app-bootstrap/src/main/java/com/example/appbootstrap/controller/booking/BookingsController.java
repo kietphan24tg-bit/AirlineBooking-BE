@@ -5,8 +5,8 @@ import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
-import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
+import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingTicketsResponse;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
@@ -215,7 +215,10 @@ public class BookingsController {
         content =
             @Content(schema = @Schema(implementation = BookingCancellationPreviewResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(responseCode = "404", description = "Booking or ticket not found", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking or ticket not found",
+        content = @Content),
     @ApiResponse(
         responseCode = "409",
         description = "Booking or ticket is not eligible for cancellation",
@@ -242,7 +245,10 @@ public class BookingsController {
         description = "Cancellation processed",
         content = @Content(schema = @Schema(implementation = BookingCancellationResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(responseCode = "404", description = "Booking or ticket not found", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking or ticket not found",
+        content = @Content),
     @ApiResponse(
         responseCode = "409",
         description = "Cancellation cannot be completed",
@@ -289,7 +295,8 @@ public class BookingsController {
                 ticket.seat().id(), ticket.seat().seatNumber()));
   }
 
-  private BookingCancellationPreviewResponse toPreviewResponse(BookingCancellationPreviewView view) {
+  private BookingCancellationPreviewResponse toPreviewResponse(
+      BookingCancellationPreviewView view) {
     return new BookingCancellationPreviewResponse(
         view.bookingId(),
         view.bookingStatus(),
@@ -325,6 +332,9 @@ public class BookingsController {
 
   private BookingCancellationResponse toCancellationResponse(BookingCancellationResultView view) {
     return new BookingCancellationResponse(
+        view.bookingId(),
+        view.pnrCode(),
+        view.contactEmail(),
         view.cancellationId(),
         view.refundStatus(),
         view.provider(),
@@ -332,6 +342,9 @@ public class BookingsController {
         view.bookingStatus(),
         view.paymentStatus(),
         view.currency(),
+        view.refundEstimateTitle(),
+        view.refundEstimateMessage(),
+        view.refundEstimateNote(),
         view.items().stream()
             .map(
                 item ->

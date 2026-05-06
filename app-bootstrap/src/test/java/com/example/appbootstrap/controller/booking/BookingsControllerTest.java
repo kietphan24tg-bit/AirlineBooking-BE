@@ -105,6 +105,9 @@ class BookingsControllerTest {
             new BigDecimal("150000")))
         .thenReturn(
             new BookingCancellationResultView(
+                10L,
+                "ABC123",
+                "user@example.com",
                 900L,
                 "SUCCEEDED",
                 "PAYOS",
@@ -112,6 +115,9 @@ class BookingsControllerTest {
                 "CONFIRMED",
                 "PARTIALLY_REFUNDED",
                 "VND",
+                "Trạng thái hoàn tiền",
+                "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.",
+                "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.",
                 List.of(
                     new BookingCancellationResultView.ItemView(
                         1001L,
@@ -146,9 +152,18 @@ class BookingsControllerTest {
                 new BigDecimal("820000"),
                 new BigDecimal("150000")));
 
+    assertEquals(10L, response.bookingId());
+    assertEquals("ABC123", response.pnrCode());
     assertEquals(900L, response.cancellationId());
     assertEquals("SUCCEEDED", response.refundStatus());
     assertEquals("refund_123", response.providerRefundId());
+    assertEquals("Trạng thái hoàn tiền", response.refundEstimateTitle());
+    assertEquals(
+        "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.",
+        response.refundEstimateMessage());
+    assertEquals(
+        "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.",
+        response.refundEstimateNote());
     assertEquals("CANCELLED", response.items().getFirst().ticketStatus());
   }
 

@@ -71,6 +71,7 @@ class BookingCancellationServiceTest {
   @Mock private TicketIssuanceService ticketIssuanceService;
   @Mock private TicketFinancialSnapshotService ticketFinancialSnapshotService;
   @Mock private PaymentRefundService paymentRefundService;
+  @Mock private BookingCancellationNotifier bookingCancellationNotifier;
 
   private BookingCancellationService service;
 
@@ -88,7 +89,8 @@ class BookingCancellationServiceTest {
             bookingServiceRepository,
             ticketIssuanceService,
             ticketFinancialSnapshotService,
-            paymentRefundService);
+            paymentRefundService,
+            bookingCancellationNotifier);
 
     Mockito.lenient()
         .when(bookingRepository.save(any(BookingEntity.class)))
@@ -277,14 +279,23 @@ class BookingCancellationServiceTest {
             new BigDecimal("150000"));
 
     assertEquals("SUCCEEDED", result.refundStatus());
+    assertEquals(10L, result.bookingId());
+    assertEquals("ABC123", result.pnrCode());
     assertEquals("PAYOS", result.provider());
     assertEquals("refund_123", result.providerRefundId());
     assertEquals("CONFIRMED", result.bookingStatus());
     assertEquals("PARTIALLY_REFUNDED", result.paymentStatus());
+    assertEquals("Trạng thái hoàn tiền", result.refundEstimateTitle());
+    assertEquals(
+        "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.", result.refundEstimateMessage());
+    assertEquals(
+        "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.",
+        result.refundEstimateNote());
     assertEquals("CANCELLED", cancelledTicket.getStatus());
     assertEquals("RELEASED", assignment.getStatus());
     assertEquals("PARTIALLY_REFUNDED", payment.getPaymentStatus());
     verify(bookingServiceRepository).deleteByBookingIdAndPassengerIdIn(10L, List.of(1001L));
+    verify(bookingCancellationNotifier).sendCancellationSucceeded(900L);
   }
 
   @Test
@@ -351,6 +362,7 @@ class BookingCancellationServiceTest {
     assertEquals("SUCCEEDED", result.refundStatus());
     assertEquals("CANCELLED", result.bookingStatus());
     assertEquals("REFUNDED", result.paymentStatus());
+    assertEquals("Trạng thái hoàn tiền", result.refundEstimateTitle());
     assertEquals("CANCELLED", ticket.getStatus());
     assertEquals("CANCELLED", booking.getStatus());
     assertEquals("REFUNDED", payment.getPaymentStatus());
@@ -571,7 +583,12 @@ class BookingCancellationServiceTest {
     assertEquals(901L, result.cancellationId());
     assertEquals("SUCCEEDED", result.refundStatus());
     assertEquals("refund_existing", result.providerRefundId());
-    verifyNoInteractions(ticketIssuanceService, ticketFinancialSnapshotService, paymentRefundService);
+    assertEquals("Trạng thái hoàn tiền", result.refundEstimateTitle());
+    verifyNoInteractions(
+        ticketIssuanceService,
+        ticketFinancialSnapshotService,
+        paymentRefundService,
+        bookingCancellationNotifier);
   }
 
   @Test
@@ -637,6 +654,7 @@ class BookingCancellationServiceTest {
     assertEquals("ISSUED", ticket.getStatus());
     assertEquals("SUCCESS", payment.getPaymentStatus());
     verify(bookingCancellationRepository, times(2)).save(any(BookingCancellationEntity.class));
+    verifyNoInteractions(bookingCancellationNotifier);
   }
 
   private static BookingEntity booking(String status) {
