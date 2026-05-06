@@ -124,7 +124,10 @@ public class BookingCancellationEmailService implements BookingCancellationNotif
             </div>
             <div style="padding:24px;">
               <p style="margin:0 0 12px;">Kính gửi Quý khách,</p>
-              <p style="margin:0 0 20px;">Yêu cầu hủy chuyến bay của Quý khách đã được xử lý thành công. Thông tin hoàn tiền được hiển thị dưới đây.</p>
+              <p style="margin:0 0 20px;">
+                Yêu cầu hủy chuyến bay của Quý khách đã được xử lý thành công.
+                Thông tin hoàn tiền được hiển thị dưới đây.
+              </p>
               <table role="presentation" style="width:100%%;border-collapse:collapse;">
                 <tr>
                   <td style="vertical-align:top;padding:16px;border:1px solid #ededed;">
