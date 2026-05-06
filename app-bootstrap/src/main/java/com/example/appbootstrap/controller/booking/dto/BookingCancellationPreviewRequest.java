@@ -6,9 +6,6 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 public record BookingCancellationPreviewRequest(
-    @NotEmpty(message = "ticketIds is required")
-        List<
-                @NotNull(message = "ticketIds contains null")
-                @Positive(message = "ticketId must be positive")
-                Long>
+    @NotEmpty(message = "ticketIds is required") List<
+                @NotNull(message = "ticketIds contains null") @Positive(message = "ticketId must be positive") Long>
             ticketIds) {}

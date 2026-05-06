@@ -4,8 +4,8 @@ import com.example.appbootstrap.config.MailProperties;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.repository.BookingContactRepository;
-import com.example.modulepayment.application.BookingCancellationRefundEstimate;
 import com.example.modulepayment.application.BookingCancellationNotifier;
+import com.example.modulepayment.application.BookingCancellationRefundEstimate;
 import com.example.modulepayment.entity.BookingCancellationEntity;
 import com.example.modulepayment.entity.BookingCancellationItemEntity;
 import com.example.modulepayment.repository.BookingCancellationRepository;
@@ -50,9 +50,7 @@ public class BookingCancellationEmailService implements BookingCancellationNotif
         bookingCancellationRepository
             .findByIdWithItems(cancellationId)
             .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Cancellation not found: " + cancellationId));
+                () -> new IllegalArgumentException("Cancellation not found: " + cancellationId));
     if (!"SUCCEEDED".equalsIgnoreCase(cancellation.getRefundStatus())) {
       return;
     }

@@ -159,11 +159,9 @@ class BookingsControllerTest {
     assertEquals("refund_123", response.providerRefundId());
     assertEquals("Trạng thái hoàn tiền", response.refundEstimateTitle());
     assertEquals(
-        "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.",
-        response.refundEstimateMessage());
+        "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.", response.refundEstimateMessage());
     assertEquals(
-        "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.",
-        response.refundEstimateNote());
+        "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.", response.refundEstimateNote());
     assertEquals("CANCELLED", response.items().getFirst().ticketStatus());
   }
 
