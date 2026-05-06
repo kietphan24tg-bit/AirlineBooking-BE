@@ -2,8 +2,7 @@ package com.example.modulepayment.application;
 
 import org.springframework.util.StringUtils;
 
-public record BookingCancellationRefundEstimate(
-    String title, String message, String note) {
+public record BookingCancellationRefundEstimate(String title, String message, String note) {
 
   private static final String PROVIDER_STRIPE = "STRIPE";
   private static final String PROVIDER_PAYOS = "PAYOS";

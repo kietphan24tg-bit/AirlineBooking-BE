@@ -8,7 +8,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface BookingCancellationRepository extends JpaRepository<BookingCancellationEntity, Long> {
+public interface BookingCancellationRepository
+    extends JpaRepository<BookingCancellationEntity, Long> {
 
   @Query(
       """

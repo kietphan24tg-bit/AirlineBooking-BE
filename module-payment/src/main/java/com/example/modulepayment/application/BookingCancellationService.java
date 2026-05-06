@@ -108,7 +108,8 @@ public class BookingCancellationService {
     validateBookingCancellable(booking);
     PaymentEntity payment = requireRefundablePayment(booking.getId(), false);
     ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
-    PreparedCancellation prepared = preparePreviewCancellation(booking, payment, normalizedTicketIds);
+    PreparedCancellation prepared =
+        preparePreviewCancellation(booking, payment, normalizedTicketIds);
     return prepared.preview();
   }
 
@@ -137,9 +138,7 @@ public class BookingCancellationService {
     if (existing != null) {
       if (!Objects.equals(existing.getRequestHash(), requestHash)) {
         throw new AppException(
-            "IDEMPOTENCY_KEY_REUSED",
-            "idempotencyKey was used with a different payload",
-            409);
+            "IDEMPOTENCY_KEY_REUSED", "idempotencyKey was used with a different payload", 409);
       }
       return toResultView(existing, existing.getBooking(), existing.getPayment());
     }
@@ -150,7 +149,8 @@ public class BookingCancellationService {
     validateBookingCancellable(booking);
     PaymentEntity payment = requireRefundablePayment(booking.getId(), true);
     ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
-    PreparedCancellation prepared = prepareCancellation(booking, payment, normalizedTicketIds, true);
+    PreparedCancellation prepared =
+        prepareCancellation(booking, payment, normalizedTicketIds, true);
 
     validateExpectedTotals(prepared.preview(), expectedNetRefund, expectedRefundFee);
 
@@ -184,7 +184,9 @@ public class BookingCancellationService {
     } catch (RuntimeException exception) {
       cancellation.setRefundStatus(CANCELLATION_STATUS_FAILED);
       cancellation.setErrorCode(
-          exception instanceof AppException appException ? appException.getCode() : "REFUND_FAILED");
+          exception instanceof AppException appException
+              ? appException.getCode()
+              : "REFUND_FAILED");
       cancellation.setErrorMessage(exception.getMessage());
       cancellation.setProcessedAt(now);
       cancellation.setUpdatedAt(now);
@@ -226,13 +228,10 @@ public class BookingCancellationService {
       TicketFinancialSnapshotEntity snapshot = snapshotByTicketId.get(ticket.getId());
       if (snapshot == null) {
         throw new AppException(
-            "CANCELLATION_SNAPSHOT_MISSING",
-            "Ticket financial snapshot is missing",
-            409);
+            "CANCELLATION_SNAPSHOT_MISSING", "Ticket financial snapshot is missing", 409);
       }
       if (!snapshot.isRefundable()) {
-        throw new AppException(
-            "TICKET_NOT_REFUNDABLE", "Selected ticket is not refundable", 409);
+        throw new AppException("TICKET_NOT_REFUNDABLE", "Selected ticket is not refundable", 409);
       }
       BigDecimal itemNetRefund =
           normalizeMoney(
@@ -322,13 +321,10 @@ public class BookingCancellationService {
       TicketFinancialSnapshotEntity snapshot = snapshotByTicketId.get(ticket.getId());
       if (snapshot == null) {
         throw new AppException(
-            "CANCELLATION_SNAPSHOT_MISSING",
-            "Ticket financial snapshot is missing",
-            409);
+            "CANCELLATION_SNAPSHOT_MISSING", "Ticket financial snapshot is missing", 409);
       }
       if (!snapshot.isRefundable()) {
-        throw new AppException(
-            "TICKET_NOT_REFUNDABLE", "Selected ticket is not refundable", 409);
+        throw new AppException("TICKET_NOT_REFUNDABLE", "Selected ticket is not refundable", 409);
       }
       BigDecimal itemNetRefund =
           normalizeMoney(
@@ -420,7 +416,8 @@ public class BookingCancellationService {
       ticket.setUpdatedAt(now);
     }
     ticketRepository.saveAll(prepared.tickets());
-    bookingServiceRepository.deleteByBookingIdAndPassengerIdIn(prepared.booking().getId(), passengerIds);
+    bookingServiceRepository.deleteByBookingIdAndPassengerIdIn(
+        prepared.booking().getId(), passengerIds);
 
     long remainingActiveTickets =
         ticketRepository.countByBookingIdAndStatusNot(prepared.booking().getId(), "CANCELLED");
@@ -475,9 +472,7 @@ public class BookingCancellationService {
     Map<Long, TicketEntity> ticketById =
         tickets.stream()
             .collect(
-                LinkedHashMap::new,
-                (map, ticket) -> map.put(ticket.getId(), ticket),
-                Map::putAll);
+                LinkedHashMap::new, (map, ticket) -> map.put(ticket.getId(), ticket), Map::putAll);
     for (BookingCancellationPreviewView.ItemView itemView : preview.items()) {
       TicketEntity ticket = ticketById.get(itemView.ticketId());
       if (ticket == null) {
@@ -507,9 +502,7 @@ public class BookingCancellationService {
     if (normalizeMoney(expectedNetRefund).compareTo(preview.summary().netRefund()) != 0
         || normalizeMoney(expectedRefundFee).compareTo(preview.summary().refundFee()) != 0) {
       throw new AppException(
-          "CANCELLATION_PREVIEW_STALE",
-          "Cancellation preview is stale, please preview again",
-          409);
+          "CANCELLATION_PREVIEW_STALE", "Cancellation preview is stale, please preview again", 409);
     }
   }
 
@@ -629,7 +622,9 @@ public class BookingCancellationService {
                         item.getTicket().getId(),
                         item.getPassenger().getId(),
                         item.getPassenger().getPassengerType(),
-                        (item.getPassenger().getFirstName() + " " + item.getPassenger().getLastName())
+                        (item.getPassenger().getFirstName()
+                                + " "
+                                + item.getPassenger().getLastName())
                             .trim(),
                         item.getTicket().getStatus(),
                         item.getFareGrossAmount(),

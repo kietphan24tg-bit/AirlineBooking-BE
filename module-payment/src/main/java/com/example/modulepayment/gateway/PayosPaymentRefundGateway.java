@@ -29,8 +29,7 @@ public class PayosPaymentRefundGateway implements PaymentRefundGateway {
   private final HttpClient httpClient;
 
   @Autowired
-  public PayosPaymentRefundGateway(
-      PaymentProperties paymentProperties, ObjectMapper objectMapper) {
+  public PayosPaymentRefundGateway(PaymentProperties paymentProperties, ObjectMapper objectMapper) {
     this(paymentProperties, objectMapper, HttpClient.newHttpClient());
   }
 
@@ -86,10 +85,7 @@ public class PayosPaymentRefundGateway implements PaymentRefundGateway {
             payment.getRefundCounterAccountNumber());
 
     URI uri =
-        UriComponentsBuilder.fromUriString(resolveBaseUrl())
-            .path("/v1/payouts")
-            .build()
-            .toUri();
+        UriComponentsBuilder.fromUriString(resolveBaseUrl()).path("/v1/payouts").build().toUri();
 
     try {
       String requestBody = objectMapper.writeValueAsString(payload);
@@ -102,7 +98,8 @@ public class PayosPaymentRefundGateway implements PaymentRefundGateway {
               .header(
                   "x-signature",
                   PayosPaymentGateway.sign(
-                      buildPayoutSignaturePayload(payload), paymentProperties.payos().checksumKey()))
+                      buildPayoutSignaturePayload(payload),
+                      paymentProperties.payos().checksumKey()))
               .POST(HttpRequest.BodyPublishers.ofString(requestBody))
               .build();
 
@@ -140,7 +137,9 @@ public class PayosPaymentRefundGateway implements PaymentRefundGateway {
 
   private CounterAccount resolveCounterAccount(PaymentEntity payment) {
     String paymentReference =
-        firstNonBlank(payment.getTransactionId(), payment.getId() == null ? null : payment.getId().toString());
+        firstNonBlank(
+            payment.getTransactionId(),
+            payment.getId() == null ? null : payment.getId().toString());
     if (paymentReference == null) {
       throw new AppException(
           "REFUND_DESTINATION_UNAVAILABLE", "PayOS payment reference is not available", 409);
@@ -256,7 +255,8 @@ public class PayosPaymentRefundGateway implements PaymentRefundGateway {
   }
 
   private String resolveBaseUrl() {
-    String configured = paymentProperties.payos() == null ? null : paymentProperties.payos().baseUrl();
+    String configured =
+        paymentProperties.payos() == null ? null : paymentProperties.payos().baseUrl();
     return configured == null || configured.isBlank() ? DEFAULT_BASE_URL : configured;
   }
 

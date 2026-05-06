@@ -75,8 +75,7 @@ public class TicketFinancialSnapshotService {
                 HashMap::new,
                 (map, projection) ->
                     map.put(
-                        projection.getPassengerId(),
-                        normalizeMoney(projection.getTotalPrice())),
+                        projection.getPassengerId(), normalizeMoney(projection.getTotalPrice())),
                 Map::putAll);
     Map<Long, BigDecimal> seatTotalByPassenger =
         passengerSeatAssignmentRepository
@@ -129,7 +128,8 @@ public class TicketFinancialSnapshotService {
       snapshot.setPromoAllocatedAmount(promoAllocated);
       snapshot.setFareNetAmount(normalizeMoney(fareGross.subtract(promoAllocated).max(ZERO)));
       snapshot.setSeatRefundAmount(
-          normalizeMoney(serviceAmountForPassenger(seatTotalByPassenger, ticket.getPassenger().getId())));
+          normalizeMoney(
+              serviceAmountForPassenger(seatTotalByPassenger, ticket.getPassenger().getId())));
       snapshot.setServiceRefundAmount(
           normalizeMoney(
               serviceAmountForPassenger(serviceTotalByPassenger, ticket.getPassenger().getId())));
@@ -145,7 +145,9 @@ public class TicketFinancialSnapshotService {
 
   private BigDecimal fareGrossAmount(TicketEntity ticket) {
     BigDecimal oneAdultTotal =
-        ticket.getFlightFare() == null ? ZERO : normalizeMoney(ticket.getFlightFare().getTotalPrice());
+        ticket.getFlightFare() == null
+            ? ZERO
+            : normalizeMoney(ticket.getFlightFare().getTotalPrice());
     String passengerType =
         ticket.getPassenger() == null ? null : ticket.getPassenger().getPassengerType();
     if ("CHILD".equalsIgnoreCase(passengerType)) {

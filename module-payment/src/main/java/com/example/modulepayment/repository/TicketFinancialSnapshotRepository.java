@@ -21,7 +21,8 @@ public interface TicketFinancialSnapshotRepository
       where snapshot.booking.id = :bookingId
       order by snapshot.ticket.id
       """)
-  List<TicketFinancialSnapshotEntity> findByBookingIdWithDetails(@Param("bookingId") Long bookingId);
+  List<TicketFinancialSnapshotEntity> findByBookingIdWithDetails(
+      @Param("bookingId") Long bookingId);
 
   Optional<TicketFinancialSnapshotEntity> findByTicketId(Long ticketId);
 }

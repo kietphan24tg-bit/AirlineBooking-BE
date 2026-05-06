@@ -136,7 +136,8 @@ class PaymentWebhookServiceTest {
 
     verify(paymentRepository, never()).findByTransactionIdForUpdate(any());
     verify(paymentWebhookEventRepository, never()).save(any());
-    verify(ticketFinancialSnapshotService, never()).ensureSnapshotsForBooking(any(BookingEntity.class));
+    verify(ticketFinancialSnapshotService, never())
+        .ensureSnapshotsForBooking(any(BookingEntity.class));
   }
 
   @Test
