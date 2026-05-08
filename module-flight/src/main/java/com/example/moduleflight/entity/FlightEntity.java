@@ -76,7 +76,7 @@ public class FlightEntity {
   @Column(nullable = false, length = 20)
   private String status;
 
-  /** AIRLABS, COVERAGE, MOCK — see {@link FlightSource}. */
+  /** AIRLABS, COVERAGE, SEEDED, SEARCH_FALLBACK, MOCK — see {@link FlightSource}. */
   @Column(name = "flight_source", nullable = false, length = 20)
   private String flightSource = FlightSource.AIRLABS;
 

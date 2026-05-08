@@ -19,10 +19,9 @@ public class FlightImportScheduler {
 
   public FlightImportScheduler(
       FlightDataMaintenanceService flightDataMaintenanceService,
-      @Value("${app.flight-maintenance.run-on-startup:false}") boolean maintenanceRunOnStartup,
-      @Value("${app.flight-import.run-on-startup:false}") boolean importRunOnStartup) {
+      @Value("${app.flight-maintenance.run-on-startup:false}") boolean maintenanceRunOnStartup) {
     this.flightDataMaintenanceService = flightDataMaintenanceService;
-    this.runOnStartup = maintenanceRunOnStartup || importRunOnStartup;
+    this.runOnStartup = maintenanceRunOnStartup;
   }
 
   @EventListener(ApplicationReadyEvent.class)

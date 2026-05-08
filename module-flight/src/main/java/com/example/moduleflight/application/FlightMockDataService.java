@@ -1,5 +1,6 @@
 package com.example.moduleflight.application;
 
+import com.example.moduleflight.config.FlightCoverageProperties;
 import com.example.moduleflight.config.FlightMockDataProperties;
 import com.example.moduleflight.domain.FlightSource;
 import com.example.moduleflight.entity.AircraftEntity;
@@ -43,7 +44,10 @@ public class FlightMockDataService {
   private static final Pattern AIRPORT_IATA_PATTERN = Pattern.compile("^[A-Z]{3}$");
   private static final String DEFAULT_STATUS = "SCHEDULED";
   private static final int PROGRESS_LOG_INTERVAL = 10;
+  private static final List<String> DEFAULT_COUNTRY_POOL =
+      List.of("VN", "TH", "SG", "MY", "ID", "PH");
 
+  private final FlightCoverageProperties coverageProperties;
   private final FlightMockDataProperties properties;
   private final FlightRepository flightRepository;
   private final AirlineRepository airlineRepository;
@@ -56,6 +60,7 @@ public class FlightMockDataService {
   private final FlightInventoryMetadataService flightInventoryMetadataService;
 
   public FlightMockDataService(
+      FlightCoverageProperties coverageProperties,
       FlightMockDataProperties properties,
       FlightRepository flightRepository,
       AirlineRepository airlineRepository,
@@ -66,6 +71,7 @@ public class FlightMockDataService {
       FlightFareGenerationService flightFareGenerationService,
       JdbcTemplate jdbcTemplate,
       FlightInventoryMetadataService flightInventoryMetadataService) {
+    this.coverageProperties = coverageProperties;
     this.properties = properties;
     this.flightRepository = flightRepository;
     this.airlineRepository = airlineRepository;
@@ -173,8 +179,9 @@ public class FlightMockDataService {
   }
 
   private List<AirlineEntity> loadAirlinePool() {
-    Set<String> excludedCodes = parseUppercaseCsv(properties.excludedAirlineCodes());
-    Set<String> excludedCountryCodes = parseUppercaseCsv(properties.excludedAirlineCountryCodes());
+    Set<String> excludedCodes = parseUppercaseCsv(coverageProperties.excludedAirlineCodes());
+    Set<String> excludedCountryCodes =
+        parseUppercaseCsv(coverageProperties.excludedAirlineCountryCodes());
     return airlineRepository.findAll().stream()
         .filter(
             airline ->
@@ -192,16 +199,28 @@ public class FlightMockDataService {
   }
 
   private List<AirportEntity> loadAirportPool() {
-    Set<String> excludedCountryCodes = parseUppercaseCsv(properties.excludedAirportCountryCodes());
+    Set<String> includedCountryCodes = resolveIncludedCountryCodes();
+    if (includedCountryCodes.isEmpty()) {
+      LOG.warn("Flight mock reseed skipped: include-airport-country-codes is empty.");
+      return List.of();
+    }
+    Set<String> excludedCountryCodes =
+        parseUppercaseCsv(coverageProperties.excludedAirportCountryCodes());
+    Map<Long, AirportEntity> airportsById = new LinkedHashMap<>();
+    for (String countryCode : includedCountryCodes) {
+      for (AirportEntity airport :
+          airportRepository.findByCountryCodeIgnoreCaseOrderByCityNameCode(countryCode)) {
+        if (airport == null
+            || !AIRPORT_IATA_PATTERN.matcher(normalizeText(airport.getCode())).matches()
+            || !StringUtils.hasText(airport.getTimeZone())
+            || excludedCountryCodes.contains(normalizeText(airport.getCountryCode()))) {
+          continue;
+        }
+        airportsById.putIfAbsent(airport.getId(), airport);
+      }
+    }
     List<AirportEntity> airports =
-        airportRepository.findAll().stream()
-            .filter(
-                airport ->
-                    airport != null
-                        && AIRPORT_IATA_PATTERN.matcher(normalizeText(airport.getCode())).matches())
-            .filter(airport -> StringUtils.hasText(airport.getTimeZone()))
-            .filter(
-                airport -> !excludedCountryCodes.contains(normalizeText(airport.getCountryCode())))
+        airportsById.values().stream()
             .sorted(
                 java.util.Comparator.comparing(
                         (AirportEntity airport) -> normalizeText(airport.getCountryCode()),
@@ -227,6 +246,14 @@ public class FlightMockDataService {
       pickedPerCountry.put(countryKey, picked + 1);
     }
     return selected.size() >= 2 ? selected : airports;
+  }
+
+  private Set<String> resolveIncludedCountryCodes() {
+    Set<String> includedCountryCodes =
+        parseUppercaseCsv(coverageProperties.includeAirportCountryCodes());
+    return includedCountryCodes.isEmpty()
+        ? new LinkedHashSet<>(DEFAULT_COUNTRY_POOL)
+        : includedCountryCodes;
   }
 
   private int resolveTargetFlightCount(int aircraftCount) {
@@ -283,7 +310,7 @@ public class FlightMockDataService {
       flight.setArrivalTerminal("T" + (((index + 1) % 3) + 1));
       flight.setArrivalGate("A" + ((index % 18) + 1));
       flight.setStatus(DEFAULT_STATUS);
-      flight.setFlightSource(FlightSource.MOCK);
+      flight.setFlightSource(FlightSource.SEEDED);
       flight.setCreatedAt(OffsetDateTime.now());
       flight.setUpdatedAt(OffsetDateTime.now());
       flights.add(flight);

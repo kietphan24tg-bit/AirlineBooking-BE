@@ -5,6 +5,7 @@ public final class FlightSource {
 
   public static final String AIRLABS = "AIRLABS";
   public static final String COVERAGE = "COVERAGE";
+  public static final String SEEDED = "SEEDED";
 
   /**
    * One synthetic row created when search had no results (non-coverage routes or before cron

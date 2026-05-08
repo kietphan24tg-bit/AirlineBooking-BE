@@ -103,6 +103,7 @@ app:
         run-on-startup: ${APP_FLIGHT_MAINTENANCE_RUN_ON_STARTUP:false}
         cleanup-enabled: ${APP_FLIGHT_MAINTENANCE_CLEANUP_ENABLED:true}
     flight-coverage:
+        # Scopes internally seeded flight data; scheduled maintenance no longer performs gap-fill.
         enabled: ${APP_FLIGHT_COVERAGE_ENABLED:true}
         rolling-days: ${APP_FLIGHT_COVERAGE_ROLLING_DAYS:30}
         start-date-offset-days: ${APP_FLIGHT_COVERAGE_START_DATE_OFFSET_DAYS:1}
@@ -115,6 +116,7 @@ app:
     flight-search-fallback:
         enabled: ${APP_FLIGHT_SEARCH_FALLBACK_ENABLED:true}
     flight-mock:
+        # Drives the scheduled internal flight reseed batch; scope is inherited from flight-coverage.
         enabled: ${APP_FLIGHT_MOCK_ENABLED:false}
         run-on-startup: ${APP_FLIGHT_MOCK_RUN_ON_STARTUP:false}
         cron: ${APP_FLIGHT_MOCK_CRON:0 0 4 * * *}
