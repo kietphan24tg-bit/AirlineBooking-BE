@@ -18,6 +18,7 @@ import com.example.moduleflight.config.FlightMaintenanceProperties;
 import com.example.moduleflight.config.FlightMockDataProperties;
 import com.example.moduleflight.config.FlightSearchFallbackProperties;
 import com.example.moduleidentity.config.RateLimitProperties;
+import com.example.modulecheckin.config.CheckInProperties;
 import com.example.modulepayment.config.PaymentProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -36,6 +37,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   CorsProperties.class,
   ClientIpProperties.class,
   BookingProperties.class,
+  CheckInProperties.class,
   PaymentProperties.class,
   MailProperties.class,
   PasswordResetProperties.class,
