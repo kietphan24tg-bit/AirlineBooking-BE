@@ -162,6 +162,18 @@ class PaymentServiceTest {
     assertEquals("cs_test_123", result.payment().transactionId());
     assertEquals("CHECKOUT", result.action().type());
     assertEquals("https://checkout.stripe.com/c/pay/cs_test_123", result.action().paymentUrl());
+
+    ArgumentCaptor<PaymentGateway.PaymentGatewayRequest> requestCaptor =
+        ArgumentCaptor.forClass(PaymentGateway.PaymentGatewayRequest.class);
+    verify(stripePaymentGateway).createCheckoutSession(requestCaptor.capture());
+    assertEquals("Airline booking", requestCaptor.getValue().productName());
+    assertEquals("PNR ABC123", requestCaptor.getValue().productDescription());
+    assertEquals(4, requestCaptor.getValue().lineItems().size());
+    assertEquals("Airline booking", requestCaptor.getValue().lineItems().getFirst().name());
+    assertEquals(
+        0,
+        new BigDecimal("1200000.00")
+            .compareTo(requestCaptor.getValue().lineItems().getFirst().amount()));
   }
 
   @Test

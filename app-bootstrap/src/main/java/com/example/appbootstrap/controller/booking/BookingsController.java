@@ -1,12 +1,17 @@
 package com.example.appbootstrap.controller.booking;
 
 import com.example.appbootstrap.application.booking.BookingAncillarySelectionService;
+import com.example.appbootstrap.application.booking.BookingLookupService;
+import com.example.appbootstrap.application.booking.BookingManageOptionsService;
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
+import com.example.appbootstrap.controller.booking.dto.BookingLookupRequest;
+import com.example.appbootstrap.controller.booking.dto.BookingLookupResponse;
+import com.example.appbootstrap.controller.booking.dto.BookingManageOptionsResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingTicketsResponse;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
@@ -45,6 +50,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class BookingsController {
 
   private final BookingRevalidateService bookingRevalidateService;
+  private final BookingLookupService bookingLookupService;
+  private final BookingManageOptionsService bookingManageOptionsService;
   private final BookingSeatAssignmentService bookingSeatAssignmentService;
   private final BookingAncillarySelectionService bookingAncillarySelectionService;
   private final TicketIssuanceService ticketIssuanceService;
@@ -52,11 +59,15 @@ public class BookingsController {
 
   public BookingsController(
       BookingRevalidateService bookingRevalidateService,
+      BookingLookupService bookingLookupService,
+      BookingManageOptionsService bookingManageOptionsService,
       BookingSeatAssignmentService bookingSeatAssignmentService,
       BookingAncillarySelectionService bookingAncillarySelectionService,
       TicketIssuanceService ticketIssuanceService,
       BookingCancellationService bookingCancellationService) {
     this.bookingRevalidateService = bookingRevalidateService;
+    this.bookingLookupService = bookingLookupService;
+    this.bookingManageOptionsService = bookingManageOptionsService;
     this.bookingSeatAssignmentService = bookingSeatAssignmentService;
     this.bookingAncillarySelectionService = bookingAncillarySelectionService;
     this.ticketIssuanceService = ticketIssuanceService;
@@ -87,6 +98,44 @@ public class BookingsController {
       @Valid @RequestBody CreateBookingRequest request) {
     return bookingRevalidateService.createBooking(
         principal != null ? principal.getUserId() : null, request);
+  }
+
+  @PostMapping("/bookings/lookup")
+  @Operation(
+      summary = "Lookup booking by PNR and passenger last name",
+      description =
+          "Validates the submitted PNR and last name pair, then returns booking summary data "
+              + "for the manage-booking overview page.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Booking summary returned",
+        content = @Content(schema = @Schema(implementation = BookingLookupResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
+  })
+  BookingLookupResponse lookupBooking(@Valid @RequestBody BookingLookupRequest request) {
+    return bookingLookupService.lookup(request);
+  }
+
+  @GetMapping("/bookings/{bookingId}/manage-options")
+  @Operation(
+      summary = "Get booking-scoped seat and service selections",
+      description =
+          "Returns passengers, itinerary fare context, current seat assignments, and current "
+              + "ancillary selections for the manage-booking seat and service flows.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Manage seat and service context returned",
+        content = @Content(schema = @Schema(implementation = BookingManageOptionsResponse.class))),
+    @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
+  })
+  BookingManageOptionsResponse getManageOptions(
+      @AuthenticationPrincipal AppUserPrincipal principal, @PathVariable Long bookingId) {
+    return BookingManageOptionsResponse.from(
+        bookingManageOptionsService.getManageOptions(
+            principal != null ? principal.getUserId() : null, bookingId));
   }
 
   @GetMapping("/bookings/{bookingId}/tickets")

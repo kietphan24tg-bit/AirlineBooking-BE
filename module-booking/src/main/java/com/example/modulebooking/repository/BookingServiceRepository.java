@@ -20,6 +20,18 @@ public interface BookingServiceRepository extends JpaRepository<BookingServiceEn
 
   List<BookingServiceEntity> findAllByBookingId(Long bookingId);
 
+  @Query(
+      """
+      select bs
+      from BookingServiceEntity bs
+        join fetch bs.passenger
+        join fetch bs.service
+        left join fetch bs.serviceOption
+      where bs.booking.id = :bookingId
+      order by bs.id
+      """)
+  List<BookingServiceEntity> findDetailedByBookingId(@Param("bookingId") Long bookingId);
+
   void deleteByBookingIdAndPassengerIdIn(Long bookingId, Collection<Long> passengerIds);
 
   @Query(

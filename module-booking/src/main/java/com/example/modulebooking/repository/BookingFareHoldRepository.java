@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface BookingFareHoldRepository extends JpaRepository<BookingFareHoldEntity, Long> {
 
+  java.util.List<BookingFareHoldEntity> findByBookingIdOrderByIdAsc(Long bookingId);
+
   Optional<BookingFareHoldEntity> findFirstByBookingIdAndStatusIn(
       Long bookingId, java.util.Collection<String> statuses);
 

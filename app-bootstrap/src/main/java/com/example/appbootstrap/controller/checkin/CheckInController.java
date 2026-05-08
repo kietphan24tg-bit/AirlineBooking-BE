@@ -3,6 +3,9 @@ package com.example.appbootstrap.controller.checkin;
 import com.example.appbootstrap.api.ApiSuccessMessage;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueRequest;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueResponse;
+import com.example.modulecheckin.application.CheckInContinueCommand;
+import com.example.modulecheckin.application.CheckInContinueService;
+import com.example.modulecheckin.application.CheckInContinueView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,9 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import com.example.modulecheckin.application.CheckInContinueCommand;
-import com.example.modulecheckin.application.CheckInContinueService;
-import com.example.modulecheckin.application.CheckInContinueView;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,8 +43,14 @@ public class CheckInController {
         description = "Check-in confirmation snapshot returned",
         content = @Content(schema = @Schema(implementation = CheckInContinueResponse.class))),
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
-    @ApiResponse(responseCode = "404", description = "Booking or selection not found", content = @Content),
-    @ApiResponse(responseCode = "409", description = "Booking not eligible for check-in", content = @Content)
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking or selection not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Booking not eligible for check-in",
+        content = @Content)
   })
   CheckInContinueResponse continueCheckIn(@Valid @RequestBody CheckInContinueRequest request) {
     CheckInContinueView view =

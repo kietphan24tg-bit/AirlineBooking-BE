@@ -87,7 +87,8 @@ class FlightMockDataServiceTest {
     assertTrue(
         savedFlights.stream()
             .allMatch(flight -> FlightSource.SEEDED.equals(flight.getFlightSource())));
-    verify(flightSeatGenerationService, Mockito.times(2)).generateForFlight(any(FlightEntity.class));
+    verify(flightSeatGenerationService, Mockito.times(2))
+        .generateForFlight(any(FlightEntity.class));
     verify(flightFareGenerationService, Mockito.times(2))
         .generateFaresForFlight(any(FlightEntity.class));
   }

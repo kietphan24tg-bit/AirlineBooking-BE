@@ -5,12 +5,12 @@ import static org.mockito.Mockito.when;
 
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueRequest;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueResponse;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
-import java.util.List;
 import com.example.modulecheckin.application.CheckInContinueCommand;
 import com.example.modulecheckin.application.CheckInContinueService;
 import com.example.modulecheckin.application.CheckInContinueView;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,10 +35,13 @@ class CheckInControllerTest {
   void continueCheckInDelegatesToService() {
     CheckInContinueRequest request =
         new CheckInContinueRequest(
-            "ABC123", "NGUYEN", List.of(new CheckInContinueRequest.SegmentRequest(1001L, List.of(1L))));
+            "ABC123",
+            "NGUYEN",
+            List.of(new CheckInContinueRequest.SegmentRequest(1001L, List.of(1L))));
     CheckInContinueView response =
         new CheckInContinueView(
-            new CheckInContinueView.BookingView(10L, "ABC123", "CONFIRMED", "a", "b", 1, "VND", "NGUYEN"),
+            new CheckInContinueView.BookingView(
+                10L, "ABC123", "CONFIRMED", "a", "b", 1, "VND", "NGUYEN"),
             List.of(),
             new CheckInContinueView.SummaryView(1, 1, 1, 0, 0),
             new CheckInContinueView.ActionsView(true, false, "CONFIRM_CHECKIN"));
@@ -59,9 +62,7 @@ class CheckInControllerTest {
     var violations =
         validator.validate(
             new CheckInContinueRequest(
-                " ",
-                "",
-                List.of(new CheckInContinueRequest.SegmentRequest(null, List.of()))));
+                " ", "", List.of(new CheckInContinueRequest.SegmentRequest(null, List.of()))));
 
     assertEquals(4, violations.size());
   }

@@ -53,7 +53,7 @@ class BookingConfirmationEmailServiceTest {
   }
 
   @Test
-  void shouldSendConfirmationEmailToAllBookingContactsAndMarkBooking() {
+  void shouldSendConfirmationEmailToPrimaryBookingContactAndMarkBooking() {
     BookingEntity booking = booking();
     TicketEntity ticket = ticket(booking);
     when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
@@ -72,7 +72,7 @@ class BookingConfirmationEmailServiceTest {
     verify(mailSender).send(captor.capture());
     SimpleMailMessage message = captor.getValue();
     assertEquals("no-reply@example.com", message.getFrom());
-    assertEquals(List.of("guest@example.com", "buyer@example.com"), List.of(message.getTo()));
+    assertEquals(List.of("guest@example.com"), List.of(message.getTo()));
     assertEquals("Your booking is confirmed - PNR ABC123", message.getSubject());
     assertTrue(message.getText().contains("PNR: ABC123"));
     assertTrue(message.getText().contains("Ticket: ABC123-1"));
@@ -89,6 +89,22 @@ class BookingConfirmationEmailServiceTest {
     when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
     when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
         .thenReturn(List.of(contact(null, true)));
+
+    service.sendIfNeeded(10L);
+
+    ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    verify(mailSender).send(captor.capture());
+    assertEquals(List.of("guest@example.com"), List.of(captor.getValue().getTo()));
+  }
+
+  @Test
+  void shouldFallbackToBookingContactEmailWhenPrimaryContactHasNoEmail() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking);
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
+    when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
+        .thenReturn(List.of(contact(" ", true), contact("buyer@example.com", false)));
 
     service.sendIfNeeded(10L);
 

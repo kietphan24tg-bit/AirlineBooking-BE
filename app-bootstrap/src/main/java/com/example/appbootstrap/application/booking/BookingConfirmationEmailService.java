@@ -95,15 +95,16 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
   }
 
   private List<String> recipientsFor(BookingEntity booking) {
-    List<String> contactEmails =
+    String primaryEmail =
         bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(booking.getId()).stream()
+            .filter(BookingContactEntity::isPrimary)
             .map(BookingContactEntity::getEmail)
             .map(this::normalizeEmail)
             .filter(email -> email != null && !email.isBlank())
-            .distinct()
-            .toList();
-    if (!contactEmails.isEmpty()) {
-      return contactEmails;
+            .findFirst()
+            .orElse(null);
+    if (primaryEmail != null && !primaryEmail.isBlank()) {
+      return List.of(primaryEmail);
     }
 
     String fallback = normalizeEmail(booking.getContactEmail());

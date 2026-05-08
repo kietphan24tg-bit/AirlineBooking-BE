@@ -111,8 +111,8 @@ public class CheckInContinueService {
     Map<Long, List<CheckInContinueView.ServiceView>> servicesByPassengerId =
         loadServicesByPassengerId(booking.getId());
     Map<Long, BoardingPassEntity> boardingPassesByTicketId =
-        boardingPassRepository.findByTicketIdIn(
-                tickets.stream().map(TicketEntity::getId).toList())
+        boardingPassRepository
+            .findByTicketIdIn(tickets.stream().map(TicketEntity::getId).toList())
             .stream()
             .collect(
                 java.util.stream.Collectors.toMap(
@@ -135,7 +135,8 @@ public class CheckInContinueService {
     int passengersWithoutSeat = 0;
 
     for (CheckInContinueCommand.SegmentSelection selection : command.segments()) {
-      Map<Long, TicketEntity> ticketsByPassengerId = ticketsByFlightAndPassenger.get(selection.flightId());
+      Map<Long, TicketEntity> ticketsByPassengerId =
+          ticketsByFlightAndPassenger.get(selection.flightId());
       if (ticketsByPassengerId == null || ticketsByPassengerId.isEmpty()) {
         throw new AppException(
             "CHECKIN_FLIGHT_NOT_FOUND",
@@ -176,7 +177,8 @@ public class CheckInContinueService {
         FlightSeatEntity seat =
             resolveSeat(
                 ticket,
-                activeSeatsByPassengerAndFlight.get(new PassengerFlightKey(passengerId, flight.getId())));
+                activeSeatsByPassengerAndFlight.get(
+                    new PassengerFlightKey(passengerId, flight.getId())));
         List<String> warnings = new ArrayList<>();
         boolean eligible = true;
         String checkInStatus = "READY";
@@ -341,9 +343,11 @@ public class CheckInContinueService {
     return result;
   }
 
-  private Map<Long, List<CheckInContinueView.ServiceView>> loadServicesByPassengerId(Long bookingId) {
+  private Map<Long, List<CheckInContinueView.ServiceView>> loadServicesByPassengerId(
+      Long bookingId) {
     Map<Long, List<CheckInContinueView.ServiceView>> result = new LinkedHashMap<>();
-    for (BookingServiceEntity bookingService : bookingServiceRepository.findAllByBookingId(bookingId)) {
+    for (BookingServiceEntity bookingService :
+        bookingServiceRepository.findAllByBookingId(bookingId)) {
       Long passengerId = bookingService.getPassenger().getId();
       ServiceOptionEntity option = bookingService.getServiceOption();
       result
@@ -375,7 +379,8 @@ public class CheckInContinueService {
         : JOURNEY_TYPE_INTERNATIONAL;
   }
 
-  private CheckInWindow buildCheckInWindow(FlightEntity flight, String journeyType, OffsetDateTime now) {
+  private CheckInWindow buildCheckInWindow(
+      FlightEntity flight, String journeyType, OffsetDateTime now) {
     int openHours =
         JOURNEY_TYPE_DOMESTIC.equals(journeyType)
             ? checkInProperties.checkinOpenHours()

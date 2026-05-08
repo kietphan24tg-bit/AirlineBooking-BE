@@ -26,8 +26,7 @@ class FlightImportSchedulerTest {
 
   @Test
   void runMaintenanceOnStartup_shouldCallMaintenanceWhenEnabled() {
-    FlightImportScheduler scheduler =
-        new FlightImportScheduler(flightDataMaintenanceService, true);
+    FlightImportScheduler scheduler = new FlightImportScheduler(flightDataMaintenanceService, true);
 
     scheduler.runMaintenanceOnStartup();
 

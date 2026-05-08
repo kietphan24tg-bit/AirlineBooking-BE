@@ -2,6 +2,7 @@ package com.example.modulepayment.gateway;
 
 import com.example.common.exception.AppException;
 import com.example.modulepayment.config.PaymentProperties;
+import com.example.modulepayment.gateway.PaymentGateway.PaymentLineItem;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
@@ -11,6 +12,7 @@ import com.stripe.param.checkout.SessionCreateParams;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
@@ -40,14 +42,6 @@ public class StripePaymentGateway {
             .putMetadata("bookingId", String.valueOf(request.bookingId()));
     addMetadata(paymentIntentData, request.metadata());
 
-    SessionCreateParams.LineItem.PriceData.ProductData.Builder productData =
-        SessionCreateParams.LineItem.PriceData.ProductData.builder()
-            .setName(request.productName())
-            .setDescription(request.productDescription())
-            .putMetadata("paymentId", String.valueOf(request.paymentId()))
-            .putMetadata("bookingId", String.valueOf(request.bookingId()));
-    addMetadata(productData, request.metadata());
-
     SessionCreateParams.Builder params =
         SessionCreateParams.builder()
             .setMode(SessionCreateParams.Mode.PAYMENT)
@@ -58,19 +52,10 @@ public class StripePaymentGateway {
             .putMetadata("paymentId", String.valueOf(request.paymentId()))
             .putMetadata("bookingId", String.valueOf(request.bookingId()))
             .putMetadata("orderCode", String.valueOf(request.orderCode()))
-            .setPaymentIntentData(paymentIntentData.build())
-            .addLineItem(
-                SessionCreateParams.LineItem.builder()
-                    .setQuantity(1L)
-                    .setPriceData(
-                        SessionCreateParams.LineItem.PriceData.builder()
-                            .setCurrency(request.currency().toLowerCase())
-                            .setUnitAmount(toStripeAmount(request.amount(), request.currency()))
-                            .setProductData(productData.build())
-                            .build())
-                    .build());
+            .setPaymentIntentData(paymentIntentData.build());
 
     addMetadata(params, request.metadata());
+    addLineItems(params, request);
 
     Long expiresAt = checkoutExpiresAt(request.expiredAt());
     if (expiresAt != null) {
@@ -126,6 +111,57 @@ public class StripePaymentGateway {
         params.putMetadata(entry.getKey(), entry.getValue());
       }
     }
+  }
+
+  private static void addLineItems(
+      SessionCreateParams.Builder params, PaymentGateway.PaymentGatewayRequest request) {
+    List<PaymentLineItem> lineItems = request.lineItems();
+    if (lineItems == null || lineItems.isEmpty()) {
+      params.addLineItem(
+          buildLineItem(
+              request.productName(), request.productDescription(), request.amount(), request));
+      return;
+    }
+    boolean addedLineItem = false;
+    for (PaymentLineItem lineItem : lineItems) {
+      if (lineItem == null
+          || lineItem.amount() == null
+          || BigDecimal.ZERO.compareTo(lineItem.amount()) == 0) {
+        continue;
+      }
+      params.addLineItem(
+          buildLineItem(lineItem.name(), lineItem.description(), lineItem.amount(), request));
+      addedLineItem = true;
+    }
+    if (!addedLineItem) {
+      params.addLineItem(
+          buildLineItem(
+              request.productName(), request.productDescription(), request.amount(), request));
+    }
+  }
+
+  private static SessionCreateParams.LineItem buildLineItem(
+      String name,
+      String description,
+      BigDecimal amount,
+      PaymentGateway.PaymentGatewayRequest request) {
+    SessionCreateParams.LineItem.PriceData.ProductData.Builder productData =
+        SessionCreateParams.LineItem.PriceData.ProductData.builder()
+            .setName(name)
+            .setDescription(description)
+            .putMetadata("paymentId", String.valueOf(request.paymentId()))
+            .putMetadata("bookingId", String.valueOf(request.bookingId()));
+    addMetadata(productData, request.metadata());
+
+    return SessionCreateParams.LineItem.builder()
+        .setQuantity(1L)
+        .setPriceData(
+            SessionCreateParams.LineItem.PriceData.builder()
+                .setCurrency(request.currency().toLowerCase())
+                .setUnitAmount(toStripeAmount(amount, request.currency()))
+                .setProductData(productData.build())
+                .build())
+        .build();
   }
 
   public void expireCheckoutSession(String sessionId) {

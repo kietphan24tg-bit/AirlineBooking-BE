@@ -18,6 +18,7 @@ import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayRequest;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayResult;
+import com.example.modulepayment.gateway.PaymentGateway.PaymentLineItem;
 import com.example.modulepayment.gateway.StripePaymentGateway;
 import com.example.modulepayment.repository.BookingRepository;
 import com.example.modulepayment.repository.PaymentRepository;
@@ -385,6 +386,7 @@ public class PaymentService {
                       providerForMethod(normalizedMethod),
                       buildProductName(booking),
                       buildProductDescription(booking),
+                      buildStripeLineItems(booking),
                       buildStripeMetadata(booking)));
     } catch (RuntimeException exception) {
       payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
@@ -671,35 +673,72 @@ public class PaymentService {
   private String buildProductName(BookingEntity booking) {
     PaymentDetailsView.FlightView flight = buildPaymentDetails(booking).flight();
     if (flight == null || flight.flightName() == null || flight.flightName().isBlank()) {
-      return "Airline booking " + booking.getPnrCode();
+      return "Airline booking";
     }
-    return flight.flightName() + " - " + booking.getPnrCode();
+    return "Flight " + flight.flightName();
   }
 
   private String buildProductDescription(BookingEntity booking) {
     PaymentDetailsView details = buildPaymentDetails(booking);
     PaymentDetailsView.FlightView flight = details.flight();
-    PaymentDetailsView.PriceBreakdownView price = details.price();
     if (flight == null) {
-      return "Payment for booking " + booking.getPnrCode();
+      return "PNR " + booking.getPnrCode();
     }
-    return nullToBlank(flight.departureCode())
-        + " to "
-        + nullToBlank(flight.arrivalCode())
-        + " - booking "
-        + booking.getPnrCode()
+    String route = buildRouteLabel(flight);
+    if (route.isBlank()) {
+      return "PNR " + booking.getPnrCode();
+    }
+    return route + " | PNR " + booking.getPnrCode();
+  }
+
+  private String buildRouteLabel(PaymentDetailsView.FlightView flight) {
+    String departure = nullToBlank(flight.departureCode());
+    String arrival = nullToBlank(flight.arrivalCode());
+    if (departure.isBlank() || arrival.isBlank()) {
+      return "";
+    }
+    return departure + " to " + arrival;
+  }
+
+  private List<PaymentLineItem> buildStripeLineItems(BookingEntity booking) {
+    PaymentDetailsView details = buildPaymentDetails(booking);
+    PaymentDetailsView.FlightView flight = details.flight();
+    PaymentDetailsView.PriceBreakdownView price = details.price();
+    String route = flight == null ? "" : buildRouteLabel(flight);
+    String pnr = "PNR " + booking.getPnrCode();
+    String flightDescription = route.isBlank() ? pnr : route + " | " + pnr;
+    BigDecimal fareAfterDiscount = price.baseFare().subtract(price.discount());
+    if (fareAfterDiscount.compareTo(BigDecimal.ZERO) < 0) {
+      fareAfterDiscount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    }
+    BigDecimal itemizedTotal =
+        fareAfterDiscount.add(price.tax()).add(price.serviceFee()).add(price.seatFee());
+    if (itemizedTotal.compareTo(BigDecimal.ZERO) == 0
+        && price.total().compareTo(BigDecimal.ZERO) > 0) {
+      fareAfterDiscount = price.total();
+    }
+    return List.of(
+        new PaymentLineItem(
+            buildProductName(booking),
+            buildFareDescription(flightDescription, price),
+            fareAfterDiscount),
+        new PaymentLineItem("Taxes", "Government taxes and fees", price.tax()),
+        new PaymentLineItem("Services", "Selected add-on services", price.serviceFee()),
+        new PaymentLineItem("Seats", "Seat selection fees", price.seatFee()));
+  }
+
+  private String buildFareDescription(
+      String flightDescription, PaymentDetailsView.PriceBreakdownView price) {
+    if (price.discount().compareTo(BigDecimal.ZERO) <= 0) {
+      return flightDescription;
+    }
+    return flightDescription
         + " | Base "
-        + price.baseFare()
+        + price.baseFare().toPlainString()
+        + " "
+        + price.currency()
         + ", discount "
-        + price.discount()
-        + ", tax "
-        + price.tax()
-        + ", services "
-        + price.serviceFee()
-        + ", seats "
-        + price.seatFee()
-        + ", total "
-        + price.total()
+        + price.discount().toPlainString()
         + " "
         + price.currency();
   }

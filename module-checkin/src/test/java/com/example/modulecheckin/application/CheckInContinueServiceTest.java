@@ -71,7 +71,8 @@ class CheckInContinueServiceTest {
   void continueCheckIn_returnsReadySnapshotForOpenDomesticFlight() {
     BookingEntity booking = booking("CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Nguyen", "Van A");
-    TicketEntity ticket = domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
+    TicketEntity ticket =
+        domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
 
     when(bookingRepository.findByPnrCode("ABC123")).thenReturn(Optional.of(booking));
     when(passengerRepository.findByBookingIdOrderById(10L)).thenReturn(List.of(passenger));
@@ -79,27 +80,33 @@ class CheckInContinueServiceTest {
     when(passengerSeatAssignmentRepository.findByBookingIdAndPassengerIdInAndStatusIn(
             10L, Set.of(1L), List.of("RESERVED", "BOOKED")))
         .thenReturn(List.of());
-    when(bookingServiceRepository.findAllByBookingId(10L)).thenReturn(List.of(serviceEntry(booking, passenger)));
+    when(bookingServiceRepository.findAllByBookingId(10L))
+        .thenReturn(List.of(serviceEntry(booking, passenger)));
     when(boardingPassRepository.findByTicketIdIn(List.of(9001L))).thenReturn(List.of());
 
     CheckInContinueView response =
         service.continueCheckIn(
             new CheckInContinueCommand(
-                "ABC123", "NGUYEN", List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
+                "ABC123",
+                "NGUYEN",
+                List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
 
     assertEquals("CONFIRM_CHECKIN", response.actions().nextStep());
     assertTrue(response.actions().allowConfirmCheckIn());
     assertFalse(response.actions().allowSeatSelection());
     assertEquals("READY", response.segments().getFirst().passengers().getFirst().checkInStatus());
     assertEquals("12A", response.segments().getFirst().passengers().getFirst().seat().seatNumber());
-    assertEquals("MEAL", response.segments().getFirst().passengers().getFirst().services().getFirst().code());
+    assertEquals(
+        "MEAL",
+        response.segments().getFirst().passengers().getFirst().services().getFirst().code());
   }
 
   @Test
   void continueCheckIn_requiresSeatSelectionWhenSeatMissing() {
     BookingEntity booking = booking("CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Nguyen", "Van A");
-    TicketEntity ticket = domesticTicket(booking, passenger, false, OffsetDateTime.now().plusHours(3));
+    TicketEntity ticket =
+        domesticTicket(booking, passenger, false, OffsetDateTime.now().plusHours(3));
 
     when(bookingRepository.findByPnrCode("ABC123")).thenReturn(Optional.of(booking));
     when(passengerRepository.findByBookingIdOrderById(10L)).thenReturn(List.of(passenger));
@@ -113,7 +120,9 @@ class CheckInContinueServiceTest {
     CheckInContinueView response =
         service.continueCheckIn(
             new CheckInContinueCommand(
-                "ABC123", "NGUYEN", List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
+                "ABC123",
+                "NGUYEN",
+                List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
 
     assertEquals("SEAT_SELECTION", response.actions().nextStep());
     assertFalse(response.actions().allowConfirmCheckIn());
@@ -127,7 +136,8 @@ class CheckInContinueServiceTest {
   void continueCheckIn_blocksWhenWindowClosed() {
     BookingEntity booking = booking("CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Nguyen", "Van A");
-    TicketEntity ticket = domesticTicket(booking, passenger, true, OffsetDateTime.now().plusMinutes(30));
+    TicketEntity ticket =
+        domesticTicket(booking, passenger, true, OffsetDateTime.now().plusMinutes(30));
 
     when(bookingRepository.findByPnrCode("ABC123")).thenReturn(Optional.of(booking));
     when(passengerRepository.findByBookingIdOrderById(10L)).thenReturn(List.of(passenger));
@@ -141,11 +151,14 @@ class CheckInContinueServiceTest {
     CheckInContinueView response =
         service.continueCheckIn(
             new CheckInContinueCommand(
-                "ABC123", "NGUYEN", List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
+                "ABC123",
+                "NGUYEN",
+                List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
 
     assertEquals("BLOCKED", response.actions().nextStep());
     assertEquals("CLOSED", response.segments().getFirst().checkInWindow().status());
-    assertEquals("CHECKIN_CLOSED", response.segments().getFirst().passengers().getFirst().checkInStatus());
+    assertEquals(
+        "CHECKIN_CLOSED", response.segments().getFirst().passengers().getFirst().checkInStatus());
   }
 
   @Test
@@ -168,7 +181,8 @@ class CheckInContinueServiceTest {
   void continueCheckIn_marksAlreadyCheckedInPassengerAsBlocked() {
     BookingEntity booking = booking("CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Nguyen", "Van A");
-    TicketEntity ticket = domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
+    TicketEntity ticket =
+        domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
     BoardingPassEntity boardingPass = new BoardingPassEntity();
     boardingPass.setTicket(ticket);
 
@@ -184,10 +198,14 @@ class CheckInContinueServiceTest {
     CheckInContinueView response =
         service.continueCheckIn(
             new CheckInContinueCommand(
-                "ABC123", "NGUYEN", List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
+                "ABC123",
+                "NGUYEN",
+                List.of(new CheckInContinueCommand.SegmentSelection(1001L, List.of(1L)))));
 
     assertEquals("BLOCKED", response.actions().nextStep());
-    assertEquals("ALREADY_CHECKED_IN", response.segments().getFirst().passengers().getFirst().checkInStatus());
+    assertEquals(
+        "ALREADY_CHECKED_IN",
+        response.segments().getFirst().passengers().getFirst().checkInStatus());
   }
 
   private static BookingEntity booking(String status) {
@@ -214,7 +232,10 @@ class CheckInContinueServiceTest {
   }
 
   private static TicketEntity domesticTicket(
-      BookingEntity booking, PassengerEntity passenger, boolean withSeat, OffsetDateTime departureTime) {
+      BookingEntity booking,
+      PassengerEntity passenger,
+      boolean withSeat,
+      OffsetDateTime departureTime) {
     AirlineEntity airline = new AirlineEntity();
     airline.setCode("VJ");
     airline.setName("VietJet Air");
@@ -275,7 +296,8 @@ class CheckInContinueServiceTest {
     return ticket;
   }
 
-  private static BookingServiceEntity serviceEntry(BookingEntity booking, PassengerEntity passenger) {
+  private static BookingServiceEntity serviceEntry(
+      BookingEntity booking, PassengerEntity passenger) {
     ServiceEntity service = new ServiceEntity();
     service.setType("MEAL");
     service.setName("Meal");

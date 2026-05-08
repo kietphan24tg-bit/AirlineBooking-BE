@@ -13,12 +13,8 @@ public record CheckInContinueRequest(
     @NotEmpty(message = "segments is required") List<@Valid SegmentRequest> segments) {
 
   public record SegmentRequest(
-      @NotNull(message = "flightId is required") @Positive(message = "flightId must be positive")
-          Long flightId,
-      @NotEmpty(message = "passengerIds is required")
-          List<
-                  @NotNull(message = "passengerIds contains null")
-                  @Positive(message = "passengerId must be positive")
-                  Long>
+      @NotNull(message = "flightId is required") @Positive(message = "flightId must be positive") Long flightId,
+      @NotEmpty(message = "passengerIds is required") List<
+                  @NotNull(message = "passengerIds contains null") @Positive(message = "passengerId must be positive") Long>
               passengerIds) {}
 }

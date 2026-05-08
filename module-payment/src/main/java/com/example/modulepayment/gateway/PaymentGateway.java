@@ -2,6 +2,7 @@ package com.example.modulepayment.gateway;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 
 public interface PaymentGateway {
@@ -28,6 +29,7 @@ public interface PaymentGateway {
       String provider,
       String productName,
       String productDescription,
+      List<PaymentLineItem> lineItems,
       Map<String, String> metadata) {
 
     public PaymentGatewayRequest(
@@ -58,9 +60,12 @@ public interface PaymentGateway {
           null,
           description,
           description,
+          List.of(),
           Map.of());
     }
   }
+
+  record PaymentLineItem(String name, String description, BigDecimal amount) {}
 
   record PaymentGatewayResult(
       String paymentLinkId,
