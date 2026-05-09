@@ -18,9 +18,9 @@ class FlightImportSchedulerTest {
   @Test
   void runFlightImportOnStartup_shouldSkipWhenStartupDisabled() {
     FlightImportProperties properties =
-        new FlightImportProperties(false, false, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
-    FlightImportScheduler scheduler =
-        new FlightImportScheduler(flightImportService, properties);
+        new FlightImportProperties(
+            false, false, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
+    FlightImportScheduler scheduler = new FlightImportScheduler(flightImportService, properties);
 
     scheduler.runFlightImportOnStartup();
 
@@ -30,9 +30,9 @@ class FlightImportSchedulerTest {
   @Test
   void runFlightImport_shouldSkipWhenDisabled() {
     FlightImportProperties properties =
-        new FlightImportProperties(false, true, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
-    FlightImportScheduler scheduler =
-        new FlightImportScheduler(flightImportService, properties);
+        new FlightImportProperties(
+            false, true, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
+    FlightImportScheduler scheduler = new FlightImportScheduler(flightImportService, properties);
 
     scheduler.runFlightImport();
 
@@ -42,9 +42,9 @@ class FlightImportSchedulerTest {
   @Test
   void runFlightImport_shouldCallServiceWhenEnabled() {
     FlightImportProperties properties =
-        new FlightImportProperties(true, true, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
-    FlightImportScheduler scheduler =
-        new FlightImportScheduler(flightImportService, properties);
+        new FlightImportProperties(
+            true, true, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
+    FlightImportScheduler scheduler = new FlightImportScheduler(flightImportService, properties);
 
     scheduler.runFlightImport();
 

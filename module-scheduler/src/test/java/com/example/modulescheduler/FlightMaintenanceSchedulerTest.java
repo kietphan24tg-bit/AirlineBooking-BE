@@ -19,7 +19,8 @@ class FlightMaintenanceSchedulerTest {
   void runMaintenanceOnStartup_shouldSkipWhenDisabled() {
     FlightMaintenanceScheduler scheduler =
         new FlightMaintenanceScheduler(
-            flightDataMaintenanceService, new FlightMaintenanceProperties("0 30 2 * * *", false, true));
+            flightDataMaintenanceService,
+            new FlightMaintenanceProperties("0 30 2 * * *", false, true));
 
     scheduler.runMaintenanceOnStartup();
 
@@ -30,7 +31,8 @@ class FlightMaintenanceSchedulerTest {
   void runMaintenanceOnStartup_shouldCallMaintenanceWhenEnabled() {
     FlightMaintenanceScheduler scheduler =
         new FlightMaintenanceScheduler(
-            flightDataMaintenanceService, new FlightMaintenanceProperties("0 30 2 * * *", true, true));
+            flightDataMaintenanceService,
+            new FlightMaintenanceProperties("0 30 2 * * *", true, true));
 
     scheduler.runMaintenanceOnStartup();
 
