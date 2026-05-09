@@ -88,8 +88,8 @@ class BookingLookupServiceTest {
     assertEquals("VN123", response.itineraries().getFirst().flightNumber());
     assertEquals(23, response.itineraries().getFirst().fareBenefits().baggageCheckinKg());
     assertEquals("ECO", response.itineraries().getFirst().fareBenefits().fareClassCode());
-    assertTrue(response.passengers().getFirst().seatAssignments().isEmpty());
-    assertTrue(response.passengers().getFirst().serviceSelections().isEmpty());
+    assertTrue(response.passengers().getFirst().selections().seats().isEmpty());
+    assertTrue(response.passengers().getFirst().selections().services().isEmpty());
     assertEquals(new BigDecimal("1000000.00"), response.paymentDetails().price().baseFare());
     assertEquals(new BigDecimal("150000.00"), response.paymentDetails().price().tax());
     assertEquals(new BigDecimal("50000.00"), response.paymentDetails().price().serviceFee());

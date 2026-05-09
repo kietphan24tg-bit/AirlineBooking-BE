@@ -115,9 +115,11 @@ public class BookingLookupService {
                         passenger.getPassengerType(),
                         passenger.getGender(),
                         passenger.getDateOfBirth(),
-                        List.copyOf(seatsByPassenger.getOrDefault(passenger.getId(), List.of())),
-                        List.copyOf(
-                            servicesByPassenger.getOrDefault(passenger.getId(), List.of()))))
+                        new BookingLookupResponse.PassengerSelections(
+                            List.copyOf(
+                                seatsByPassenger.getOrDefault(passenger.getId(), List.of())),
+                            List.copyOf(
+                                servicesByPassenger.getOrDefault(passenger.getId(), List.of())))))
             .toList(),
         actionsForStatus(booking.getStatus()));
   }

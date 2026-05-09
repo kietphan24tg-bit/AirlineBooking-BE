@@ -92,6 +92,9 @@ public record BookingLookupResponse(
       Integer quantity,
       BigDecimal price) {}
 
+  public record PassengerSelections(
+      List<SeatAssignmentDetail> seats, List<ServiceSelectionDetail> services) {}
+
   public record PassengerSummary(
       Long passengerId,
       String firstName,
@@ -99,8 +102,7 @@ public record BookingLookupResponse(
       String passengerType,
       String gender,
       LocalDate dateOfBirth,
-      List<SeatAssignmentDetail> seatAssignments,
-      List<ServiceSelectionDetail> serviceSelections) {}
+      PassengerSelections selections) {}
 
   public record Actions(
       boolean canSelectSeat,
