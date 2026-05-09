@@ -115,8 +115,7 @@ public class BookingLookupService {
                         passenger.getPassengerType(),
                         passenger.getGender(),
                         passenger.getDateOfBirth(),
-                        List.copyOf(
-                            seatsByPassenger.getOrDefault(passenger.getId(), List.of())),
+                        List.copyOf(seatsByPassenger.getOrDefault(passenger.getId(), List.of())),
                         List.copyOf(
                             servicesByPassenger.getOrDefault(passenger.getId(), List.of()))))
             .toList(),
@@ -140,8 +139,8 @@ public class BookingLookupService {
   private Map<Long, List<BookingLookupResponse.ServiceSelectionDetail>> groupServiceSelections(
       Long bookingId) {
     Map<Long, List<BookingLookupResponse.ServiceSelectionDetail>> byPassenger = new HashMap<>();
-    for (BookingServiceEntity selection : bookingServiceRepository.findDetailedByBookingId(
-        bookingId)) {
+    for (BookingServiceEntity selection :
+        bookingServiceRepository.findDetailedByBookingId(bookingId)) {
       byPassenger
           .computeIfAbsent(selection.getPassenger().getId(), k -> new ArrayList<>())
           .add(toServiceSelectionDetail(selection));
