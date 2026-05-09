@@ -2,6 +2,9 @@ package com.example.appbootstrap.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.example.appbootstrap.controller.booking.dto.BookingLookupRequest;
@@ -71,6 +74,9 @@ class BookingLookupServiceTest {
     when(bookingServiceRepository.sumPriceByBookingId(10L)).thenReturn(new BigDecimal("50000"));
     when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
         .thenReturn(new BigDecimal("20000"));
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
 
     BookingLookupResponse response = service.lookup(new BookingLookupRequest("abc123", "NGUYEN"));
 
@@ -80,6 +86,10 @@ class BookingLookupServiceTest {
     assertEquals("guest@example.com", response.primaryContact().email());
     assertEquals(1, response.itineraries().size());
     assertEquals("VN123", response.itineraries().getFirst().flightNumber());
+    assertEquals(23, response.itineraries().getFirst().fareBenefits().baggageCheckinKg());
+    assertEquals("ECO", response.itineraries().getFirst().fareBenefits().fareClassCode());
+    assertTrue(response.passengers().getFirst().seatAssignments().isEmpty());
+    assertTrue(response.passengers().getFirst().serviceSelections().isEmpty());
     assertEquals(new BigDecimal("1000000.00"), response.paymentDetails().price().baseFare());
     assertEquals(new BigDecimal("150000.00"), response.paymentDetails().price().tax());
     assertEquals(new BigDecimal("50000.00"), response.paymentDetails().price().serviceFee());
@@ -116,6 +126,9 @@ class BookingLookupServiceTest {
     when(bookingServiceRepository.sumPriceByBookingId(10L)).thenReturn(BigDecimal.ZERO);
     when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
         .thenReturn(BigDecimal.ZERO);
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
 
     BookingLookupResponse response = service.lookup(new BookingLookupRequest("ABC123", "Nguyen"));
 
@@ -178,8 +191,24 @@ class BookingLookupServiceTest {
     flight.setStatus("SCHEDULED");
 
     FareClassEntity fareClass = new FareClassEntity();
+    fareClass.setCode("ECO");
     fareClass.setName("Eco");
     fareClass.setCabinClass("ECONOMY");
+    fareClass.setBaggageCheckinKg(23);
+    fareClass.setBaggageHandKg(7);
+    fareClass.setChangeFee(new BigDecimal("500000"));
+    fareClass.setRefundFee(new BigDecimal("300000"));
+    fareClass.setRefundable(true);
+    fareClass.setChangeable(true);
+    fareClass.setPriorityCheckin(false);
+    fareClass.setPriorityBoarding(false);
+    fareClass.setMileageRate(new BigDecimal("1.00"));
+    fareClass.setLoungeAccess(false);
+    fareClass.setSeatSelection(true);
+    fareClass.setSeatSelectionPolicy("STANDARD");
+    fareClass.setMealType("STANDARD");
+    fareClass.setWifiIncluded(false);
+    fareClass.setFastTrackSecurity(false);
 
     FlightFareEntity flightFare = new FlightFareEntity();
     flightFare.setFlight(flight);

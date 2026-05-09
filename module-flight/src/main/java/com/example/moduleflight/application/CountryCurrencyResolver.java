@@ -11,13 +11,17 @@ import org.springframework.util.StringUtils;
 // identify the country code and currency of the flight
 public class CountryCurrencyResolver {
 
-  private static final String DEFAULT_COUNTRY_CODE = "VN";
+  private static final String DEFAULT_COUNTRY_CODE = "GL";
   private static final String DEFAULT_CURRENCY = "VND";
 
   private static final Map<String, String> COUNTRY_ALIASES =
       Map.ofEntries(
           Map.entry("VIETNAM", "VN"),
           Map.entry("VIET_NAM", "VN"),
+          Map.entry("THAILAND", "TH"),
+          Map.entry("MALAYSIA", "MY"),
+          Map.entry("INDONESIA", "ID"),
+          Map.entry("PHILIPPINES", "PH"),
           Map.entry("UNITED_STATES", "US"),
           Map.entry("UNITED_STATES_OF_AMERICA", "US"),
           Map.entry("USA", "US"),
@@ -33,14 +37,18 @@ public class CountryCurrencyResolver {
           Map.entry("SINGAPORE", "SG"));
 
   private static final Map<String, String> CURRENCY_BY_COUNTRY =
-      Map.of(
-          "VN", "VND",
-          "US", "USD",
-          "GB", "GBP",
-          "DE", "EUR",
-          "JP", "JPY",
-          "AU", "AUD",
-          "SG", "SGD");
+      Map.ofEntries(
+          Map.entry("VN", "VND"),
+          Map.entry("TH", "THB"),
+          Map.entry("MY", "MYR"),
+          Map.entry("ID", "IDR"),
+          Map.entry("PH", "PHP"),
+          Map.entry("US", "USD"),
+          Map.entry("GB", "GBP"),
+          Map.entry("DE", "EUR"),
+          Map.entry("JP", "JPY"),
+          Map.entry("AU", "AUD"),
+          Map.entry("SG", "SGD"));
 
   public String resolveCountryCode(FlightFareEntity fare) {
     return resolveCountryCode(fare == null ? null : fare.getFlight());
@@ -66,6 +74,7 @@ public class CountryCurrencyResolver {
   }
 
   public String resolveCurrency(String countryCode) {
+    // Unknown markets fall back to the global pricing market, which currently settles in VND.
     if (!StringUtils.hasText(countryCode)) {
       return DEFAULT_CURRENCY;
     }

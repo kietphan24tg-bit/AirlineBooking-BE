@@ -6,18 +6,28 @@ import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
+import com.example.modulebooking.entity.BookingServiceEntity;
+import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.entity.PassengerEntity;
+import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
+import com.example.modulebooking.entity.ServiceEntity;
+import com.example.modulebooking.entity.ServiceOptionEntity;
 import com.example.modulebooking.repository.BookingContactRepository;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.BookingServiceRepository;
 import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
+import com.example.moduleflight.entity.FareClassEntity;
+import com.example.moduleflight.entity.SeatCategoryEntity;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,6 +38,7 @@ public class BookingLookupService {
   private static final String BOOKING_NOT_FOUND_CODE = "BOOKING_NOT_FOUND";
   private static final String BOOKING_NOT_FOUND_MESSAGE = "Booking not found";
   private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+  private static final List<String> ACTIVE_ASSIGNMENT_STATUSES = List.of("RESERVED", "BOOKED");
 
   private final BookingRepository bookingRepository;
   private final PassengerRepository passengerRepository;
@@ -76,6 +87,11 @@ public class BookingLookupService {
             .toList();
     BookingLookupResponse.PaymentDetails paymentDetails = buildPaymentDetails(booking);
 
+    Map<Long, List<BookingLookupResponse.SeatAssignmentDetail>> seatsByPassenger =
+        groupSeatAssignments(booking.getId());
+    Map<Long, List<BookingLookupResponse.ServiceSelectionDetail>> servicesByPassenger =
+        groupServiceSelections(booking.getId());
+
     return new BookingLookupResponse(
         new BookingLookupResponse.BookingSummary(
             booking.getId(),
@@ -98,9 +114,65 @@ public class BookingLookupService {
                         passenger.getLastName(),
                         passenger.getPassengerType(),
                         passenger.getGender(),
-                        passenger.getDateOfBirth()))
+                        passenger.getDateOfBirth(),
+                        List.copyOf(
+                            seatsByPassenger.getOrDefault(passenger.getId(), List.of())),
+                        List.copyOf(
+                            servicesByPassenger.getOrDefault(passenger.getId(), List.of()))))
             .toList(),
         actionsForStatus(booking.getStatus()));
+  }
+
+  private Map<Long, List<BookingLookupResponse.SeatAssignmentDetail>> groupSeatAssignments(
+      Long bookingId) {
+    Map<Long, List<BookingLookupResponse.SeatAssignmentDetail>> byPassenger = new HashMap<>();
+    for (PassengerSeatAssignmentEntity assignment :
+        passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+            bookingId, ACTIVE_ASSIGNMENT_STATUSES)) {
+      BookingLookupResponse.SeatAssignmentDetail detail = toSeatAssignmentDetail(assignment);
+      byPassenger
+          .computeIfAbsent(assignment.getPassenger().getId(), k -> new ArrayList<>())
+          .add(detail);
+    }
+    return byPassenger;
+  }
+
+  private Map<Long, List<BookingLookupResponse.ServiceSelectionDetail>> groupServiceSelections(
+      Long bookingId) {
+    Map<Long, List<BookingLookupResponse.ServiceSelectionDetail>> byPassenger = new HashMap<>();
+    for (BookingServiceEntity selection : bookingServiceRepository.findDetailedByBookingId(
+        bookingId)) {
+      byPassenger
+          .computeIfAbsent(selection.getPassenger().getId(), k -> new ArrayList<>())
+          .add(toServiceSelectionDetail(selection));
+    }
+    return byPassenger;
+  }
+
+  private BookingLookupResponse.SeatAssignmentDetail toSeatAssignmentDetail(
+      PassengerSeatAssignmentEntity assignment) {
+    FlightSeatEntity seat = assignment.getFlightSeat();
+    return new BookingLookupResponse.SeatAssignmentDetail(
+        seat.getFlight().getId(),
+        seat.getId(),
+        seat.getSeatNumber(),
+        assignment.getStatus(),
+        assignment.getSurchargeAmount(),
+        assignment.getCurrency());
+  }
+
+  private BookingLookupResponse.ServiceSelectionDetail toServiceSelectionDetail(
+      BookingServiceEntity selection) {
+    ServiceEntity service = selection.getService();
+    ServiceOptionEntity option = selection.getServiceOption();
+    return new BookingLookupResponse.ServiceSelectionDetail(
+        service == null ? null : service.getId(),
+        service == null ? null : service.getType(),
+        service == null ? null : service.getName(),
+        option == null ? null : option.getId(),
+        option == null ? null : option.getName(),
+        selection.getQuantity(),
+        selection.getPrice());
   }
 
   private BookingLookupResponse.PaymentDetails buildPaymentDetails(BookingEntity booking) {
@@ -134,6 +206,7 @@ public class BookingLookupService {
   private BookingLookupResponse.ItinerarySummary toItinerarySummary(BookingFareHoldEntity hold) {
     var fare = hold.getFlightFare();
     var flight = fare.getFlight();
+    FareClassEntity fareClass = fare.getFareClass();
     return new BookingLookupResponse.ItinerarySummary(
         flight.getId(),
         flight.getFlightNumber(),
@@ -146,8 +219,39 @@ public class BookingLookupService {
         flight.getArrivalAirport().getCity(),
         flight.getArrivalTerminal(),
         statusLabel(flight.getStatus()),
-        fare.getFareClass().getName(),
-        fare.getFareClass().getCabinClass());
+        fareClass.getName(),
+        fareClass.getCabinClass(),
+        toFareBenefits(fareClass));
+  }
+
+  private BookingLookupResponse.FareBenefits toFareBenefits(FareClassEntity fc) {
+    SeatCategoryEntity category = fc.getIncludedSeatCategory();
+    BookingLookupResponse.IncludedSeatCategory includedCategory = null;
+    if (category != null) {
+      includedCategory =
+          new BookingLookupResponse.IncludedSeatCategory(
+              category.getId(), category.getCode(), category.getName());
+    }
+    return new BookingLookupResponse.FareBenefits(
+        fc.getCode(),
+        fc.getName(),
+        fc.getCabinClass(),
+        fc.getBaggageCheckinKg(),
+        fc.getBaggageHandKg(),
+        fc.getChangeFee(),
+        fc.getRefundFee(),
+        fc.isRefundable(),
+        fc.isChangeable(),
+        fc.isPriorityCheckin(),
+        fc.isPriorityBoarding(),
+        fc.isLoungeAccess(),
+        fc.isSeatSelection(),
+        fc.getSeatSelectionPolicy(),
+        fc.getMileageRate(),
+        fc.getMealType(),
+        fc.isWifiIncluded(),
+        fc.isFastTrackSecurity(),
+        includedCategory);
   }
 
   private BookingLookupResponse.PrimaryContact toPrimaryContact(
