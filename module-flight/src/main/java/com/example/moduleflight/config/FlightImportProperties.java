@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.flight-import")
 public record FlightImportProperties(
     boolean enabled,
+    boolean runOnStartup,
     String baseUrl,
     String apiKey,
     String cron,
