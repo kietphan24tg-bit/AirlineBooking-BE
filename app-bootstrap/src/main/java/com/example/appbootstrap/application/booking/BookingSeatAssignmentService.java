@@ -2,6 +2,7 @@ package com.example.appbootstrap.application.booking;
 
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
@@ -269,39 +270,96 @@ public class BookingSeatAssignmentService {
       }
     }
 
-    BigDecimal seatSurchargeTotal =
-        normalizeMoney(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(bookingId));
-    if ("PENDING_PAYMENT".equals(booking.getStatus())) {
-      BookingTotalRecalculationService.BookingTotalBreakdown totalBreakdown =
-          bookingTotalRecalculationService.refreshTotal(booking, fareTotal);
-      seatSurchargeTotal = totalBreakdown.seatSurchargeTotal();
+    return buildActiveSeatAssignmentResponse(booking, bookingId, fareTotal);
+  }
+
+  @Transactional
+  public SeatAssignmentResponse changeSeat(Long userId, Long bookingId, SeatChangeRequest request) {
+    BookingEntity booking = requireBooking(userId, bookingId);
+    validateBookingAssignable(booking);
+    BigDecimal fareTotal =
+        "PENDING_PAYMENT".equals(booking.getStatus())
+            ? bookingTotalRecalculationService.captureFareTotal(booking)
+            : null;
+
+    if (request.toSeatId() != null && request.toSeatId().equals(request.fromSeatId())) {
+      throw new AppException(
+          "SEAT_CHANGE_NOOP", "Source and destination seats must be different", 409);
     }
 
-    List<PassengerSeatAssignmentEntity> remaining =
-        passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
-            bookingId, ACTIVE_ASSIGNMENT_STATUSES);
-    String displayStatus;
-    if (remaining.isEmpty()) {
-      displayStatus = "NONE";
-    } else {
-      displayStatus = remaining.get(0).getStatus();
+    PassengerSeatAssignmentEntity currentAssignment =
+        passengerSeatAssignmentRepository
+            .findFirstByActiveAssignment(
+                bookingId,
+                request.passengerId(),
+                request.fromSeatId(),
+                ACTIVE_ASSIGNMENT_STATUSES)
+            .orElseThrow(
+                () ->
+                    new AppException(
+                        "SEAT_ASSIGNMENT_NOT_FOUND", "No active seat assignment to change", 404));
+    if ("INFANT".equals(currentAssignment.getPassenger().getPassengerType())) {
+      throw new AppException("SEAT_NOT_ALLOWED", "INFANT passengers cannot be assigned seats", 409);
     }
 
-    return new SeatAssignmentResponse(
-        bookingId,
-        displayStatus,
-        seatSurchargeTotal,
-        booking.getTotalAmount(),
-        remaining.stream()
-            .map(
-                psa ->
-                    new SeatAssignmentResponse.AssignmentResponse(
-                        psa.getPassenger().getId(),
-                        psa.getFlightSeat().getId(),
-                        psa.getStatus(),
-                        psa.getSurchargeAmount(),
-                        psa.getCurrency()))
-            .toList());
+    OffsetDateTime now = OffsetDateTime.now();
+    currentAssignment.setStatus("RELEASED");
+    currentAssignment.setUpdatedAt(now);
+    passengerSeatAssignmentRepository.saveAll(List.of(currentAssignment));
+
+    int released =
+        flightSeatRepository.releaseSelectedForBooking(bookingId, List.of(request.fromSeatId()));
+    if (released != 1) {
+      throw new AppException("SEAT_RELEASE_FAILED", "Could not release source seat", 409);
+    }
+
+    if (request.toSeatId() == null) {
+      return buildActiveSeatAssignmentResponse(booking, bookingId, fareTotal);
+    }
+
+    BookingFareHoldEntity hold = requireActiveHold(bookingId);
+    FareClassEntity fareClass = hold.getFlightFare().getFareClass();
+    SeatSelectionPolicy selectionPolicy =
+        SeatSelectionPolicy.fromValue(fareClass.getSeatSelectionPolicy());
+    if (!selectionPolicy.allowsAdvanceSelection()) {
+      throw new AppException(
+          "SEAT_NOT_ALLOWED", "Seat selection is not allowed for selected fare", 409);
+    }
+
+    FlightSeatEntity nextSeat =
+        flightSeatRepository
+            .findById(request.toSeatId())
+            .orElseThrow(() -> new AppException("SEAT_NOT_FOUND", "Seat not found", 404));
+    validateRequestedSeat(hold, nextSeat, request.toSeatId());
+
+    Map<Long, BigDecimal> surchargeBySeatId =
+        calculateSeatSurcharges(
+            List.of(nextSeat), selectionPolicy, fareClass.getIncludedSeatCategory());
+    BigDecimal requestedSurchargeTotal = surchargeBySeatId.getOrDefault(nextSeat.getId(), ZERO);
+    validateRequestedSeatSurcharge(booking, requestedSurchargeTotal);
+
+    String assignmentStatus = "CONFIRMED".equals(booking.getStatus()) ? "BOOKED" : "RESERVED";
+    int updatedSeats =
+        "BOOKED".equals(assignmentStatus)
+            ? flightSeatRepository.bookSelectedForBooking(bookingId, List.of(request.toSeatId()))
+            : flightSeatRepository.reserveSelectedForBooking(
+                bookingId, List.of(request.toSeatId()), booking.getPnrExpiresAt());
+    if (updatedSeats != 1) {
+      throw new AppException("SEAT_UNAVAILABLE", "Seat is no longer available", 409);
+    }
+
+    PassengerSeatAssignmentEntity replacement = new PassengerSeatAssignmentEntity();
+    replacement.setBooking(booking);
+    replacement.setPassenger(currentAssignment.getPassenger());
+    replacement.setFlightSeat(nextSeat);
+    replacement.setStatus(assignmentStatus);
+    replacement.setSurchargeAmount(requestedSurchargeTotal);
+    replacement.setCurrency(booking.getCurrency());
+    replacement.setCreatedAt(now);
+    replacement.setUpdatedAt(now);
+    passengerSeatAssignmentRepository.save(replacement);
+
+    return buildActiveSeatAssignmentResponse(booking, bookingId, fareTotal);
   }
 
   private BookingEntity requireBooking(Long userId, Long bookingId) {
@@ -382,6 +440,79 @@ public class BookingSeatAssignmentService {
 
   private BigDecimal normalizeMoney(BigDecimal value) {
     return value == null ? ZERO : value.setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private BookingFareHoldEntity requireActiveHold(Long bookingId) {
+    return bookingFareHoldRepository
+        .findFirstByBookingIdAndStatusIn(bookingId, ACTIVE_HOLD_STATUSES)
+        .orElseThrow(() -> new AppException("FARE_HOLD_NOT_FOUND", "Fare hold not found", 409));
+  }
+
+  private void validateRequestedSeat(BookingFareHoldEntity hold, FlightSeatEntity seat, Long seatId) {
+    Set<Long> allowedSeatIds =
+        flightSeatRepository.findAllowedSeatIdsForFare(
+            hold.getFlightFare().getFlight().getId(), hold.getFlightFare().getFareClass().getId());
+    if (!hold.getFlightFare().getFlight().getId().equals(seat.getFlight().getId())) {
+      throw new AppException("SEAT_NOT_ALLOWED", "Seat does not belong to booking flight", 409);
+    }
+    if (!allowedSeatIds.contains(seatId)) {
+      throw new AppException("SEAT_NOT_ALLOWED", "Seat is not allowed for selected fare", 409);
+    }
+    if (!"AVAILABLE".equals(seat.getStatus())) {
+      throw new AppException("SEAT_UNAVAILABLE", "Seat is no longer available", 409);
+    }
+    if (passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
+        seatId, ACTIVE_ASSIGNMENT_STATUSES)) {
+      throw new AppException("SEAT_UNAVAILABLE", "Seat is already assigned", 409);
+    }
+  }
+
+  private void validateRequestedSeatSurcharge(
+      BookingEntity booking, BigDecimal requestedSurchargeTotal) {
+    if (requestedSurchargeTotal.signum() > 0 && !VND.equalsIgnoreCase(booking.getCurrency())) {
+      throw new AppException(
+          "SEAT_SURCHARGE_CURRENCY_UNSUPPORTED",
+          "Seat surcharge is only supported for VND bookings",
+          409);
+    }
+    if ("CONFIRMED".equals(booking.getStatus()) && requestedSurchargeTotal.signum() > 0) {
+      throw new AppException(
+          "SEAT_PAYMENT_REQUIRED",
+          "Paid seat selection is not supported after booking is confirmed",
+          409);
+    }
+  }
+
+  private SeatAssignmentResponse buildActiveSeatAssignmentResponse(
+      BookingEntity booking, Long bookingId, BigDecimal fareTotal) {
+    BigDecimal seatSurchargeTotal =
+        normalizeMoney(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(bookingId));
+    if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+      BookingTotalRecalculationService.BookingTotalBreakdown totalBreakdown =
+          bookingTotalRecalculationService.refreshTotal(booking, fareTotal);
+      seatSurchargeTotal = totalBreakdown.seatSurchargeTotal();
+    }
+
+    List<PassengerSeatAssignmentEntity> remaining =
+        passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+            bookingId, ACTIVE_ASSIGNMENT_STATUSES);
+    String displayStatus = remaining.isEmpty() ? "NONE" : remaining.get(0).getStatus();
+
+    return new SeatAssignmentResponse(
+        bookingId,
+        displayStatus,
+        seatSurchargeTotal,
+        booking.getTotalAmount(),
+        remaining.stream()
+            .map(
+                psa ->
+                    new SeatAssignmentResponse.AssignmentResponse(
+                        psa.getPassenger().getId(),
+                        psa.getFlightSeat().getId(),
+                        psa.getStatus(),
+                        psa.getSurchargeAmount(),
+                        psa.getCurrency()))
+            .toList());
   }
 
   private void validateNoDuplicates(List<SeatAssignmentRequest.AssignmentRequest> assignments) {

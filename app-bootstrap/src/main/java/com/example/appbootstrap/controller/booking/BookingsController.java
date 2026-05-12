@@ -17,6 +17,7 @@ import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionRequest;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.modulebooking.application.BookingTicketsView;
@@ -36,6 +37,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -218,6 +220,35 @@ public class BookingsController {
       @PathVariable Long bookingId,
       @Valid @RequestBody SeatAssignmentRequest request) {
     return bookingSeatAssignmentService.unassignSeats(
+        principal != null ? principal.getUserId() : null, bookingId, request);
+  }
+
+  @PatchMapping("/bookings/{bookingId}/seat-assignment")
+  @Operation(
+      summary = "Change or cancel a passenger seat assignment",
+      description =
+          "Releases the current passenger seat and optionally assigns a new one in the same "
+              + "transaction. Omit toSeatId to cancel the current seat only.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Seat change processed",
+        content = @Content(schema = @Schema(implementation = SeatAssignmentResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking, passenger, seat, or source assignment not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Seat change conflict or business rule violation",
+        content = @Content)
+  })
+  SeatAssignmentResponse changeSeat(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody SeatChangeRequest request) {
+    return bookingSeatAssignmentService.changeSeat(
         principal != null ? principal.getUserId() : null, bookingId, request);
   }
 
