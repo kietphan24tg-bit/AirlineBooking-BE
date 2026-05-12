@@ -63,13 +63,11 @@ class BookingManageOptionsServiceTest {
             ticketRepository,
             boardingPassRepository,
             checkInProperties);
-    when(checkInProperties.checkinOpenHours()).thenReturn(24);
-    when(checkInProperties.domesticCheckinCloseMinutes()).thenReturn(40);
-    when(checkInProperties.internationalCheckinCloseMinutes()).thenReturn(60);
   }
 
   @Test
   void getManageOptions_returnsBookingScopedContext() {
+    stubDomesticCheckInWindow();
     BookingEntity booking = booking(10L, "CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Van A", "Nguyen");
     BookingFareHoldEntity hold = hold(booking, 100L, 1000L, "VN123", "SGN", "HAN");
@@ -131,6 +129,7 @@ class BookingManageOptionsServiceTest {
 
   @Test
   void getManageOptions_returnsMultipleItineraries() {
+    stubDomesticCheckInWindow();
     BookingEntity booking = booking(10L, "CONFIRMED");
 
     when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
@@ -155,6 +154,7 @@ class BookingManageOptionsServiceTest {
 
   @Test
   void getManageOptions_marksSeatSelectionRequiredWhenSeatMissing() {
+    stubDomesticCheckInWindow();
     BookingEntity booking = booking(10L, "CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Van A", "Nguyen");
     BookingFareHoldEntity hold = hold(booking, 100L, 1000L, "VN123", "SGN", "HAN");
@@ -181,6 +181,7 @@ class BookingManageOptionsServiceTest {
 
   @Test
   void getManageOptions_marksAlreadyCheckedInPassengerAsBlocked() {
+    stubDomesticCheckInWindow();
     BookingEntity booking = booking(10L, "CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Van A", "Nguyen");
     BookingFareHoldEntity hold = hold(booking, 100L, 1000L, "VN123", "SGN", "HAN");
@@ -208,6 +209,7 @@ class BookingManageOptionsServiceTest {
 
   @Test
   void getManageOptions_marksPassengerBlockedWhenBookingNotConfirmed() {
+    stubDomesticCheckInWindow();
     BookingEntity booking = booking(10L, "PENDING_PAYMENT");
     PassengerEntity passenger = passenger(1L, booking, "Van A", "Nguyen");
     BookingFareHoldEntity hold = hold(booking, 100L, 1000L, "VN123", "SGN", "HAN");
@@ -249,6 +251,11 @@ class BookingManageOptionsServiceTest {
     booking.setStatus(status);
     booking.setCurrency("VND");
     return booking;
+  }
+
+  private void stubDomesticCheckInWindow() {
+    when(checkInProperties.checkinOpenHours()).thenReturn(24);
+    when(checkInProperties.domesticCheckinCloseMinutes()).thenReturn(40);
   }
 
   private PassengerEntity passenger(
