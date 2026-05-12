@@ -14,8 +14,8 @@ import com.example.appbootstrap.controller.booking.dto.BookingCancellationPrevie
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingManageOptionsResponse;
-import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
@@ -186,9 +186,9 @@ class BookingsControllerTest {
                 "CONFIRMED",
                 "PARTIALLY_REFUNDED",
                 "VND",
-                "Tráº¡ng thÃ¡i hoÃ n tiá»n",
-                "Lá»‡nh hoÃ n tiá»n Ä‘Ã£ Ä‘Æ°á»£c tiáº¿p nháº­n vÃ  xá»­ lÃ½ 24/7.",
-                "Thá»i gian nháº­n tiá»n thá»±c táº¿ phá»¥ thuá»™c vÃ o ngÃ¢n hÃ ng nháº­n.",
+                "Trạng thái hoàn tiền",
+                "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.",
+                "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.",
                 List.of(
                     new BookingCancellationResultView.ItemView(
                         1001L,
@@ -228,12 +228,12 @@ class BookingsControllerTest {
     assertEquals(900L, response.cancellationId());
     assertEquals("SUCCEEDED", response.refundStatus());
     assertEquals("refund_123", response.providerRefundId());
-    assertEquals("Tráº¡ng thÃ¡i hoÃ n tiá»n", response.refundEstimateTitle());
+    assertEquals("Trạng thái hoàn tiền", response.refundEstimateTitle());
     assertEquals(
-        "Lá»‡nh hoÃ n tiá»n Ä‘Ã£ Ä‘Æ°á»£c tiáº¿p nháº­n vÃ  xá»­ lÃ½ 24/7.",
+        "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.",
         response.refundEstimateMessage());
     assertEquals(
-        "Thá»i gian nháº­n tiá»n thá»±c táº¿ phá»¥ thuá»™c vÃ o ngÃ¢n hÃ ng nháº­n.",
+        "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.",
         response.refundEstimateNote());
     assertEquals("CANCELLED", response.items().getFirst().ticketStatus());
   }
@@ -254,7 +254,8 @@ class BookingsControllerTest {
   @Test
   void changeSeatShouldDelegateToService() {
     SeatAssignmentResponse expected =
-        new SeatAssignmentResponse(10L, "BOOKED", BigDecimal.ZERO, new BigDecimal("5000.00"), List.of());
+        new SeatAssignmentResponse(
+            10L, "BOOKED", BigDecimal.ZERO, new BigDecimal("5000.00"), List.of());
     when(bookingSeatAssignmentService.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)))
         .thenReturn(expected);
 

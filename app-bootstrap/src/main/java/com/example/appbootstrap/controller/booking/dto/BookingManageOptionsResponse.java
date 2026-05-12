@@ -148,7 +148,8 @@ public record BookingManageOptionsResponse(
   public record CheckInWindowResponse(
       String status, OffsetDateTime opensAt, OffsetDateTime closesAt, String message) {
     static CheckInWindowResponse from(BookingManageOptionsService.CheckInWindowView view) {
-      return new CheckInWindowResponse(view.status(), view.opensAt(), view.closesAt(), view.message());
+      return new CheckInWindowResponse(
+          view.status(), view.opensAt(), view.closesAt(), view.message());
     }
   }
 }

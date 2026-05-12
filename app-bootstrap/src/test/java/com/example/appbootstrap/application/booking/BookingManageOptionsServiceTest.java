@@ -73,7 +73,8 @@ class BookingManageOptionsServiceTest {
     BookingEntity booking = booking(10L, "CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Van A", "Nguyen");
     BookingFareHoldEntity hold = hold(booking, 100L, 1000L, "VN123", "SGN", "HAN");
-    PassengerSeatAssignmentEntity assignment = seatAssignment(booking, passenger, 500L, 100L, "12A");
+    PassengerSeatAssignmentEntity assignment =
+        seatAssignment(booking, passenger, 500L, 100L, "12A");
     BookingServiceEntity serviceSelection =
         serviceSelection(booking, passenger, 20L, "MEAL", "Meals", 200L, "Pho", 2);
     TicketEntity ticket =
@@ -173,7 +174,8 @@ class BookingManageOptionsServiceTest {
     BookingManageOptionsService.BookingManageOptionsView view = service.getManageOptions(null, 10L);
 
     assertEquals(
-        "SEAT_SELECTION_REQUIRED", view.passengers().getFirst().segments().getFirst().checkInStatus());
+        "SEAT_SELECTION_REQUIRED",
+        view.passengers().getFirst().segments().getFirst().checkInStatus());
     assertEquals("SEAT_SELECTION_REQUIRED", view.itineraries().getFirst().segmentStatus());
   }
 
@@ -199,7 +201,8 @@ class BookingManageOptionsServiceTest {
 
     BookingManageOptionsService.BookingManageOptionsView view = service.getManageOptions(null, 10L);
 
-    assertEquals("ALREADY_CHECKED_IN", view.passengers().getFirst().segments().getFirst().checkInStatus());
+    assertEquals(
+        "ALREADY_CHECKED_IN", view.passengers().getFirst().segments().getFirst().checkInStatus());
     assertEquals("BLOCKED", view.itineraries().getFirst().segmentStatus());
   }
 
@@ -223,7 +226,9 @@ class BookingManageOptionsServiceTest {
 
     BookingManageOptionsService.BookingManageOptionsView view = service.getManageOptions(null, 10L);
 
-    assertEquals("BOOKING_NOT_CONFIRMED", view.passengers().getFirst().segments().getFirst().checkInStatus());
+    assertEquals(
+        "BOOKING_NOT_CONFIRMED",
+        view.passengers().getFirst().segments().getFirst().checkInStatus());
     assertEquals("BLOCKED", view.itineraries().getFirst().segmentStatus());
   }
 

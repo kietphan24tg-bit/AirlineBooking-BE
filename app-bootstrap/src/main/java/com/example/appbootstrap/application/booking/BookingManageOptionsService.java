@@ -20,8 +20,8 @@ import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.modulebooking.repository.TicketRepository;
 import com.example.modulecheckin.config.CheckInProperties;
 import com.example.moduleflight.entity.AirportEntity;
-import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FareClassEntity;
+import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -311,12 +311,11 @@ public class BookingManageOptionsService {
       CheckInWindow window) {
     List<String> warnings = new ArrayList<>();
     TicketEntity ticket =
-        ticketsByFlightAndPassenger
-            .getOrDefault(flight.getId(), Map.of())
-            .get(passenger.getId());
+        ticketsByFlightAndPassenger.getOrDefault(flight.getId(), Map.of()).get(passenger.getId());
     if (ticket == null) {
       warnings.add("TICKET_NOT_FOUND");
-      return new PassengerCheckInResult(false, "TICKET_NOT_FOUND", false, null, List.copyOf(warnings));
+      return new PassengerCheckInResult(
+          false, "TICKET_NOT_FOUND", false, null, List.copyOf(warnings));
     }
     if (!BOOKING_STATUS_CONFIRMED.equalsIgnoreCase(booking.getStatus())) {
       warnings.add("BOOKING_NOT_CONFIRMED");
@@ -370,7 +369,8 @@ public class BookingManageOptionsService {
   }
 
   private boolean hasSeat(
-      TicketEntity ticket, Map<PassengerFlightKey, FlightSeatEntity> activeSeatsByPassengerAndFlight) {
+      TicketEntity ticket,
+      Map<PassengerFlightKey, FlightSeatEntity> activeSeatsByPassengerAndFlight) {
     return resolveSeat(
             ticket,
             activeSeatsByPassengerAndFlight.get(
@@ -379,7 +379,8 @@ public class BookingManageOptionsService {
   }
 
   private String seatNumber(
-      TicketEntity ticket, Map<PassengerFlightKey, FlightSeatEntity> activeSeatsByPassengerAndFlight) {
+      TicketEntity ticket,
+      Map<PassengerFlightKey, FlightSeatEntity> activeSeatsByPassengerAndFlight) {
     FlightSeatEntity seat =
         resolveSeat(
             ticket,
@@ -407,7 +408,8 @@ public class BookingManageOptionsService {
     if (tickets.isEmpty()) {
       return Map.of();
     }
-    return boardingPassRepository.findByTicketIdIn(tickets.stream().map(TicketEntity::getId).toList())
+    return boardingPassRepository
+        .findByTicketIdIn(tickets.stream().map(TicketEntity::getId).toList())
         .stream()
         .collect(
             java.util.stream.Collectors.toMap(
@@ -417,7 +419,8 @@ public class BookingManageOptionsService {
                 LinkedHashMap::new));
   }
 
-  private Map<Long, Map<Long, TicketEntity>> indexTicketsByFlightAndPassenger(List<TicketEntity> tickets) {
+  private Map<Long, Map<Long, TicketEntity>> indexTicketsByFlightAndPassenger(
+      List<TicketEntity> tickets) {
     Map<Long, Map<Long, TicketEntity>> result = new LinkedHashMap<>();
     for (TicketEntity ticket : tickets) {
       result
@@ -461,7 +464,8 @@ public class BookingManageOptionsService {
           WINDOW_STATUS_NOT_OPEN, opensAt, closesAt, "Online check-in is not open yet");
     }
     if (!now.isBefore(closesAt)) {
-      return new CheckInWindow(WINDOW_STATUS_CLOSED, opensAt, closesAt, "Online check-in is closed");
+      return new CheckInWindow(
+          WINDOW_STATUS_CLOSED, opensAt, closesAt, "Online check-in is closed");
     }
     return new CheckInWindow(WINDOW_STATUS_OPEN, opensAt, closesAt, "Online check-in is available");
   }
