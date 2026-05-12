@@ -63,7 +63,8 @@ class CheckInConfirmServiceTest {
   void confirmCheckIn_createsBoardingPassesForEligiblePassengers() {
     BookingEntity booking = booking("CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Nguyen", "Van A");
-    TicketEntity ticket = domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
+    TicketEntity ticket =
+        domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
 
     when(bookingRepository.findByPnrCode("ABC123")).thenReturn(Optional.of(booking));
     when(passengerRepository.findByBookingIdOrderById(10L)).thenReturn(List.of(passenger));
@@ -93,7 +94,8 @@ class CheckInConfirmServiceTest {
 
     assertEquals("CHECKED_IN_COMPLETED", response.booking().status());
     assertEquals(1, response.summary().confirmedPassengers());
-    assertEquals("CHECKED_IN", response.segments().getFirst().passengers().getFirst().checkInStatus());
+    assertEquals(
+        "CHECKED_IN", response.segments().getFirst().passengers().getFirst().checkInStatus());
     assertEquals(1, response.boardingPasses().size());
     assertEquals("12A", response.boardingPasses().getFirst().seatLabel());
   }
@@ -130,7 +132,8 @@ class CheckInConfirmServiceTest {
   void confirmCheckIn_rejectsAlreadyCheckedInPassenger() {
     BookingEntity booking = booking("CONFIRMED");
     PassengerEntity passenger = passenger(1L, booking, "Nguyen", "Van A");
-    TicketEntity ticket = domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
+    TicketEntity ticket =
+        domesticTicket(booking, passenger, true, OffsetDateTime.now().plusHours(3));
     BoardingPassEntity boardingPass = new BoardingPassEntity();
     boardingPass.setTicket(ticket);
 
@@ -165,7 +168,8 @@ class CheckInConfirmServiceTest {
                     new CheckInConfirmCommand(
                         "ABC123",
                         "NGUYEN",
-                        List.of(new CheckInConfirmCommand.SegmentSelection(1001L, List.of(1L, 1L))))));
+                        List.of(
+                            new CheckInConfirmCommand.SegmentSelection(1001L, List.of(1L, 1L))))));
 
     assertEquals("VALIDATION_FAILED", exception.getCode());
   }

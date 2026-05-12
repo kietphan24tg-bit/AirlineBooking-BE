@@ -212,7 +212,8 @@ public class CheckInConfirmService {
       drafts.add(new SegmentDraft(flight, passengerDrafts));
     }
 
-    List<BoardingPassEntity> savedBoardingPasses = boardingPassRepository.saveAll(boardingPassesToSave);
+    List<BoardingPassEntity> savedBoardingPasses =
+        boardingPassRepository.saveAll(boardingPassesToSave);
     Map<Long, BoardingPassEntity> boardingPassByTicketId =
         savedBoardingPasses.stream()
             .collect(
