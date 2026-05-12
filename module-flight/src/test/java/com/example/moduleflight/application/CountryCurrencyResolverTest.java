@@ -38,7 +38,7 @@ class CountryCurrencyResolverTest {
   void resolveCountryCode_unknownCountryFallsBackToGlobalMarket() {
     assertEquals("GL", resolver.resolveCountryCode(flight("ZZ", "Atlantis")));
     assertEquals("GL", resolver.resolveCountryCode(flight(null, "Atlantis")));
-    assertEquals("GL", resolver.resolveCountryCode(null));
+    assertEquals("GL", resolver.resolveCountryCode((FlightEntity) null));
   }
 
   @Test
