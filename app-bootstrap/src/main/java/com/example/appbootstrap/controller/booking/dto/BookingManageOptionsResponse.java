@@ -27,10 +27,18 @@ public record BookingManageOptionsResponse(
   }
 
   public record PassengerResponse(
-      Long passengerId, String firstName, String lastName, String passengerType) {
+      Long passengerId,
+      String firstName,
+      String lastName,
+      String passengerType,
+      List<PassengerSegmentCheckInResponse> segments) {
     static PassengerResponse from(BookingManageOptionsService.PassengerView view) {
       return new PassengerResponse(
-          view.passengerId(), view.firstName(), view.lastName(), view.passengerType());
+          view.passengerId(),
+          view.firstName(),
+          view.lastName(),
+          view.passengerType(),
+          view.segments().stream().map(PassengerSegmentCheckInResponse::from).toList());
     }
   }
 
@@ -41,7 +49,18 @@ public record BookingManageOptionsResponse(
       OffsetDateTime departureTime,
       OffsetDateTime arrivalTime,
       String departureAirportCode,
-      String arrivalAirportCode) {
+      String departureCity,
+      String departureTerminal,
+      String arrivalAirportCode,
+      String arrivalCity,
+      String arrivalTerminal,
+      String fareName,
+      String cabinClass,
+      Integer baggageHandKg,
+      Integer baggageCheckinKg,
+      String journeyType,
+      CheckInWindowResponse checkInWindow,
+      String segmentStatus) {
     static ItineraryResponse from(BookingManageOptionsService.ItineraryView view) {
       return new ItineraryResponse(
           view.flightId(),
@@ -50,7 +69,18 @@ public record BookingManageOptionsResponse(
           view.departureTime(),
           view.arrivalTime(),
           view.departureAirportCode(),
-          view.arrivalAirportCode());
+          view.departureCity(),
+          view.departureTerminal(),
+          view.arrivalAirportCode(),
+          view.arrivalCity(),
+          view.arrivalTerminal(),
+          view.fareName(),
+          view.cabinClass(),
+          view.baggageHandKg(),
+          view.baggageCheckinKg(),
+          view.journeyType(),
+          CheckInWindowResponse.from(view.checkInWindow()),
+          view.segmentStatus());
     }
   }
 
@@ -93,6 +123,32 @@ public record BookingManageOptionsResponse(
           view.optionName(),
           view.quantity(),
           view.price());
+    }
+  }
+
+  public record PassengerSegmentCheckInResponse(
+      Long flightId,
+      boolean eligible,
+      String checkInStatus,
+      boolean seatAssigned,
+      String seatNumber,
+      List<String> warnings) {
+    static PassengerSegmentCheckInResponse from(
+        BookingManageOptionsService.PassengerSegmentCheckInView view) {
+      return new PassengerSegmentCheckInResponse(
+          view.flightId(),
+          view.eligible(),
+          view.checkInStatus(),
+          view.seatAssigned(),
+          view.seatNumber(),
+          view.warnings());
+    }
+  }
+
+  public record CheckInWindowResponse(
+      String status, OffsetDateTime opensAt, OffsetDateTime closesAt, String message) {
+    static CheckInWindowResponse from(BookingManageOptionsService.CheckInWindowView view) {
+      return new CheckInWindowResponse(view.status(), view.opensAt(), view.closesAt(), view.message());
     }
   }
 }

@@ -17,9 +17,9 @@ import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionRequest;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionResponse;
-import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.modulebooking.application.BookingTicketsView;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -168,7 +168,8 @@ public class BookingsController {
   @Operation(
       summary = "Assign selected seats to booking passengers",
       description =
-          "Assigns concrete flight seats to non-infant passengers after a booking fare hold exists.")
+          "Assigns concrete flight seats to non-infant passengers after a booking fare hold"
+              + " exists.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -287,7 +288,8 @@ public class BookingsController {
   @Operation(
       summary = "Preview booking ticket cancellation",
       description =
-          "Returns passenger-level refund totals before confirming cancellation for the selected passengers.")
+          "Returns passenger-level refund totals before confirming cancellation for the selected"
+              + " passengers.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -318,7 +320,8 @@ public class BookingsController {
   @Operation(
       summary = "Confirm booking ticket cancellation",
       description =
-          "Refunds the selected passengers for a confirmed booking and updates tickets, seats, and services.")
+          "Refunds the selected passengers for a confirmed booking and updates tickets, seats, and"
+              + " services.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",

@@ -14,6 +14,8 @@ import com.example.appbootstrap.controller.booking.dto.BookingCancellationPrevie
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingManageOptionsResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
+import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
@@ -68,7 +70,14 @@ class BookingsControllerTest {
                 "PENDING_PAYMENT",
                 "VND",
                 List.of(
-                    new BookingManageOptionsService.PassengerView(1L, "Van A", "Nguyen", "ADULT")),
+                    new BookingManageOptionsService.PassengerView(
+                        1L,
+                        "Van A",
+                        "Nguyen",
+                        "ADULT",
+                        List.of(
+                            new BookingManageOptionsService.PassengerSegmentCheckInView(
+                                100L, true, "READY", true, "12A", List.of())))),
                 List.of(
                     new BookingManageOptionsService.ItineraryView(
                         100L,
@@ -77,7 +86,22 @@ class BookingsControllerTest {
                         OffsetDateTime.parse("2026-06-01T08:30:00+07:00"),
                         OffsetDateTime.parse("2026-06-01T10:35:00+07:00"),
                         "SGN",
-                        "HAN")),
+                        "Ho Chi Minh City",
+                        "T1",
+                        "HAN",
+                        "Ha Noi",
+                        "T1",
+                        "Economy Flex",
+                        "Economy",
+                        7,
+                        20,
+                        "DOMESTIC",
+                        new BookingManageOptionsService.CheckInWindowView(
+                            "OPEN",
+                            OffsetDateTime.parse("2026-05-31T08:30:00+07:00"),
+                            OffsetDateTime.parse("2026-06-01T07:50:00+07:00"),
+                            "Online check-in is available"),
+                        "READY")),
                 List.of(
                     new BookingManageOptionsService.SeatAssignmentView(
                         1L, 100L, 500L, "12A", "BOOKED", new BigDecimal("20000.00"), "VND")),
@@ -220,9 +244,25 @@ class BookingsControllerTest {
     var cancelViolations =
         validator.validate(
             new BookingCancellationRequest(List.of(), null, " ", null, new BigDecimal("-1")));
+    var seatChangeViolations = validator.validate(new SeatChangeRequest(null, null, null));
 
     assertEquals(1, previewViolations.size());
     assertEquals(4, cancelViolations.size());
+    assertEquals(2, seatChangeViolations.size());
+  }
+
+  @Test
+  void changeSeatShouldDelegateToService() {
+    SeatAssignmentResponse expected =
+        new SeatAssignmentResponse(10L, "BOOKED", BigDecimal.ZERO, new BigDecimal("5000.00"), List.of());
+    when(bookingSeatAssignmentService.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)))
+        .thenReturn(expected);
+
+    SeatAssignmentResponse response =
+        controller.changeSeat(principal(), 10L, new SeatChangeRequest(1L, 100L, 101L));
+
+    assertEquals(expected, response);
+    verify(bookingSeatAssignmentService).changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L));
   }
 
   private static AppUserPrincipal principal() {

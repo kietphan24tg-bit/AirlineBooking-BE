@@ -290,10 +290,7 @@ public class BookingSeatAssignmentService {
     PassengerSeatAssignmentEntity currentAssignment =
         passengerSeatAssignmentRepository
             .findFirstByActiveAssignment(
-                bookingId,
-                request.passengerId(),
-                request.fromSeatId(),
-                ACTIVE_ASSIGNMENT_STATUSES)
+                bookingId, request.passengerId(), request.fromSeatId(), ACTIVE_ASSIGNMENT_STATUSES)
             .orElseThrow(
                 () ->
                     new AppException(
@@ -448,7 +445,8 @@ public class BookingSeatAssignmentService {
         .orElseThrow(() -> new AppException("FARE_HOLD_NOT_FOUND", "Fare hold not found", 409));
   }
 
-  private void validateRequestedSeat(BookingFareHoldEntity hold, FlightSeatEntity seat, Long seatId) {
+  private void validateRequestedSeat(
+      BookingFareHoldEntity hold, FlightSeatEntity seat, Long seatId) {
     Set<Long> allowedSeatIds =
         flightSeatRepository.findAllowedSeatIdsForFare(
             hold.getFlightFare().getFlight().getId(), hold.getFlightFare().getFareClass().getId());

@@ -3,16 +3,16 @@ package com.example.appbootstrap.application.booking;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
@@ -320,7 +320,8 @@ class BookingSeatAssignmentServiceTest {
   void changeSeat_cancelsAssignmentWhenTargetSeatMissing() {
     BookingEntity booking = booking("CONFIRMED", "5000.00");
     PassengerEntity passenger = passenger(1L, booking, "ADULT");
-    PassengerSeatAssignmentEntity currentAssignment = activeAssignment(booking, passenger, 100L, 1L, "BOOKED");
+    PassengerSeatAssignmentEntity currentAssignment =
+        activeAssignment(booking, passenger, 100L, 1L, "BOOKED");
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
@@ -349,7 +350,8 @@ class BookingSeatAssignmentServiceTest {
     BookingFareHoldEntity hold = hold("PAID", null, 1);
     PassengerEntity passenger = passenger(1L, booking, "ADULT");
     PassengerSeatAssignmentEntity currentAssignment =
-        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+        activeAssignment(
+            booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
     FlightSeatEntity nextSeat =
         seat(
             101L,
@@ -372,7 +374,8 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
             101L, List.of("RESERVED", "BOOKED")))
         .thenReturn(false);
-    when(flightSeatRepository.reserveSelectedForBooking(10L, List.of(101L), booking.getPnrExpiresAt()))
+    when(flightSeatRepository.reserveSelectedForBooking(
+            10L, List.of(101L), booking.getPnrExpiresAt()))
         .thenReturn(1);
     when(bookingServiceRepository.sumPriceByBookingId(10L))
         .thenReturn(BigDecimal.ZERO, BigDecimal.ZERO);
@@ -381,7 +384,12 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
         .thenReturn(
             List.of(
-                activeAssignment(booking, passenger, 101L, hold.getFlightFare().getFlight().getId(), "RESERVED")));
+                activeAssignment(
+                    booking,
+                    passenger,
+                    101L,
+                    hold.getFlightFare().getFlight().getId(),
+                    "RESERVED")));
     when(passengerSeatAssignmentRepository.save(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -392,7 +400,8 @@ class BookingSeatAssignmentServiceTest {
     assertEquals(new BigDecimal("61400.00"), response.totalAmount());
     assertEquals(new BigDecimal("60000.00"), response.seatSurchargeTotal());
     verify(flightSeatRepository).releaseSelectedForBooking(10L, List.of(100L));
-    verify(flightSeatRepository).reserveSelectedForBooking(10L, List.of(101L), booking.getPnrExpiresAt());
+    verify(flightSeatRepository)
+        .reserveSelectedForBooking(10L, List.of(101L), booking.getPnrExpiresAt());
     verify(passengerSeatAssignmentRepository)
         .save(
             argThat(
@@ -408,7 +417,8 @@ class BookingSeatAssignmentServiceTest {
     BookingFareHoldEntity hold = hold("PAID", null, 1);
     PassengerEntity passenger = passenger(1L, booking, "ADULT");
     PassengerSeatAssignmentEntity currentAssignment =
-        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "BOOKED");
+        activeAssignment(
+            booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "BOOKED");
     FlightSeatEntity nextSeat =
         seat(
             101L,
@@ -434,7 +444,8 @@ class BookingSeatAssignmentServiceTest {
 
     AppException exception =
         assertThrows(
-            AppException.class, () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)));
+            AppException.class,
+            () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)));
 
     assertEquals("SEAT_PAYMENT_REQUIRED", exception.getCode());
     verify(passengerSeatAssignmentRepository, never()).save(any());
@@ -448,7 +459,8 @@ class BookingSeatAssignmentServiceTest {
 
     AppException exception =
         assertThrows(
-            AppException.class, () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 100L)));
+            AppException.class,
+            () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 100L)));
 
     assertEquals("SEAT_CHANGE_NOOP", exception.getCode());
     verify(passengerSeatAssignmentRepository, never())
@@ -461,7 +473,8 @@ class BookingSeatAssignmentServiceTest {
     BookingFareHoldEntity hold = hold("PAID", null, 1);
     PassengerEntity passenger = passenger(1L, booking, "ADULT");
     PassengerSeatAssignmentEntity currentAssignment =
-        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "BOOKED");
+        activeAssignment(
+            booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "BOOKED");
     FlightSeatEntity nextSeat =
         seat(
             101L,
@@ -487,7 +500,8 @@ class BookingSeatAssignmentServiceTest {
 
     AppException exception =
         assertThrows(
-            AppException.class, () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)));
+            AppException.class,
+            () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)));
 
     assertEquals("SEAT_UNAVAILABLE", exception.getCode());
     verify(passengerSeatAssignmentRepository, never()).save(any());
@@ -497,7 +511,8 @@ class BookingSeatAssignmentServiceTest {
   void changeSeat_rejectsWhenSourceSeatCannotBeReleased() {
     BookingEntity booking = booking("CONFIRMED", "5000.00");
     PassengerEntity passenger = passenger(1L, booking, "ADULT");
-    PassengerSeatAssignmentEntity currentAssignment = activeAssignment(booking, passenger, 100L, 1L, "BOOKED");
+    PassengerSeatAssignmentEntity currentAssignment =
+        activeAssignment(booking, passenger, 100L, 1L, "BOOKED");
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
@@ -510,7 +525,8 @@ class BookingSeatAssignmentServiceTest {
 
     AppException exception =
         assertThrows(
-            AppException.class, () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, null)));
+            AppException.class,
+            () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, null)));
 
     assertEquals("SEAT_RELEASE_FAILED", exception.getCode());
   }
