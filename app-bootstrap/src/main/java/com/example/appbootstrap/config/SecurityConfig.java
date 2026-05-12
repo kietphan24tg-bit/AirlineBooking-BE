@@ -90,6 +90,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/check-in/continue")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/check-in/confirm")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/bookings/*/tickets")
                     .permitAll()
                     .requestMatchers(HttpMethod.PUT, "/api/bookings/*/seat-assignments")

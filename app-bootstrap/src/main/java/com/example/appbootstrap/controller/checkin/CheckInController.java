@@ -1,8 +1,13 @@
 package com.example.appbootstrap.controller.checkin;
 
 import com.example.appbootstrap.api.ApiSuccessMessage;
+import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmRequest;
+import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmResponse;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueRequest;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueResponse;
+import com.example.modulecheckin.application.CheckInConfirmCommand;
+import com.example.modulecheckin.application.CheckInConfirmService;
+import com.example.modulecheckin.application.CheckInConfirmView;
 import com.example.modulecheckin.application.CheckInContinueCommand;
 import com.example.modulecheckin.application.CheckInContinueService;
 import com.example.modulecheckin.application.CheckInContinueView;
@@ -24,10 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Check-in", description = "Check-in and boarding pass endpoints")
 public class CheckInController {
 
+  private final CheckInConfirmService checkInConfirmService;
   private final CheckInContinueService checkInContinueService;
 
-  public CheckInController(CheckInContinueService checkInContinueService) {
+  public CheckInController(
+      CheckInContinueService checkInContinueService,
+      CheckInConfirmService checkInConfirmService) {
     this.checkInContinueService = checkInContinueService;
+    this.checkInConfirmService = checkInConfirmService;
   }
 
   @PostMapping("/continue")
@@ -65,6 +74,43 @@ public class CheckInController {
                                 segment.flightId(), segment.passengerIds()))
                     .toList()));
     return toResponse(view);
+  }
+
+  @PostMapping("/confirm")
+  @ApiSuccessMessage("Check-in confirmed")
+  @Operation(
+      summary = "Confirm online check-in for selected flights and passengers",
+      description =
+          "Performs the final check-in confirmation, creates boarding passes, and returns boarding pass metadata.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Check-in confirmed successfully",
+        content = @Content(schema = @Schema(implementation = CheckInConfirmResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking or selection not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Booking not eligible for check-in",
+        content = @Content)
+  })
+  CheckInConfirmResponse confirmCheckIn(@Valid @RequestBody CheckInConfirmRequest request) {
+    CheckInConfirmView view =
+        checkInConfirmService.confirmCheckIn(
+            new CheckInConfirmCommand(
+                request.pnrCode(),
+                request.lastName(),
+                request.segments().stream()
+                    .map(
+                        segment ->
+                            new CheckInConfirmCommand.SegmentSelection(
+                                segment.flightId(), segment.passengerIds()))
+                    .toList()));
+    return toConfirmResponse(view);
   }
 
   private CheckInContinueResponse toResponse(CheckInContinueView view) {
@@ -152,5 +198,46 @@ public class CheckInController {
             view.actions().allowConfirmCheckIn(),
             view.actions().allowSeatSelection(),
             view.actions().nextStep()));
+  }
+
+  private CheckInConfirmResponse toConfirmResponse(CheckInConfirmView view) {
+    return new CheckInConfirmResponse(
+        new CheckInConfirmResponse.BookingResponse(
+            view.booking().bookingId(), view.booking().pnrCode(), view.booking().status()),
+        view.segments().stream()
+            .map(
+                segment ->
+                    new CheckInConfirmResponse.SegmentResponse(
+                        segment.flightId(),
+                        segment.flightNumber(),
+                        segment.passengers().stream()
+                            .map(
+                                passenger ->
+                                    new CheckInConfirmResponse.PassengerResponse(
+                                        passenger.passengerId(),
+                                        passenger.ticketId(),
+                                        passenger.ticketNumber(),
+                                        passenger.fullName(),
+                                        passenger.seatNumber(),
+                                        passenger.boardingPassId(),
+                                        passenger.checkInStatus()))
+                            .toList()))
+            .toList(),
+        view.boardingPasses().stream()
+            .map(
+                boardingPass ->
+                    new CheckInConfirmResponse.BoardingPassResponse(
+                        boardingPass.boardingPassId(),
+                        boardingPass.ticketId(),
+                        boardingPass.passengerId(),
+                        boardingPass.flightId(),
+                        boardingPass.qrCode(),
+                        boardingPass.gate(),
+                        boardingPass.boardingTime(),
+                        boardingPass.sequenceNumber(),
+                        boardingPass.seatLabel()))
+            .toList(),
+        new CheckInConfirmResponse.SummaryResponse(
+            view.summary().confirmedPassengers(), view.summary().confirmedSegments()));
   }
 }
