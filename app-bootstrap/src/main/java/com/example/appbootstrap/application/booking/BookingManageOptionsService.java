@@ -321,24 +321,40 @@ public class BookingManageOptionsService {
     if (!BOOKING_STATUS_CONFIRMED.equalsIgnoreCase(booking.getStatus())) {
       warnings.add("BOOKING_NOT_CONFIRMED");
       return new PassengerCheckInResult(
-          false, "BOOKING_NOT_CONFIRMED", hasSeat(ticket, activeSeatsByPassengerAndFlight), seatNumber(ticket, activeSeatsByPassengerAndFlight), List.copyOf(warnings));
+          false,
+          "BOOKING_NOT_CONFIRMED",
+          hasSeat(ticket, activeSeatsByPassengerAndFlight),
+          seatNumber(ticket, activeSeatsByPassengerAndFlight),
+          List.copyOf(warnings));
     }
     if (!TICKET_STATUS_ISSUED.equalsIgnoreCase(ticket.getStatus())) {
       warnings.add("TICKET_NOT_ISSUED");
       return new PassengerCheckInResult(
-          false, "TICKET_NOT_ISSUED", hasSeat(ticket, activeSeatsByPassengerAndFlight), seatNumber(ticket, activeSeatsByPassengerAndFlight), List.copyOf(warnings));
+          false,
+          "TICKET_NOT_ISSUED",
+          hasSeat(ticket, activeSeatsByPassengerAndFlight),
+          seatNumber(ticket, activeSeatsByPassengerAndFlight),
+          List.copyOf(warnings));
     }
     if (boardingPassByTicketId.containsKey(ticket.getId())) {
       warnings.add("ALREADY_CHECKED_IN");
       return new PassengerCheckInResult(
-          false, "ALREADY_CHECKED_IN", hasSeat(ticket, activeSeatsByPassengerAndFlight), seatNumber(ticket, activeSeatsByPassengerAndFlight), List.copyOf(warnings));
+          false,
+          "ALREADY_CHECKED_IN",
+          hasSeat(ticket, activeSeatsByPassengerAndFlight),
+          seatNumber(ticket, activeSeatsByPassengerAndFlight),
+          List.copyOf(warnings));
     }
     if (!WINDOW_STATUS_OPEN.equals(window.status())) {
       String status =
           WINDOW_STATUS_NOT_OPEN.equals(window.status()) ? "CHECKIN_NOT_OPEN" : "CHECKIN_CLOSED";
       warnings.add(status);
       return new PassengerCheckInResult(
-          false, status, hasSeat(ticket, activeSeatsByPassengerAndFlight), seatNumber(ticket, activeSeatsByPassengerAndFlight), List.copyOf(warnings));
+          false,
+          status,
+          hasSeat(ticket, activeSeatsByPassengerAndFlight),
+          seatNumber(ticket, activeSeatsByPassengerAndFlight),
+          List.copyOf(warnings));
     }
     FlightSeatEntity seat =
         resolveSeat(
