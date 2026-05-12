@@ -33,8 +33,7 @@ public class CheckInController {
   private final CheckInContinueService checkInContinueService;
 
   public CheckInController(
-      CheckInContinueService checkInContinueService,
-      CheckInConfirmService checkInConfirmService) {
+      CheckInContinueService checkInContinueService, CheckInConfirmService checkInConfirmService) {
     this.checkInContinueService = checkInContinueService;
     this.checkInConfirmService = checkInConfirmService;
   }
