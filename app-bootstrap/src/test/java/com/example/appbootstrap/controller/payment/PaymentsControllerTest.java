@@ -13,6 +13,9 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentMethodView;
+import com.example.modulepayment.application.PaymentResultService;
+import com.example.modulepayment.application.PaymentResultStatusView;
+import com.example.modulepayment.application.PaymentResultSummaryView;
 import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
 import jakarta.validation.Validation;
@@ -30,13 +33,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class PaymentsControllerTest {
 
   @Mock private PaymentService paymentService;
+  @Mock private PaymentResultService paymentResultService;
 
   private PaymentsController controller;
   private Validator validator;
 
   @BeforeEach
   void setUp() {
-    controller = new PaymentsController(paymentService);
+    controller = new PaymentsController(paymentService, paymentResultService);
     validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 
@@ -254,6 +258,59 @@ class PaymentsControllerTest {
         controller.cancelPayment(null, 5L, new CancelPaymentRequest("Changed my mind"));
 
     assertEquals("CANCELLED", response.status());
+  }
+
+  @Test
+  void shouldMapPaymentResultStatusResponse() {
+    when(paymentResultService.getResultStatusForUser(5L, 7L))
+        .thenReturn(
+            new PaymentResultStatusView(
+                5L,
+                10L,
+                "SUCCESS",
+                "CONFIRMED",
+                "SUCCESS",
+                new PaymentResultStatusView.PollingView(false, null),
+                null));
+
+    PaymentResultStatusView response = controller.getPaymentResultStatus(principal(), 5L);
+
+    assertEquals(5L, response.paymentId());
+    assertEquals(10L, response.bookingId());
+    assertEquals("SUCCESS", response.resultPage());
+    assertFalse(response.polling().shouldPoll());
+  }
+
+  @Test
+  void shouldMapPaymentResultSummaryResponse() {
+    when(paymentResultService.getResultSummaryForUser(5L, 7L))
+        .thenReturn(
+            new PaymentResultSummaryView(
+                5L,
+                10L,
+                "SUCCESS",
+                "CONFIRMED",
+                new PaymentResultSummaryView.BookingView(
+                    "PNR123",
+                    OffsetDateTime.parse("2026-04-08T09:00:00Z"),
+                    OffsetDateTime.parse("2026-04-08T10:00:00Z"),
+                    OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                    "VND",
+                    new BigDecimal("1200000")),
+                new PaymentResultSummaryView.ContactView("Test User", "user@example.com", "+8496"),
+                new PaymentResultSummaryView.PaymentView(
+                    "PAYOS", "plink_5", new BigDecimal("1200000"), "VND"),
+                new PaymentResultSummaryView.SummaryView(1, 1, new BigDecimal("1200000"), "VND"),
+                List.of(),
+                List.of(),
+                List.of(),
+                null));
+
+    PaymentResultSummaryView response = controller.getPaymentResultSummary(principal(), 5L);
+
+    assertEquals(5L, response.paymentId());
+    assertEquals("PNR123", response.booking().pnrCode());
+    assertEquals("PAYOS", response.payment().method());
   }
 
   @Test

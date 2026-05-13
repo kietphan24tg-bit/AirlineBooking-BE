@@ -9,6 +9,9 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.CreatePaymentCommand;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentDetailsView;
+import com.example.modulepayment.application.PaymentResultService;
+import com.example.modulepayment.application.PaymentResultStatusView;
+import com.example.modulepayment.application.PaymentResultSummaryView;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
@@ -40,9 +43,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentsController {
 
   private final PaymentService paymentService;
+  private final PaymentResultService paymentResultService;
 
-  public PaymentsController(PaymentService paymentService) {
+  public PaymentsController(PaymentService paymentService, PaymentResultService paymentResultService) {
     this.paymentService = paymentService;
+    this.paymentResultService = paymentResultService;
   }
 
   @GetMapping("/payment-methods")
@@ -127,6 +132,39 @@ public class PaymentsController {
         view.qrImageUrl(),
         view.paymentUrl(),
         toStatusDetails(view.details()));
+  }
+
+  @GetMapping("/payments/{paymentId}/result-status")
+  @Operation(
+      summary = "Get payment result page status",
+      description = "Verifies the backend payment outcome for success/error result pages.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Payment result status returned"),
+    @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content)
+  })
+  PaymentResultStatusView getPaymentResultStatus(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId) {
+    return principal == null
+        ? paymentResultService.getResultStatusPublic(paymentId)
+        : paymentResultService.getResultStatusForUser(paymentId, principal.getUserId());
+  }
+
+  @GetMapping("/payments/{paymentId}/result-summary")
+  @Operation(
+      summary = "Get payment success summary",
+      description = "Returns the full backend-backed success page summary once payment is successful.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Payment success summary returned"),
+    @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content),
+    @ApiResponse(responseCode = "409", description = "Payment not completed or not successful", content = @Content)
+  })
+  PaymentResultSummaryView getPaymentResultSummary(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId) {
+    return principal == null
+        ? paymentResultService.getResultSummaryPublic(paymentId)
+        : paymentResultService.getResultSummaryForUser(paymentId, principal.getUserId());
   }
 
   @PostMapping("/payments")

@@ -7,16 +7,17 @@ import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
 import com.example.modulebooking.entity.TicketEntity;
-import com.example.modulebooking.exception.BookingNotFoundException;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.modulebooking.repository.TicketRepository;
+import com.example.modulebooking.exception.BookingNotFoundException;
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,63 +101,77 @@ public class TicketIssuanceService {
   }
 
   private void issueMissingTickets(BookingEntity booking) {
-    BookingFareHoldEntity fareHold = requireConfirmedFareHold(booking.getId());
-    FlightFareEntity fare = fareHold.getFlightFare();
-    FlightEntity flight = fare.getFlight();
-    FareClassEntity fareClass = fare.getFareClass();
+    List<BookingFareHoldEntity> fareHolds = requireConfirmedFareHolds(booking.getId());
     List<PassengerEntity> passengers =
         passengerRepository.findByBookingIdOrderById(booking.getId());
-    Map<Long, FlightSeatEntity> bookedSeats = bookedSeatByPassengerId(booking.getId());
-    Set<Long> ticketedPassengerIds =
+    Map<String, FlightSeatEntity> bookedSeats = bookedSeatByPassengerAndFlight(booking.getId());
+    Set<String> ticketedPassengerFlightKeys =
         ticketRepository.findByBookingIdWithDetails(booking.getId()).stream()
-            .map(ticket -> ticket.getPassenger().getId())
+            .map(ticket -> ticketKey(ticket.getPassenger().getId(), ticket.getFlight().getId()))
             .collect(Collectors.toSet());
 
     OffsetDateTime now = OffsetDateTime.now();
-    List<TicketEntity> missingTickets =
-        passengers.stream()
-            .filter(passenger -> !ticketedPassengerIds.contains(passenger.getId()))
-            .map(
-                passenger -> {
-                  TicketEntity ticket = new TicketEntity();
-                  ticket.setBooking(booking);
-                  ticket.setFlightFare(fare);
-                  ticket.setPassenger(passenger);
-                  ticket.setFlight(flight);
-                  ticket.setFlightSeat(bookedSeats.get(passenger.getId()));
-                  ticket.setFareClass(fareClass);
-                  ticket.setTicketNumber(ticketNumber(booking, passenger));
-                  ticket.setStatus(TICKET_STATUS_ISSUED);
-                  ticket.setIssuedAt(now);
-                  ticket.setCreatedAt(now);
-                  ticket.setUpdatedAt(now);
-                  return ticket;
-                })
-            .toList();
+    boolean multiSegment = fareHolds.size() > 1;
+    List<TicketEntity> missingTickets = new java.util.ArrayList<>();
+    for (BookingFareHoldEntity fareHold : fareHolds) {
+      FlightFareEntity fare = fareHold.getFlightFare();
+      FlightEntity flight = fare.getFlight();
+      FareClassEntity fareClass = fare.getFareClass();
+      for (PassengerEntity passenger : passengers) {
+        String key = ticketKey(passenger.getId(), flight.getId());
+        if (ticketedPassengerFlightKeys.contains(key)) {
+          continue;
+        }
+        TicketEntity ticket = new TicketEntity();
+        ticket.setBooking(booking);
+        ticket.setFlightFare(fare);
+        ticket.setPassenger(passenger);
+        ticket.setFlight(flight);
+        ticket.setFlightSeat(bookedSeats.get(key));
+        ticket.setFareClass(fareClass);
+        ticket.setTicketNumber(ticketNumber(booking, passenger, flight, multiSegment));
+        ticket.setStatus(TICKET_STATUS_ISSUED);
+        ticket.setIssuedAt(now);
+        ticket.setCreatedAt(now);
+        ticket.setUpdatedAt(now);
+        missingTickets.add(ticket);
+      }
+    }
     if (!missingTickets.isEmpty()) {
       ticketRepository.saveAll(missingTickets);
     }
   }
 
-  private BookingFareHoldEntity requireConfirmedFareHold(Long bookingId) {
-    return bookingFareHoldRepository
-        .findFirstByBookingIdAndStatusIn(bookingId, List.of("CONFIRMED"))
-        .orElseThrow(
-            () ->
-                new AppException(
-                    "BOOKING_FARE_NOT_CONFIRMED",
-                    "Booking fare is not confirmed",
-                    409,
-                    Map.of("bookingId", bookingId)));
+  private List<BookingFareHoldEntity> requireConfirmedFareHolds(Long bookingId) {
+    List<BookingFareHoldEntity> confirmed =
+        bookingFareHoldRepository.findByBookingIdOrderByIdAsc(bookingId).stream()
+            .filter(item -> "CONFIRMED".equalsIgnoreCase(item.getStatus()))
+            .sorted(
+                Comparator.comparing(
+                        (BookingFareHoldEntity item) -> item.getFlightFare().getFlight().getDepartureTime(),
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(item -> item.getFlightFare().getFlight().getId()))
+            .toList();
+    if (!confirmed.isEmpty()) {
+      return confirmed;
+    }
+    throw new AppException(
+        "BOOKING_FARE_NOT_CONFIRMED",
+        "Booking fare is not confirmed",
+        409,
+        Map.of("bookingId", bookingId));
   }
 
-  private Map<Long, FlightSeatEntity> bookedSeatByPassengerId(Long bookingId) {
+  private Map<String, FlightSeatEntity> bookedSeatByPassengerAndFlight(Long bookingId) {
     return passengerSeatAssignmentRepository
         .findByBookingIdAndStatusIn(bookingId, List.of("BOOKED"))
         .stream()
         .collect(
             Collectors.toMap(
-                assignment -> assignment.getPassenger().getId(),
+                assignment ->
+                    ticketKey(
+                        assignment.getPassenger().getId(),
+                        assignment.getFlightSeat().getFlight().getId()),
                 PassengerSeatAssignmentEntity::getFlightSeat,
                 (left, right) -> left,
                 LinkedHashMap::new));
@@ -172,8 +187,16 @@ public class TicketIssuanceService {
     }
   }
 
-  private String ticketNumber(BookingEntity booking, PassengerEntity passenger) {
-    return booking.getPnrCode() + "-" + passenger.getId();
+  private String ticketNumber(
+      BookingEntity booking, PassengerEntity passenger, FlightEntity flight, boolean multiSegment) {
+    if (!multiSegment) {
+      return booking.getPnrCode() + "-" + passenger.getId();
+    }
+    return booking.getPnrCode() + "-" + passenger.getId() + "-" + flight.getId();
+  }
+
+  private String ticketKey(Long passengerId, Long flightId) {
+    return passengerId + ":" + flightId;
   }
 
   private BookingTicketsView toView(BookingEntity booking, List<TicketEntity> tickets) {
