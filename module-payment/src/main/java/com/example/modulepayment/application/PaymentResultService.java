@@ -77,7 +77,9 @@ public class PaymentResultService {
   @Transactional(readOnly = true)
   public PaymentResultStatusView getResultStatusPublic(Long paymentId) {
     PaymentEntity payment =
-        paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException(paymentId));
+        paymentRepository
+            .findById(paymentId)
+            .orElseThrow(() -> new PaymentNotFoundException(paymentId));
     return toResultStatus(payment);
   }
 
@@ -93,7 +95,9 @@ public class PaymentResultService {
   @Transactional
   public PaymentResultSummaryView getResultSummaryPublic(Long paymentId) {
     PaymentEntity payment =
-        paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException(paymentId));
+        paymentRepository
+            .findById(paymentId)
+            .orElseThrow(() -> new PaymentNotFoundException(paymentId));
     return buildSummary(payment);
   }
 
@@ -123,7 +127,8 @@ public class PaymentResultService {
         bookingStatus,
         resultPage,
         new PaymentResultStatusView.PollingView(
-            "PENDING".equals(resultPage), "PENDING".equals(resultPage) ? NEXT_POLL_AFTER_SECONDS : null),
+            "PENDING".equals(resultPage),
+            "PENDING".equals(resultPage) ? NEXT_POLL_AFTER_SECONDS : null),
         failure);
   }
 
@@ -144,7 +149,8 @@ public class PaymentResultService {
     List<PassengerEntity> passengers = passengerRepository.findByBookingIdOrderById(bookingId);
     List<BookingContactEntity> contacts =
         bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(bookingId);
-    List<BookingServiceEntity> services = bookingServiceRepository.findDetailedByBookingId(bookingId);
+    List<BookingServiceEntity> services =
+        bookingServiceRepository.findDetailedByBookingId(bookingId);
     List<PassengerSeatAssignmentEntity> seatAssignments =
         passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(bookingId, List.of("BOOKED"));
     List<TicketEntity> tickets = ticketRepository.findByBookingIdWithDetails(bookingId);
@@ -152,12 +158,18 @@ public class PaymentResultService {
     List<PaymentResultSummaryView.SegmentView> segmentViews = buildSegments(confirmedHolds);
     Map<Long, String> segmentKeyByFlightId =
         segmentViews.stream()
-            .collect(Collectors.toMap(PaymentResultSummaryView.SegmentView::flightId, PaymentResultService::segmentKey));
+            .collect(
+                Collectors.toMap(
+                    PaymentResultSummaryView.SegmentView::flightId,
+                    PaymentResultService::segmentKey));
     Map<String, PassengerSeatAssignmentEntity> seatByPassengerFlight =
         seatAssignments.stream()
             .collect(
                 Collectors.toMap(
-                    seat -> ticketKey(seat.getPassenger().getId(), seat.getFlightSeat().getFlight().getId()),
+                    seat ->
+                        ticketKey(
+                            seat.getPassenger().getId(),
+                            seat.getFlightSeat().getFlight().getId()),
                     seat -> seat,
                     (left, right) -> left,
                     LinkedHashMap::new));
@@ -172,7 +184,12 @@ public class PaymentResultService {
 
     PaymentResultSummaryView.ContactView contactView = buildContact(booking, contacts, passengers);
     List<PaymentResultSummaryView.PassengerView> passengerViews =
-        buildPassengers(passengers, segmentViews, services, seatByPassengerFlight, ticketByPassengerFlight);
+        buildPassengers(
+            passengers,
+            segmentViews,
+            services,
+            seatByPassengerFlight,
+            ticketByPassengerFlight);
     List<PaymentResultSummaryView.TicketView> ticketViews =
         buildTickets(tickets, segmentKeyByFlightId, seatByPassengerFlight);
 
@@ -220,7 +237,8 @@ public class PaymentResultService {
             .filter(item -> BOOKING_STATUS_CONFIRMED.equalsIgnoreCase(normalize(item.getStatus())))
             .sorted(
                 Comparator.comparing(
-                        (BookingFareHoldEntity item) -> item.getFlightFare().getFlight().getDepartureTime(),
+                        (BookingFareHoldEntity item) ->
+                            item.getFlightFare().getFlight().getDepartureTime(),
                         Comparator.nullsLast(Comparator.naturalOrder()))
                     .thenComparing(item -> item.getFlightFare().getFlight().getId()))
             .toList();
@@ -230,7 +248,8 @@ public class PaymentResultService {
     throw new AppException("BOOKING_FARE_NOT_CONFIRMED", "Booking fare is not confirmed", 409);
   }
 
-  private List<PaymentResultSummaryView.SegmentView> buildSegments(List<BookingFareHoldEntity> holds) {
+  private List<PaymentResultSummaryView.SegmentView> buildSegments(
+      List<BookingFareHoldEntity> holds) {
     List<PaymentResultSummaryView.SegmentView> segments = new ArrayList<>();
     for (int index = 0; index < holds.size(); index++) {
       BookingFareHoldEntity hold = holds.get(index);
@@ -245,8 +264,13 @@ public class PaymentResultService {
               flight.getFlightNumber(),
               flight.getAirline() == null ? null : flight.getAirline().getName(),
               toLocation(
-                  flight.getDepartureAirport(), flight.getDepartureTerminal(), flight.getDepartureTime()),
-              toLocation(flight.getArrivalAirport(), flight.getArrivalTerminal(), flight.getArrivalTime()),
+                  flight.getDepartureAirport(),
+                  flight.getDepartureTerminal(),
+                  flight.getDepartureTime()),
+              toLocation(
+                  flight.getArrivalAirport(),
+                  flight.getArrivalTerminal(),
+                  flight.getArrivalTime()),
               durationMinutes(flight.getDepartureTime(), flight.getArrivalTime()),
               0,
               new PaymentResultSummaryView.FareView(
@@ -290,11 +314,15 @@ public class PaymentResultService {
                         .map(
                             segment -> {
                               String key = ticketKey(passenger.getId(), segment.flightId());
-                              PassengerSeatAssignmentEntity seatAssignment = seatByPassengerFlight.get(key);
+                              PassengerSeatAssignmentEntity seatAssignment =
+                                  seatByPassengerFlight.get(key);
                               TicketEntity ticket = ticketByPassengerFlight.get(key);
                               return new PaymentResultSummaryView.PassengerSegmentView(
                                   segment.segmentKey(),
-                                  seatView(seatAssignment == null ? null : seatAssignment.getFlightSeat()),
+                                  seatView(
+                                      seatAssignment == null
+                                          ? null
+                                          : seatAssignment.getFlightSeat()),
                                   ticket == null
                                       ? null
                                       : new PaymentResultSummaryView.EmbeddedTicketView(
@@ -305,14 +333,18 @@ public class PaymentResultService {
                             })
                         .toList(),
                     services.stream()
-                        .filter(service -> Objects.equals(service.getPassenger().getId(), passenger.getId()))
+                        .filter(
+                            service ->
+                                Objects.equals(service.getPassenger().getId(), passenger.getId()))
                         .map(
                             service ->
                                 new PaymentResultSummaryView.PassengerServiceView(
                                     service.getService().getId(),
                                     service.getService().getType(),
                                     service.getService().getName(),
-                                    service.getServiceOption() == null ? null : service.getServiceOption().getId(),
+                                    service.getServiceOption() == null
+                                        ? null
+                                        : service.getServiceOption().getId(),
                                     service.getServiceOption() == null
                                         ? null
                                         : service.getServiceOption().getName(),
@@ -331,7 +363,9 @@ public class PaymentResultService {
     return tickets.stream()
         .sorted(
             Comparator.comparing((TicketEntity ticket) -> ticket.getPassenger().getId())
-                .thenComparing(ticket -> ticket.getFlight().getDepartureTime(), Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(
+                    ticket -> ticket.getFlight().getDepartureTime(),
+                    Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(ticket -> ticket.getFlight().getId()))
         .map(
             ticket -> {
@@ -354,14 +388,22 @@ public class PaymentResultService {
   }
 
   private PaymentResultSummaryView.ContactView buildContact(
-      BookingEntity booking, List<BookingContactEntity> contacts, List<PassengerEntity> passengers) {
+      BookingEntity booking,
+      List<BookingContactEntity> contacts,
+      List<PassengerEntity> passengers) {
     Optional<BookingContactEntity> primary =
         contacts.stream().filter(BookingContactEntity::isPrimary).findFirst();
     PassengerEntity leadPassenger = passengers.isEmpty() ? null : passengers.getFirst();
     return new PaymentResultSummaryView.ContactView(
         leadPassenger == null ? null : fullName(leadPassenger),
-        primary.map(BookingContactEntity::getEmail).filter(value -> value != null && !value.isBlank()).orElse(booking.getContactEmail()),
-        primary.map(BookingContactEntity::getPhone).filter(value -> value != null && !value.isBlank()).orElse(booking.getContactPhone()));
+        primary
+            .map(BookingContactEntity::getEmail)
+            .filter(value -> value != null && !value.isBlank())
+            .orElse(booking.getContactEmail()),
+        primary
+            .map(BookingContactEntity::getPhone)
+            .filter(value -> value != null && !value.isBlank())
+            .orElse(booking.getContactPhone()));
   }
 
   private PaymentResultSummaryView.FareBreakdownView buildFareBreakdown(
@@ -386,7 +428,10 @@ public class PaymentResultService {
         seatAssignments.stream()
             .collect(
                 Collectors.toMap(
-                    seat -> ticketKey(seat.getPassenger().getId(), seat.getFlightSeat().getFlight().getId()),
+                    seat ->
+                        ticketKey(
+                            seat.getPassenger().getId(),
+                            seat.getFlightSeat().getFlight().getId()),
                     seat -> nonNullMoney(seat.getSurchargeAmount()),
                     BigDecimal::add,
                     LinkedHashMap::new));
@@ -395,15 +440,20 @@ public class PaymentResultService {
         passengers.stream()
             .map(
                 passenger -> {
-                  List<PaymentResultSummaryView.PassengerSegmentFareBreakdownView> bySegment = new ArrayList<>();
+                  List<PaymentResultSummaryView.PassengerSegmentFareBreakdownView> bySegment =
+                      new ArrayList<>();
                   BigDecimal passengerFareTotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
                   BigDecimal passengerServiceTotal =
                       servicesByPassenger.getOrDefault(passenger.getId(), List.of()).stream()
                           .map(BookingServiceEntity::getPrice)
                           .map(PaymentResultService::nonNullMoney)
-                          .reduce(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), BigDecimal::add);
+                          .reduce(
+                              BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
+                              BigDecimal::add);
                   BigDecimal passengerServiceVat =
-                      passengerServiceTotal.multiply(new BigDecimal("0.08")).setScale(2, RoundingMode.HALF_UP);
+                      passengerServiceTotal
+                          .multiply(new BigDecimal("0.08"))
+                          .setScale(2, RoundingMode.HALF_UP);
 
                   for (BookingFareHoldEntity hold : holds) {
                     FlightFareEntity fare = hold.getFlightFare();
@@ -419,11 +469,13 @@ public class PaymentResultService {
                             .setScale(2, RoundingMode.HALF_UP);
                     BigDecimal baseShare =
                         isFarePayingPassenger(passenger)
-                            ? totalBaseForHold.divide(BigDecimal.valueOf(divisor), 2, RoundingMode.HALF_UP)
+                            ? totalBaseForHold.divide(
+                                BigDecimal.valueOf(divisor), 2, RoundingMode.HALF_UP)
                             : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
                     BigDecimal taxShare =
                         isFarePayingPassenger(passenger)
-                            ? totalTaxForHold.divide(BigDecimal.valueOf(divisor), 2, RoundingMode.HALF_UP)
+                            ? totalTaxForHold.divide(
+                                BigDecimal.valueOf(divisor), 2, RoundingMode.HALF_UP)
                             : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
                     BigDecimal seatShare =
                         seatSurchargeByPassengerFlight.getOrDefault(
@@ -440,7 +492,9 @@ public class PaymentResultService {
                                 baseShare,
                                 taxShare,
                                 baseShare.add(taxShare)),
-                            List.of(new PaymentResultSummaryView.LabeledAmountView("Taxes and fees", taxShare)),
+                            List.of(
+                                new PaymentResultSummaryView.LabeledAmountView(
+                                    "Taxes and fees", taxShare)),
                             servicesByPassenger.getOrDefault(passenger.getId(), List.of()).stream()
                                 .map(
                                     service ->
@@ -451,7 +505,8 @@ public class PaymentResultService {
                             segmentTotal.add(passengerServiceTotal).add(passengerServiceVat)));
                   }
 
-                  BigDecimal passengerTotal = passengerFareTotal.add(passengerServiceTotal).add(passengerServiceVat);
+                  BigDecimal passengerTotal =
+                      passengerFareTotal.add(passengerServiceTotal).add(passengerServiceVat);
                   return new PaymentResultSummaryView.PassengerFareBreakdownView(
                       passenger.getId(), passengerLabel(passenger), bySegment, passengerTotal);
                 })
@@ -512,7 +567,8 @@ public class PaymentResultService {
   }
 
   private String resolveResultPage(String paymentStatus, String bookingStatus) {
-    if (PAYMENT_STATUS_SUCCESS.equals(paymentStatus) && BOOKING_STATUS_CONFIRMED.equals(bookingStatus)) {
+    if (PAYMENT_STATUS_SUCCESS.equals(paymentStatus)
+        && BOOKING_STATUS_CONFIRMED.equals(bookingStatus)) {
       return "SUCCESS";
     }
     if (PAYMENT_STATUS_PENDING.equals(paymentStatus)) {
@@ -555,7 +611,8 @@ public class PaymentResultService {
     if (seat == null) {
       return new PaymentResultSummaryView.SeatView(false, null, null, "NOT_ASSIGNED");
     }
-    return new PaymentResultSummaryView.SeatView(true, seat.getId(), seat.getSeatNumber(), "PREBOOKED");
+    return new PaymentResultSummaryView.SeatView(
+        true, seat.getId(), seat.getSeatNumber(), "PREBOOKED");
   }
 
   private boolean isFarePayingPassenger(PassengerEntity passenger) {
@@ -579,7 +636,8 @@ public class PaymentResultService {
   }
 
   private String fullName(PassengerEntity passenger) {
-    return (nullToBlank(passenger.getLastName()) + " " + nullToBlank(passenger.getFirstName())).trim();
+    return (nullToBlank(passenger.getLastName()) + " " + nullToBlank(passenger.getFirstName()))
+        .trim();
   }
 
   private String titleFor(PassengerEntity passenger) {
@@ -594,7 +652,9 @@ public class PaymentResultService {
   }
 
   private String routeLabel(FlightEntity flight) {
-    return airportCode(flight.getDepartureAirport()) + " - " + airportCode(flight.getArrivalAirport());
+    return airportCode(flight.getDepartureAirport())
+        + " - "
+        + airportCode(flight.getArrivalAirport());
   }
 
   private String airportCode(AirportEntity airport) {
