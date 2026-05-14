@@ -376,7 +376,12 @@ public class PaymentResultService {
     int divisor = Math.max(pricedPassengers, 1);
 
     Map<Long, List<BookingServiceEntity>> servicesByPassenger =
-        services.stream().collect(Collectors.groupingBy(service -> service.getPassenger().getId(), LinkedHashMap::new, Collectors.toList()));
+        services.stream()
+            .collect(
+                Collectors.groupingBy(
+                    service -> service.getPassenger().getId(),
+                    LinkedHashMap::new,
+                    Collectors.toList()));
     Map<String, BigDecimal> seatSurchargeByPassengerFlight =
         seatAssignments.stream()
             .collect(
