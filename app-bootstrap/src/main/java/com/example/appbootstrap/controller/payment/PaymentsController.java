@@ -9,10 +9,10 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.CreatePaymentCommand;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentDetailsView;
+import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentResultService;
 import com.example.modulepayment.application.PaymentResultStatusView;
 import com.example.modulepayment.application.PaymentResultSummaryView;
-import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,7 +45,8 @@ public class PaymentsController {
   private final PaymentService paymentService;
   private final PaymentResultService paymentResultService;
 
-  public PaymentsController(PaymentService paymentService, PaymentResultService paymentResultService) {
+  public PaymentsController(
+      PaymentService paymentService, PaymentResultService paymentResultService) {
     this.paymentService = paymentService;
     this.paymentResultService = paymentResultService;
   }
@@ -153,11 +154,15 @@ public class PaymentsController {
   @GetMapping("/payments/{paymentId}/result-summary")
   @Operation(
       summary = "Get payment success summary",
-      description = "Returns the full backend-backed success page summary once payment is successful.")
+      description =
+          "Returns the full backend-backed success page summary once payment is successful.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Payment success summary returned"),
     @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content),
-    @ApiResponse(responseCode = "409", description = "Payment not completed or not successful", content = @Content)
+    @ApiResponse(
+        responseCode = "409",
+        description = "Payment not completed or not successful",
+        content = @Content)
   })
   PaymentResultSummaryView getPaymentResultSummary(
       @AuthenticationPrincipal AppUserPrincipal principal,
