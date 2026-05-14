@@ -7,12 +7,12 @@ import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
 import com.example.modulebooking.entity.TicketEntity;
+import com.example.modulebooking.exception.BookingNotFoundException;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
 import com.example.modulebooking.repository.BookingRepository;
 import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.modulebooking.repository.TicketRepository;
-import com.example.modulebooking.exception.BookingNotFoundException;
 import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
@@ -148,7 +148,8 @@ public class TicketIssuanceService {
             .filter(item -> "CONFIRMED".equalsIgnoreCase(item.getStatus()))
             .sorted(
                 Comparator.comparing(
-                        (BookingFareHoldEntity item) -> item.getFlightFare().getFlight().getDepartureTime(),
+                        (BookingFareHoldEntity item) ->
+                            item.getFlightFare().getFlight().getDepartureTime(),
                         Comparator.nullsLast(Comparator.naturalOrder()))
                     .thenComparing(item -> item.getFlightFare().getFlight().getId()))
             .toList();
