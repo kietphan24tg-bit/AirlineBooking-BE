@@ -1,7 +1,6 @@
 package com.example.modulepayment.application;
 
 import com.example.common.exception.AppException;
-import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
@@ -51,7 +50,6 @@ public class PaymentResultService {
   private static final int NEXT_POLL_AFTER_SECONDS = 3;
 
   private final PaymentRepository paymentRepository;
-  private final TicketIssuanceService ticketIssuanceService;
   private final TicketRepository ticketRepository;
   private final BookingFareHoldRepository bookingFareHoldRepository;
   private final PassengerRepository passengerRepository;
@@ -61,7 +59,6 @@ public class PaymentResultService {
 
   public PaymentResultService(
       PaymentRepository paymentRepository,
-      TicketIssuanceService ticketIssuanceService,
       TicketRepository ticketRepository,
       BookingFareHoldRepository bookingFareHoldRepository,
       PassengerRepository passengerRepository,
@@ -69,7 +66,6 @@ public class PaymentResultService {
       BookingServiceRepository bookingServiceRepository,
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
     this.paymentRepository = paymentRepository;
-    this.ticketIssuanceService = ticketIssuanceService;
     this.ticketRepository = ticketRepository;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
     this.passengerRepository = passengerRepository;
@@ -144,8 +140,6 @@ public class PaymentResultService {
     }
 
     Long bookingId = booking.getId();
-    ticketIssuanceService.issueTicketsForConfirmedBooking(bookingId);
-
     List<BookingFareHoldEntity> confirmedHolds = confirmedFareHolds(bookingId);
     List<PassengerEntity> passengers = passengerRepository.findByBookingIdOrderById(bookingId);
     List<BookingContactEntity> contacts =
