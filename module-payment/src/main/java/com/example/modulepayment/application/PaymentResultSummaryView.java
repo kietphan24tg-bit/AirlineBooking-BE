@@ -70,8 +70,7 @@ public record PaymentResultSummaryView(
       List<PassengerSegmentView> segments,
       List<PassengerServiceView> services) {}
 
-  public record PassengerSegmentView(
-      String segmentKey, SeatView seat, EmbeddedTicketView ticket) {}
+  public record PassengerSegmentView(String segmentKey, SeatView seat, EmbeddedTicketView ticket) {}
 
   public record SeatView(Boolean assigned, Long seatId, String seatNumber, String source) {}
 

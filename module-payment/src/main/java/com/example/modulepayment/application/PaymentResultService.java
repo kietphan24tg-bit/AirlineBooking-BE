@@ -168,8 +168,7 @@ public class PaymentResultService {
                 Collectors.toMap(
                     seat ->
                         ticketKey(
-                            seat.getPassenger().getId(),
-                            seat.getFlightSeat().getFlight().getId()),
+                            seat.getPassenger().getId(), seat.getFlightSeat().getFlight().getId()),
                     seat -> seat,
                     (left, right) -> left,
                     LinkedHashMap::new));
@@ -185,11 +184,7 @@ public class PaymentResultService {
     PaymentResultSummaryView.ContactView contactView = buildContact(booking, contacts, passengers);
     List<PaymentResultSummaryView.PassengerView> passengerViews =
         buildPassengers(
-            passengers,
-            segmentViews,
-            services,
-            seatByPassengerFlight,
-            ticketByPassengerFlight);
+            passengers, segmentViews, services, seatByPassengerFlight, ticketByPassengerFlight);
     List<PaymentResultSummaryView.TicketView> ticketViews =
         buildTickets(tickets, segmentKeyByFlightId, seatByPassengerFlight);
 
@@ -219,12 +214,7 @@ public class PaymentResultService {
         passengerViews,
         ticketViews,
         buildFareBreakdown(
-            booking,
-            passengers,
-            confirmedHolds,
-            services,
-            seatAssignments,
-            segmentKeyByFlightId));
+            booking, passengers, confirmedHolds, services, seatAssignments, segmentKeyByFlightId));
   }
 
   private static String segmentKey(PaymentResultSummaryView.SegmentView segment) {
@@ -268,9 +258,7 @@ public class PaymentResultService {
                   flight.getDepartureTerminal(),
                   flight.getDepartureTime()),
               toLocation(
-                  flight.getArrivalAirport(),
-                  flight.getArrivalTerminal(),
-                  flight.getArrivalTime()),
+                  flight.getArrivalAirport(), flight.getArrivalTerminal(), flight.getArrivalTime()),
               durationMinutes(flight.getDepartureTime(), flight.getArrivalTime()),
               0,
               new PaymentResultSummaryView.FareView(
@@ -430,8 +418,7 @@ public class PaymentResultService {
                 Collectors.toMap(
                     seat ->
                         ticketKey(
-                            seat.getPassenger().getId(),
-                            seat.getFlightSeat().getFlight().getId()),
+                            seat.getPassenger().getId(), seat.getFlightSeat().getFlight().getId()),
                     seat -> nonNullMoney(seat.getSurchargeAmount()),
                     BigDecimal::add,
                     LinkedHashMap::new));
