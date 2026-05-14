@@ -47,11 +47,7 @@ public record PaymentResultSummaryView(
       FareView fare) {}
 
   public record LocationView(
-      String airportCode,
-      String airportName,
-      String city,
-      String terminal,
-      OffsetDateTime time) {}
+      String airportCode, String airportName, String city, String terminal, OffsetDateTime time) {}
 
   public record FareView(
       String fareClassCode,

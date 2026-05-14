@@ -435,8 +435,7 @@ public class PaymentResultService {
                           .map(BookingServiceEntity::getPrice)
                           .map(PaymentResultService::nonNullMoney)
                           .reduce(
-                              BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
-                              BigDecimal::add);
+                              BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), BigDecimal::add);
                   BigDecimal passengerServiceVat =
                       passengerServiceTotal
                           .multiply(new BigDecimal("0.08"))
