@@ -314,7 +314,10 @@ class PaymentServiceTest {
     assertEquals("PENDING_PAYMENT", booking.getStatus());
     assertEquals(true, result.payment().expireAt().isAfter(originalExpireAt.plusMinutes(40)));
     verify(bookingFareHoldRepository)
-        .extendHeldExpiryByBookingId(org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.eq(booking.getPnrExpiresAt()), any());
+        .extendHeldExpiryByBookingId(
+            org.mockito.ArgumentMatchers.eq(10L),
+            org.mockito.ArgumentMatchers.eq(booking.getPnrExpiresAt()),
+            any());
     verify(flightSeatRepository).extendReservedUntilForBooking(10L, booking.getPnrExpiresAt());
   }
 
