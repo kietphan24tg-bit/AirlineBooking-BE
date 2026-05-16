@@ -8,5 +8,6 @@ public interface TaxFeeRepository extends JpaRepository<TaxFeeEntity, Long> {
 
   List<TaxFeeEntity> findByIsActiveTrueAndApplyTo(String applyTo);
 
-  List<TaxFeeEntity> findByIsActiveTrueAndApplyToAndTaxProfileCode(String applyTo, String taxProfileCode);
+  List<TaxFeeEntity> findByIsActiveTrueAndApplyToAndTaxProfileCode(
+      String applyTo, String taxProfileCode);
 }

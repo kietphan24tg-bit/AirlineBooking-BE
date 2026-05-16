@@ -15,8 +15,7 @@ public class CountryCurrencyResolver {
 
   private static final String DEFAULT_COUNTRY_CODE = "GL";
   private static final String DEFAULT_CURRENCY = "VND";
-  private static final Set<String> REGIONAL_COUNTRIES =
-      Set.of("VN", "TH", "MY", "ID", "PH", "SG");
+  private static final Set<String> REGIONAL_COUNTRIES = Set.of("VN", "TH", "MY", "ID", "PH", "SG");
 
   private static final Map<String, String> COUNTRY_ALIASES =
       Map.ofEntries(

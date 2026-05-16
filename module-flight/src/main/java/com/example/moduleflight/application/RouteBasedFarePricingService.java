@@ -87,7 +87,8 @@ public class RouteBasedFarePricingService {
             .map(TaxLineItem::amount)
             .reduce(BigDecimal.ZERO, BigDecimal::add)
             .setScale(2, RoundingMode.HALF_UP);
-    BigDecimal totalPrice = baseResolution.baseFare().add(totalTaxAmount).setScale(2, RoundingMode.HALF_UP);
+    BigDecimal totalPrice =
+        baseResolution.baseFare().add(totalTaxAmount).setScale(2, RoundingMode.HALF_UP);
 
     return Optional.of(
         new PricingResult(
@@ -111,8 +112,11 @@ public class RouteBasedFarePricingService {
       String currency) {
     BigDecimal multiplier = resolveMultiplier(fareCode, tripScope);
     LocalDate flightDate = flight.getFlightDate();
-    String originAirportCode = normalize(flight.getDepartureAirport() == null ? null : flight.getDepartureAirport().getCode());
-    String destinationAirportCode = normalize(flight.getArrivalAirport() == null ? null : flight.getArrivalAirport().getCode());
+    String originAirportCode =
+        normalize(
+            flight.getDepartureAirport() == null ? null : flight.getDepartureAirport().getCode());
+    String destinationAirportCode =
+        normalize(flight.getArrivalAirport() == null ? null : flight.getArrivalAirport().getCode());
 
     Optional<RouteBasePriceEntity> routePrice =
         routeBasePriceRepository.findActiveByRouteAndCurrency(
@@ -161,7 +165,9 @@ public class RouteBasedFarePricingService {
 
     Optional<FareClassPriceEntity> defaultGlobal =
         fareClassPriceRepository.findByFareClassAndCurrencyAndCountryCode(
-            fareClass, countryCurrencyResolver.resolveCurrency(DEFAULT_MARKET_COUNTRY), DEFAULT_MARKET_COUNTRY);
+            fareClass,
+            countryCurrencyResolver.resolveCurrency(DEFAULT_MARKET_COUNTRY),
+            DEFAULT_MARKET_COUNTRY);
     if (defaultGlobal.isPresent()) {
       return scale(defaultGlobal.get().getBasePrice());
     }
@@ -214,12 +220,14 @@ public class RouteBasedFarePricingService {
     }
     if (!DEFAULT_TAX_PROFILE.equals(normalizedProfile)) {
       List<TaxFeeEntity> global =
-          taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode("ADULT", DEFAULT_TAX_PROFILE);
+          taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode(
+              "ADULT", DEFAULT_TAX_PROFILE);
       if (!global.isEmpty()) {
         return global;
       }
     }
-    return taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode("ADULT", LEGACY_TAX_PROFILE);
+    return taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode(
+        "ADULT", LEGACY_TAX_PROFILE);
   }
 
   private List<TaxLineItem> buildTaxBreakdown(
@@ -242,7 +250,9 @@ public class RouteBasedFarePricingService {
   }
 
   private BigDecimal scale(BigDecimal value) {
-    return value == null ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP) : value.setScale(2, RoundingMode.HALF_UP);
+    return value == null
+        ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+        : value.setScale(2, RoundingMode.HALF_UP);
   }
 
   private String normalize(String value) {

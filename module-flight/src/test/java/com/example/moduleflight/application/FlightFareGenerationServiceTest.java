@@ -81,7 +81,8 @@ class FlightFareGenerationServiceTest {
     when(fareClassRepository.findByCodeIn(any())).thenReturn(List.of(first));
     when(jdbcTemplate.queryForList(any(String.class), eq(String.class), anyLong()))
         .thenReturn(List.of("FIRST"));
-    when(flightFareRepository.findByFlightAndFareClass(any(), eq(first))).thenReturn(Optional.empty());
+    when(flightFareRepository.findByFlightAndFareClass(any(), eq(first)))
+        .thenReturn(Optional.empty());
     when(routeBasedFarePricingService.priceFare(any(), eq(first))).thenReturn(Optional.empty());
     List<FlightFareEntity> savedFares = captureSavedFares();
 

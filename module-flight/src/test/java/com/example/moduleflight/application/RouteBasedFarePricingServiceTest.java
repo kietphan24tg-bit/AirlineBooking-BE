@@ -29,14 +29,16 @@ import org.junit.jupiter.api.Test;
 
 class RouteBasedFarePricingServiceTest {
 
-  private final RouteBasePriceRepository routeBasePriceRepository = mock(RouteBasePriceRepository.class);
+  private final RouteBasePriceRepository routeBasePriceRepository =
+      mock(RouteBasePriceRepository.class);
   private final MarketBasePriceRepository marketBasePriceRepository =
       mock(MarketBasePriceRepository.class);
   private final FareClassMultiplierRepository fareClassMultiplierRepository =
       mock(FareClassMultiplierRepository.class);
   private final PricingMarketProfileRepository pricingMarketProfileRepository =
       mock(PricingMarketProfileRepository.class);
-  private final FareClassPriceRepository fareClassPriceRepository = mock(FareClassPriceRepository.class);
+  private final FareClassPriceRepository fareClassPriceRepository =
+      mock(FareClassPriceRepository.class);
   private final TaxFeeRepository taxFeeRepository = mock(TaxFeeRepository.class);
   private final CountryCurrencyResolver countryCurrencyResolver = new CountryCurrencyResolver();
   private final RouteBasedFarePricingService service =
@@ -57,7 +59,8 @@ class RouteBasedFarePricingServiceTest {
         .thenReturn(Optional.of(profile("VN", "VND", false, "VN_STANDARD")));
     when(fareClassMultiplierRepository.findByFareCodeAndTripScope("BUSINESS", "DOMESTIC"))
         .thenReturn(Optional.of(multiplier("BUSINESS", "DOMESTIC", "2.10")));
-    when(routeBasePriceRepository.findActiveByRouteAndCurrency("SGN", "DAD", "VND", flight.getFlightDate()))
+    when(routeBasePriceRepository.findActiveByRouteAndCurrency(
+            "SGN", "DAD", "VND", flight.getFlightDate()))
         .thenReturn(Optional.of(routePrice("VND", "780000.00")));
     when(taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode("ADULT", "VN_STANDARD"))
         .thenReturn(List.of(tax("VAT", "PERCENT", "0.10"), tax("APT", "FIXED", "60000")));
@@ -65,7 +68,8 @@ class RouteBasedFarePricingServiceTest {
     var pricing = service.priceFare(flight, business);
 
     assertTrue(pricing.isPresent());
-    assertEquals(RouteBasedFarePricingService.PricingSourceLevel.ROUTE, pricing.get().sourceLevel());
+    assertEquals(
+        RouteBasedFarePricingService.PricingSourceLevel.ROUTE, pricing.get().sourceLevel());
     assertEquals(new BigDecimal("1638000.00"), pricing.get().baseFare());
     assertEquals(new BigDecimal("223800.00"), pricing.get().totalTaxAmount());
     assertEquals(new BigDecimal("1861800.00"), pricing.get().totalPrice());
@@ -79,9 +83,11 @@ class RouteBasedFarePricingServiceTest {
         .thenReturn(Optional.of(profile("GB", "GBP", true, "GLOBAL_STANDARD")));
     when(fareClassMultiplierRepository.findByFareCodeAndTripScope("PREMIUM", "INTERNATIONAL"))
         .thenReturn(Optional.of(multiplier("PREMIUM", "INTERNATIONAL", "1.58")));
-    when(routeBasePriceRepository.findActiveByRouteAndCurrency("LHR", "CDG", "GBP", flight.getFlightDate()))
+    when(routeBasePriceRepository.findActiveByRouteAndCurrency(
+            "LHR", "CDG", "GBP", flight.getFlightDate()))
         .thenReturn(Optional.empty());
-    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency("GB", "DE", "GBP"))
+    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency(
+            "GB", "DE", "GBP"))
         .thenReturn(Optional.of(marketPrice("GBP", "95.00")));
     when(taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode("ADULT", "GLOBAL_STANDARD"))
         .thenReturn(List.of(tax("VAT", "PERCENT", "0.10")));
@@ -89,7 +95,8 @@ class RouteBasedFarePricingServiceTest {
     var pricing = service.priceFare(flight, premium);
 
     assertTrue(pricing.isPresent());
-    assertEquals(RouteBasedFarePricingService.PricingSourceLevel.MARKET, pricing.get().sourceLevel());
+    assertEquals(
+        RouteBasedFarePricingService.PricingSourceLevel.MARKET, pricing.get().sourceLevel());
     assertEquals(new BigDecimal("150.10"), pricing.get().baseFare());
     assertEquals(new BigDecimal("15.01"), pricing.get().totalTaxAmount());
     assertEquals(new BigDecimal("165.11"), pricing.get().totalPrice());
@@ -103,11 +110,14 @@ class RouteBasedFarePricingServiceTest {
         .thenReturn(Optional.of(profile("US", "USD", true, "GLOBAL_STANDARD")));
     when(fareClassMultiplierRepository.findByFareCodeAndTripScope("ECONOMY", "INTERNATIONAL"))
         .thenReturn(Optional.of(multiplier("ECONOMY", "INTERNATIONAL", "1.00")));
-    when(routeBasePriceRepository.findActiveByRouteAndCurrency("JFK", "CDG", "USD", flight.getFlightDate()))
+    when(routeBasePriceRepository.findActiveByRouteAndCurrency(
+            "JFK", "CDG", "USD", flight.getFlightDate()))
         .thenReturn(Optional.empty());
-    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency("US", "DE", "USD"))
+    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency(
+            "US", "DE", "USD"))
         .thenReturn(Optional.empty());
-    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency("GL", "GL", "USD"))
+    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency(
+            "GL", "GL", "USD"))
         .thenReturn(Optional.of(marketPrice("USD", "90.00")));
     when(taxFeeRepository.findByIsActiveTrueAndApplyToAndTaxProfileCode("ADULT", "GLOBAL_STANDARD"))
         .thenReturn(List.of(tax("VAT", "PERCENT", "0.10")));
@@ -115,7 +125,8 @@ class RouteBasedFarePricingServiceTest {
     var pricing = service.priceFare(flight, economy);
 
     assertTrue(pricing.isPresent());
-    assertEquals(RouteBasedFarePricingService.PricingSourceLevel.GLOBAL_MARKET, pricing.get().sourceLevel());
+    assertEquals(
+        RouteBasedFarePricingService.PricingSourceLevel.GLOBAL_MARKET, pricing.get().sourceLevel());
     assertEquals(new BigDecimal("90.00"), pricing.get().baseFare());
     assertEquals(new BigDecimal("99.00"), pricing.get().totalPrice());
   }
@@ -128,11 +139,14 @@ class RouteBasedFarePricingServiceTest {
         .thenReturn(Optional.of(profile("US", "USD", true, "GLOBAL_STANDARD")));
     when(fareClassMultiplierRepository.findByFareCodeAndTripScope("ECONOMY", "DOMESTIC"))
         .thenReturn(Optional.of(multiplier("ECONOMY", "DOMESTIC", "1.00")));
-    when(routeBasePriceRepository.findActiveByRouteAndCurrency("LAX", "SFO", "USD", flight.getFlightDate()))
+    when(routeBasePriceRepository.findActiveByRouteAndCurrency(
+            "LAX", "SFO", "USD", flight.getFlightDate()))
         .thenReturn(Optional.empty());
-    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency("US", "US", "USD"))
+    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency(
+            "US", "US", "USD"))
         .thenReturn(Optional.empty());
-    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency("GL", "GL", "USD"))
+    when(marketBasePriceRepository.findByOriginCountryCodeAndDestinationCountryCodeAndCurrency(
+            "GL", "GL", "USD"))
         .thenReturn(Optional.empty());
     when(fareClassPriceRepository.findByFareClassAndCurrencyAndCountryCode(economy, "USD", "US"))
         .thenReturn(Optional.of(legacyFarePrice("USD", "US", "60.00")));
@@ -142,7 +156,8 @@ class RouteBasedFarePricingServiceTest {
     var pricing = service.priceFare(flight, economy);
 
     assertTrue(pricing.isPresent());
-    assertEquals(RouteBasedFarePricingService.PricingSourceLevel.LEGACY, pricing.get().sourceLevel());
+    assertEquals(
+        RouteBasedFarePricingService.PricingSourceLevel.LEGACY, pricing.get().sourceLevel());
     assertEquals(new BigDecimal("60.00"), pricing.get().baseFare());
     assertEquals(new BigDecimal("6.00"), pricing.get().totalTaxAmount());
     assertEquals(new BigDecimal("66.00"), pricing.get().totalPrice());
