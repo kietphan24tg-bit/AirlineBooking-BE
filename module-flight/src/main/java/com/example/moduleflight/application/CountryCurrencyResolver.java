@@ -1,9 +1,11 @@
 package com.example.moduleflight.application;
 
+import com.example.moduleflight.entity.AirportEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -13,6 +15,8 @@ public class CountryCurrencyResolver {
 
   private static final String DEFAULT_COUNTRY_CODE = "GL";
   private static final String DEFAULT_CURRENCY = "VND";
+  private static final Set<String> REGIONAL_COUNTRIES =
+      Set.of("VN", "TH", "MY", "ID", "PH", "SG");
 
   private static final Map<String, String> COUNTRY_ALIASES =
       Map.ofEntries(
@@ -55,22 +59,33 @@ public class CountryCurrencyResolver {
   }
 
   public String resolveCountryCode(FlightEntity flight) {
-    if (flight == null || flight.getDepartureAirport() == null) {
+    return resolveCountryCode(flight == null ? null : flight.getDepartureAirport());
+  }
+
+  public String resolveCountryCode(AirportEntity airport) {
+    if (airport == null) {
       return DEFAULT_COUNTRY_CODE;
     }
-    String countryCode = flight.getDepartureAirport().getCountryCode();
+    String countryCode = airport.getCountryCode();
     if (StringUtils.hasText(countryCode)) {
       String normalizedCode = countryCode.trim().toUpperCase(Locale.ROOT);
       if (CURRENCY_BY_COUNTRY.containsKey(normalizedCode)) {
         return normalizedCode;
       }
     }
-    String country = flight.getDepartureAirport().getCountry();
+    String country = airport.getCountry();
     if (!StringUtils.hasText(country)) {
       return DEFAULT_COUNTRY_CODE;
     }
     String normalized = country.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
     return COUNTRY_ALIASES.getOrDefault(normalized, DEFAULT_COUNTRY_CODE);
+  }
+
+  public String resolveDestinationCountryCode(FlightEntity flight) {
+    if (flight == null) {
+      return DEFAULT_COUNTRY_CODE;
+    }
+    return resolveCountryCode(flight.getArrivalAirport());
   }
 
   public String resolveCurrency(String countryCode) {
@@ -80,5 +95,17 @@ public class CountryCurrencyResolver {
     }
     return CURRENCY_BY_COUNTRY.getOrDefault(
         countryCode.trim().toUpperCase(Locale.ROOT), DEFAULT_CURRENCY);
+  }
+
+  public PricingTripScope resolveTripScope(FlightEntity flight) {
+    String origin = resolveCountryCode(flight);
+    String destination = resolveDestinationCountryCode(flight);
+    if (origin.equals(destination)) {
+      return PricingTripScope.DOMESTIC;
+    }
+    if (REGIONAL_COUNTRIES.contains(origin) && REGIONAL_COUNTRIES.contains(destination)) {
+      return PricingTripScope.REGIONAL;
+    }
+    return PricingTripScope.INTERNATIONAL;
   }
 }

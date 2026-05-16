@@ -44,6 +44,9 @@ public class TaxFeeEntity {
   @Column(name = "is_active", nullable = false)
   private boolean isActive;
 
+  @Column(name = "tax_profile_code", length = 50)
+  private String taxProfileCode;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 }

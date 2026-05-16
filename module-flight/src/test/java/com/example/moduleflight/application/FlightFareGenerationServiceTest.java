@@ -10,14 +10,10 @@ import static org.mockito.Mockito.when;
 import com.example.moduleflight.entity.AircraftEntity;
 import com.example.moduleflight.entity.AirportEntity;
 import com.example.moduleflight.entity.FareClassEntity;
-import com.example.moduleflight.entity.FareClassPriceEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
-import com.example.moduleflight.entity.TaxFeeEntity;
-import com.example.moduleflight.repository.FareClassPriceRepository;
 import com.example.moduleflight.repository.FareClassRepository;
 import com.example.moduleflight.repository.FlightFareRepository;
-import com.example.moduleflight.repository.TaxFeeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -29,67 +25,69 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class FlightFareGenerationServiceTest {
 
   private final FareClassRepository fareClassRepository = mock(FareClassRepository.class);
-  private final FareClassPriceRepository fareClassPriceRepository =
-      mock(FareClassPriceRepository.class);
-  private final TaxFeeRepository taxFeeRepository = mock(TaxFeeRepository.class);
   private final FlightFareRepository flightFareRepository = mock(FlightFareRepository.class);
   private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-  private final CountryCurrencyResolver countryCurrencyResolver = new CountryCurrencyResolver();
   private final FlightInventoryMetadataService metadataService =
       new FlightInventoryMetadataService(jdbcTemplate);
+  private final RouteBasedFarePricingService routeBasedFarePricingService =
+      mock(RouteBasedFarePricingService.class);
   private final FlightFareGenerationService service =
       new FlightFareGenerationService(
           fareClassRepository,
-          fareClassPriceRepository,
-          taxFeeRepository,
           flightFareRepository,
           new ObjectMapper(),
           jdbcTemplate,
           metadataService,
-          countryCurrencyResolver);
+          routeBasedFarePricingService);
 
   @Test
-  void generateFaresForFlight_nonVndCurrency_doesNotAddVndFixedFees() {
+  void generateFaresForFlight_persistsRouteBasedPricingAndBreakdown() {
     FareClassEntity economy = fareClass("ECONOMY", "ECONOMY");
     when(fareClassRepository.findByCodeIn(any())).thenReturn(List.of(economy));
-    when(fareClassPriceRepository.findByFareClassAndCurrencyAndCountryCode(economy, "USD", "US"))
-        .thenReturn(Optional.of(price(economy, "USD", "US", "60")));
-    when(taxFeeRepository.findByIsActiveTrueAndApplyTo("ADULT"))
-        .thenReturn(List.of(tax("VAT_DOM", "PERCENT", "0.10"), tax("APT_FEE", "FIXED", "60000")));
     when(jdbcTemplate.queryForList(any(String.class), eq(String.class), anyLong()))
         .thenReturn(List.of("ECONOMY"));
     when(flightFareRepository.findByFlightAndFareClass(any(), eq(economy)))
         .thenReturn(Optional.empty());
+    when(routeBasedFarePricingService.priceFare(any(), eq(economy)))
+        .thenReturn(
+            Optional.of(
+                new RouteBasedFarePricingService.PricingResult(
+                    "USD",
+                    PricingTripScope.INTERNATIONAL,
+                    RouteBasedFarePricingService.PricingSourceLevel.ROUTE,
+                    "GLOBAL_STANDARD",
+                    new BigDecimal("120.00"),
+                    new BigDecimal("12.00"),
+                    new BigDecimal("132.00"),
+                    List.of(
+                        new RouteBasedFarePricingService.TaxLineItem(
+                            "GLOBAL_VAT_10", "Standard VAT", new BigDecimal("12.00"), "USD")))));
     List<FlightFareEntity> savedFares = captureSavedFares();
 
     service.generateFaresForFlight(flight("US", "United States"));
 
     FlightFareEntity saved = savedFares.getFirst();
-    assertEquals(new BigDecimal("60"), saved.getBasePrice());
-    assertEquals(new BigDecimal("6.00"), saved.getTotalTaxAmount());
-    assertEquals(new BigDecimal("66.00"), saved.getTotalPrice());
+    assertEquals(new BigDecimal("120.00"), saved.getBasePrice());
+    assertEquals(new BigDecimal("12.00"), saved.getTotalTaxAmount());
+    assertEquals(new BigDecimal("132.00"), saved.getTotalPrice());
+    assertEquals(
+        "[{\"code\":\"GLOBAL_VAT_10\",\"name\":\"Standard VAT\",\"amount\":12.00}]",
+        saved.getTaxBreakdown());
   }
 
   @Test
-  void generateFaresForFlight_vndCurrency_keepsFixedFees() {
-    FareClassEntity economy = fareClass("ECONOMY", "ECONOMY");
-    when(fareClassRepository.findByCodeIn(any())).thenReturn(List.of(economy));
-    when(fareClassPriceRepository.findByFareClassAndCurrencyAndCountryCode(economy, "VND", "VN"))
-        .thenReturn(Optional.of(price(economy, "VND", "VN", "1200000")));
-    when(taxFeeRepository.findByIsActiveTrueAndApplyTo("ADULT"))
-        .thenReturn(List.of(tax("VAT_DOM", "PERCENT", "0.10"), tax("APT_FEE", "FIXED", "60000")));
+  void generateFaresForFlight_skipsFareWhenPricingServiceDisallowsIt() {
+    FareClassEntity first = fareClass("FIRST", "FIRST");
+    when(fareClassRepository.findByCodeIn(any())).thenReturn(List.of(first));
     when(jdbcTemplate.queryForList(any(String.class), eq(String.class), anyLong()))
-        .thenReturn(List.of("ECONOMY"));
-    when(flightFareRepository.findByFlightAndFareClass(any(), eq(economy)))
-        .thenReturn(Optional.empty());
+        .thenReturn(List.of("FIRST"));
+    when(flightFareRepository.findByFlightAndFareClass(any(), eq(first))).thenReturn(Optional.empty());
+    when(routeBasedFarePricingService.priceFare(any(), eq(first))).thenReturn(Optional.empty());
     List<FlightFareEntity> savedFares = captureSavedFares();
 
     service.generateFaresForFlight(flight("VN", "Vietnam"));
 
-    FlightFareEntity saved = savedFares.getFirst();
-    assertEquals(new BigDecimal("1200000"), saved.getBasePrice());
-    assertEquals(new BigDecimal("180000.00"), saved.getTotalTaxAmount());
-    assertEquals(new BigDecimal("1380000.00"), saved.getTotalPrice());
+    assertEquals(0, savedFares.size());
   }
 
   private List<FlightFareEntity> captureSavedFares() {
@@ -111,6 +109,7 @@ class FlightFareGenerationServiceTest {
     aircraft.setId(10L);
 
     AirportEntity airport = new AirportEntity();
+    airport.setCode("AAA");
     airport.setCountryCode(countryCode);
     airport.setCountry(country);
 
@@ -118,6 +117,7 @@ class FlightFareGenerationServiceTest {
     flight.setId(20L);
     flight.setAircraft(aircraft);
     flight.setDepartureAirport(airport);
+    flight.setArrivalAirport(airport);
     return flight;
   }
 
@@ -126,24 +126,5 @@ class FlightFareGenerationServiceTest {
     fareClass.setCode(code);
     fareClass.setCabinClass(cabinClass);
     return fareClass;
-  }
-
-  private static FareClassPriceEntity price(
-      FareClassEntity fareClass, String currency, String countryCode, String basePrice) {
-    FareClassPriceEntity price = new FareClassPriceEntity();
-    price.setFareClass(fareClass);
-    price.setCurrency(currency);
-    price.setCountryCode(countryCode);
-    price.setBasePrice(new BigDecimal(basePrice));
-    return price;
-  }
-
-  private static TaxFeeEntity tax(String code, String amountType, String value) {
-    TaxFeeEntity tax = new TaxFeeEntity();
-    tax.setCode(code);
-    tax.setName(code);
-    tax.setAmountType(amountType);
-    tax.setValue(new BigDecimal(value));
-    return tax;
   }
 }
