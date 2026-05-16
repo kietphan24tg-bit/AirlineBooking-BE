@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -65,4 +66,20 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       @Param("bookingId") Long bookingId, @Param("statuses") List<String> statuses);
 
   boolean existsByBookingIdAndPaymentStatus(Long bookingId, String paymentStatus);
+
+  @Modifying
+  @Query(
+      value =
+          """
+          update payments p
+          set payment_status = 'EXPIRED',
+              updated_at = :now
+          from bookings b
+          where p.booking_id = b.id
+            and p.payment_status = 'PENDING'
+            and (b.status = 'EXPIRED'
+              or (b.pnr_expires_at is not null and b.pnr_expires_at < :now))
+          """,
+      nativeQuery = true)
+  int expirePendingPaymentsForExpiredBookings(@Param("now") java.time.OffsetDateTime now);
 }

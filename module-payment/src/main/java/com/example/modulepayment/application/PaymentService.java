@@ -51,6 +51,7 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYMENT_WINDOW_EXTENSION_MINUTES = 5;
+  private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final String DEFAULT_CANCELLATION_REASON = "User requested cancellation";
 
   private final BookingRepository bookingRepository;
@@ -103,6 +104,8 @@ public class PaymentService {
         paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
     boolean stripeSupported =
         paymentProperties.isStripeConfigured() && supportsCurrency(booking.getCurrency());
+    boolean payLaterSupported =
+        paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
     String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
     String stripeIcon = iconUrl("/assets/payment-icons/stripe.svg");
     String vnpayIcon = iconUrl("/assets/payment-icons/vnpay.svg");
@@ -142,10 +145,11 @@ public class PaymentService {
                     new PaymentMethodView.PaymentMethodItemView(
                         METHOD_PAY_LATER,
                         "Giữ chỗ, thanh toán sau",
-                        "INTERNAL",
-                        null,
-                        false,
-                        new PaymentMethodView.PaymentMethodMetaView(30, 0)))));
+                        "PAYOS",
+                        vietqrIcon,
+                        payLaterSupported,
+                        new PaymentMethodView.PaymentMethodMetaView(
+                            (int) PAY_LATER_HOLD_MINUTES, 0)))));
     return onlySupported ? filterSupportedOnly(groups) : groups;
   }
 
@@ -311,7 +315,9 @@ public class PaymentService {
 
   private CreatePaymentResult createPayment(CreatePaymentCommand command, boolean requireOwner) {
     String normalizedMethod = normalizeMethod(command.method());
-    if (!METHOD_PAYOS.equals(normalizedMethod) && !METHOD_STRIPE_CARD.equals(normalizedMethod)) {
+    if (!METHOD_PAYOS.equals(normalizedMethod)
+        && !METHOD_STRIPE_CARD.equals(normalizedMethod)
+        && !METHOD_PAY_LATER.equals(normalizedMethod)) {
       throw new AppException("UNSUPPORTED_PAYMENT_METHOD", "Payment method is not supported", 400);
     }
 
@@ -327,7 +333,11 @@ public class PaymentService {
     }
 
     OffsetDateTime now = OffsetDateTime.now();
-    maybeExtendPaymentWindow(booking, now);
+    if (METHOD_PAY_LATER.equals(normalizedMethod)) {
+      synchronizePayLaterWindow(booking, now);
+    } else {
+      maybeExtendPaymentWindow(booking, now);
+    }
     OffsetDateTime expireAt = booking.getPnrExpiresAt();
 
     List<PaymentEntity> previousPending =
@@ -429,6 +439,21 @@ public class PaymentService {
     booking.setUpdatedAt(now);
 
     // Keep all holds/reservations aligned with the new booking expiry.
+    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
+    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
+  }
+
+  private void synchronizePayLaterWindow(BookingEntity booking, OffsetDateTime now) {
+    if (booking == null) {
+      return;
+    }
+    OffsetDateTime targetExpireAt = now.plusMinutes(PAY_LATER_HOLD_MINUTES);
+    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
+    if (currentExpireAt != null && !currentExpireAt.isBefore(targetExpireAt)) {
+      return;
+    }
+    booking.setPnrExpiresAt(targetExpireAt);
+    booking.setUpdatedAt(now);
     bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
     flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
   }
@@ -583,7 +608,8 @@ public class PaymentService {
   }
 
   private void assertProviderConfigured(String method) {
-    if (METHOD_PAYOS.equals(method) && !paymentProperties.isPayosConfigured()) {
+    if ((METHOD_PAYOS.equals(method) || METHOD_PAY_LATER.equals(method))
+        && !paymentProperties.isPayosConfigured()) {
       throw new AppException(
           "PAYMENT_PROVIDER_MISCONFIGURED", "PayOS provider is not fully configured", 500);
     }

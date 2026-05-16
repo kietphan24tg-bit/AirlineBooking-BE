@@ -126,6 +126,15 @@ public class PaymentResultService {
         paymentStatus,
         bookingStatus,
         resultPage,
+        booking == null ? null : booking.getPnrExpiresAt(),
+        payment.getAmount(),
+        payment.getCurrency(),
+        payment.getPaymentMethod(),
+        payment.getTransactionId(),
+        payment.getQrData(),
+        payment.getQrImageUrl(),
+        payment.getCheckoutUrl(),
+        booking == null ? null : booking.getPnrCode(),
         new PaymentResultStatusView.PollingView(
             "PENDING".equals(resultPage),
             "PENDING".equals(resultPage) ? NEXT_POLL_AFTER_SECONDS : null),
@@ -557,7 +566,8 @@ public class PaymentResultService {
         && BOOKING_STATUS_CONFIRMED.equals(bookingStatus)) {
       return "SUCCESS";
     }
-    if (PAYMENT_STATUS_PENDING.equals(paymentStatus)) {
+    if (PAYMENT_STATUS_PENDING.equals(paymentStatus)
+        && "PENDING_PAYMENT".equalsIgnoreCase(bookingStatus)) {
       return "PENDING";
     }
     if (ERROR_PAYMENT_STATUSES.contains(paymentStatus)) {
@@ -570,6 +580,9 @@ public class PaymentResultService {
   }
 
   private String buildFailureMessage(String paymentStatus, String bookingStatus) {
+    if ("EXPIRED".equalsIgnoreCase(bookingStatus)) {
+      return "Booking payment window has expired";
+    }
     if (ERROR_PAYMENT_STATUSES.contains(paymentStatus)) {
       return "Payment ended with status " + paymentStatus;
     }

@@ -167,7 +167,7 @@ public class PaymentWebhookService {
       return;
     }
 
-    if (bookingExpired(booking, event)) {
+    if (bookingExpired(booking, now)) {
       payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
       booking.setStatus(BOOKING_STATUS_EXPIRED);
       booking.setUpdatedAt(now);
@@ -297,8 +297,7 @@ public class PaymentWebhookService {
       return;
     }
 
-    if (booking.getPnrExpiresAt() != null
-        && event.occurredAt().isAfter(booking.getPnrExpiresAt())) {
+    if (bookingExpired(booking, now)) {
       expirePaymentAndBooking(payment, booking, now);
       saveStripeAudit(
           payment, booking, event, OUTCOME_REJECTED, "BOOKING_EXPIRED", "Booking expired");
@@ -388,9 +387,14 @@ public class PaymentWebhookService {
         && payment.getCurrency().equalsIgnoreCase(event.currency());
   }
 
-  private boolean bookingExpired(BookingEntity booking, NormalizedPayosWebhookEvent event) {
-    return booking.getPnrExpiresAt() != null
-        && event.occurredAt().isAfter(booking.getPnrExpiresAt());
+  private boolean bookingExpired(BookingEntity booking, OffsetDateTime referenceTime) {
+    if (booking == null) {
+      return true;
+    }
+    if (BOOKING_STATUS_EXPIRED.equalsIgnoreCase(booking.getStatus())) {
+      return true;
+    }
+    return booking.getPnrExpiresAt() != null && !referenceTime.isBefore(booking.getPnrExpiresAt());
   }
 
   private boolean isPending(PaymentEntity payment) {

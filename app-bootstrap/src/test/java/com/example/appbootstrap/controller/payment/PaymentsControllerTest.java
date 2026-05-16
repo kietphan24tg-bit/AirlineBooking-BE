@@ -68,10 +68,10 @@ class PaymentsControllerTest {
                         new PaymentMethodView.PaymentMethodItemView(
                             "PAY_LATER",
                             "Giữ chỗ, thanh toán sau",
-                            "INTERNAL",
-                            null,
-                            false,
-                            new PaymentMethodView.PaymentMethodMetaView(30, 0))))));
+                            "PAYOS",
+                            "http://localhost:8080/assets/payment-icons/vietqr.svg",
+                            true,
+                            new PaymentMethodView.PaymentMethodMetaView(60, 0))))));
 
     PaymentMethodsResponse response = controller.getPaymentMethods(principal(), 10L, false);
 
@@ -82,7 +82,7 @@ class PaymentsControllerTest {
         "http://localhost:8080/assets/payment-icons/vietqr.svg",
         response.groups().getFirst().methods().getFirst().icon());
     assertEquals(true, response.groups().getFirst().methods().getFirst().supported());
-    assertEquals(30, response.groups().get(1).methods().getFirst().meta().holdDurationMinutes());
+    assertEquals(60, response.groups().get(1).methods().getFirst().meta().holdDurationMinutes());
   }
 
   @Test
@@ -271,6 +271,15 @@ class PaymentsControllerTest {
                 "SUCCESS",
                 "CONFIRMED",
                 "SUCCESS",
+                OffsetDateTime.parse("2026-04-08T15:30:00Z"),
+                new BigDecimal("1200000"),
+                "VND",
+                "PAY_LATER",
+                "plink_5",
+                "000201QR",
+                "https://img.qr/5.png",
+                "https://pay.payos.vn/web/5",
+                "ABC123",
                 new PaymentResultStatusView.PollingView(false, null),
                 null));
 
@@ -279,6 +288,7 @@ class PaymentsControllerTest {
     assertEquals(5L, response.paymentId());
     assertEquals(10L, response.bookingId());
     assertEquals("SUCCESS", response.resultPage());
+    assertEquals("ABC123", response.pnrCode());
     assertFalse(response.polling().shouldPoll());
   }
 

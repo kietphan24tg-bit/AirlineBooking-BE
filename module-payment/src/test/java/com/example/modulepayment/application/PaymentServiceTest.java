@@ -116,17 +116,22 @@ class PaymentServiceTest {
     assertEquals("BOOKING_NOT_PAYABLE", exception.getCode());
   }
 
+  @Test
   void shouldReturnOnlySupportedMethodsWhenFiltered() {
     when(bookingRepository.findByIdAndUserId(10L, 7L))
         .thenReturn(Optional.of(booking("PENDING", OffsetDateTime.now().plusMinutes(15))));
 
     List<PaymentMethodView> groups = paymentService.getPaymentMethods(10L, 7L, true);
 
-    assertEquals(1, groups.size());
+    assertEquals(2, groups.size());
     assertEquals("CARD", groups.getFirst().type());
     assertEquals(1, groups.getFirst().methods().size());
     assertEquals("PAYOS_QR", groups.getFirst().methods().getFirst().code());
     assertEquals(true, groups.getFirst().methods().getFirst().supported());
+    assertEquals("PAY_LATER", groups.get(1).type());
+    assertEquals("PAY_LATER", groups.get(1).methods().getFirst().code());
+    assertEquals(true, groups.get(1).methods().getFirst().supported());
+    assertEquals(60, groups.get(1).methods().getFirst().meta().holdDurationMinutes());
   }
 
   @Test
@@ -274,6 +279,43 @@ class PaymentServiceTest {
     assertEquals("plink_123", captor.getValue().getTransactionId());
     assertEquals("000201PAYOSQR", captor.getValue().getQrData());
     assertEquals("https://pay.payos.vn/web/123", captor.getValue().getCheckoutUrl());
+  }
+
+  @Test
+  void shouldCreatePayLaterPaymentWithOneHourHold() {
+    OffsetDateTime originalExpireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING", originalExpireAt);
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(456L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_456",
+                "https://pay.payos.vn/web/456",
+                "000201PAYLATERQR",
+                "PENDING",
+                "QR",
+                booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAY_LATER"));
+
+    assertEquals("PAY_LATER", result.payment().method());
+    assertEquals("PENDING_PAYMENT", booking.getStatus());
+    assertEquals(true, result.payment().expireAt().isAfter(originalExpireAt.plusMinutes(40)));
+    verify(bookingFareHoldRepository)
+        .extendHeldExpiryByBookingId(org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.eq(booking.getPnrExpiresAt()), any());
+    verify(flightSeatRepository).extendReservedUntilForBooking(10L, booking.getPnrExpiresAt());
   }
 
   @Test

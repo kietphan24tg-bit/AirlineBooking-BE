@@ -188,6 +188,43 @@ class PaymentWebhookServiceTest {
   }
 
   @Test
+  void shouldRejectLatePayosSuccessWhenBookingAlreadyExpired() {
+    NormalizedPayosWebhookEvent event =
+        new NormalizedPayosWebhookEvent(
+            "PAYOS",
+            "PAYMENT_SUCCEEDED",
+            123L,
+            "plink_123",
+            1200000L,
+            "VND",
+            null,
+            null,
+            null,
+            null,
+            OffsetDateTime.parse("2025-08-10T03:03:09Z"),
+            "signature",
+            "{\"code\":\"00\"}");
+    PaymentEntity payment = payment("PENDING", "EXPIRED");
+
+    when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
+        .thenReturn(false);
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentWebhookService.handlePayosWebhook("payload");
+
+    assertEquals("EXPIRED", payment.getPaymentStatus());
+    assertEquals("EXPIRED", payment.getBooking().getStatus());
+    verify(ticketIssuanceService, never()).issueTicketsForConfirmedBooking(any());
+    verify(bookingConfirmationNotifier, never()).sendIfNeeded(any());
+  }
+
+  @Test
   void shouldNotPersistAuditOnSystemError() {
     NormalizedPayosWebhookEvent event =
         new NormalizedPayosWebhookEvent(
