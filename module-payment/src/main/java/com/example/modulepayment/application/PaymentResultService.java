@@ -583,7 +583,8 @@ public class PaymentResultService {
 
   private String buildFailureMessage(
       BookingEntity booking, String paymentStatus, String bookingStatus) {
-    if ("EXPIRED".equalsIgnoreCase(bookingStatus) || isPendingPaymentExpired(booking, bookingStatus)) {
+    if ("EXPIRED".equalsIgnoreCase(bookingStatus)
+        || isPendingPaymentExpired(booking, bookingStatus)) {
       return "Booking payment window has expired";
     }
     if (ERROR_PAYMENT_STATUSES.contains(paymentStatus)) {
