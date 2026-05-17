@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentResultService {
 
   private static final String BOOKING_STATUS_CONFIRMED = "CONFIRMED";
+  private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final String PAYMENT_STATUS_SUCCESS = "SUCCESS";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
   private static final Set<String> ERROR_PAYMENT_STATUSES =
@@ -114,11 +115,11 @@ public class PaymentResultService {
     BookingEntity booking = payment.getBooking();
     String paymentStatus = normalize(payment.getPaymentStatus());
     String bookingStatus = booking == null ? "" : normalize(booking.getStatus());
-    String resultPage = resolveResultPage(paymentStatus, bookingStatus);
+    String resultPage = resolveResultPage(booking, paymentStatus, bookingStatus);
     PaymentResultStatusView.FailureView failure =
         "ERROR".equals(resultPage)
             ? new PaymentResultStatusView.FailureView(
-                "PAYMENT_RESULT_ERROR", buildFailureMessage(paymentStatus, bookingStatus))
+                "PAYMENT_RESULT_ERROR", buildFailureMessage(booking, paymentStatus, bookingStatus))
             : null;
     return new PaymentResultStatusView(
         payment.getId(),
@@ -145,11 +146,8 @@ public class PaymentResultService {
     BookingEntity booking = payment.getBooking();
     String paymentStatus = normalize(payment.getPaymentStatus());
     String bookingStatus = booking == null ? "" : normalize(booking.getStatus());
-    String resultPage = resolveResultPage(paymentStatus, bookingStatus);
-    if ("PENDING".equals(resultPage)) {
-      throw new AppException("PAYMENT_NOT_COMPLETED", "Payment has not completed yet", 409);
-    }
-    if (!"SUCCESS".equals(resultPage)) {
+    String resultPage = resolveResultPage(booking, paymentStatus, bookingStatus);
+    if (!"SUCCESS".equals(resultPage) && !"PENDING".equals(resultPage)) {
       throw new AppException("PAYMENT_NOT_SUCCESSFUL", "Payment is not successful", 409);
     }
 
@@ -561,13 +559,17 @@ public class PaymentResultService {
     return "flight-" + flightId;
   }
 
-  private String resolveResultPage(String paymentStatus, String bookingStatus) {
+  private String resolveResultPage(
+      BookingEntity booking, String paymentStatus, String bookingStatus) {
     if (PAYMENT_STATUS_SUCCESS.equals(paymentStatus)
         && BOOKING_STATUS_CONFIRMED.equals(bookingStatus)) {
       return "SUCCESS";
     }
+    if (isPendingPaymentExpired(booking, bookingStatus)) {
+      return "ERROR";
+    }
     if (PAYMENT_STATUS_PENDING.equals(paymentStatus)
-        && "PENDING_PAYMENT".equalsIgnoreCase(bookingStatus)) {
+        && BOOKING_STATUS_PENDING_PAYMENT.equalsIgnoreCase(bookingStatus)) {
       return "PENDING";
     }
     if (ERROR_PAYMENT_STATUSES.contains(paymentStatus)) {
@@ -579,14 +581,23 @@ public class PaymentResultService {
     return "ERROR";
   }
 
-  private String buildFailureMessage(String paymentStatus, String bookingStatus) {
-    if ("EXPIRED".equalsIgnoreCase(bookingStatus)) {
+  private String buildFailureMessage(
+      BookingEntity booking, String paymentStatus, String bookingStatus) {
+    if ("EXPIRED".equalsIgnoreCase(bookingStatus) || isPendingPaymentExpired(booking, bookingStatus)) {
       return "Booking payment window has expired";
     }
     if (ERROR_PAYMENT_STATUSES.contains(paymentStatus)) {
       return "Payment ended with status " + paymentStatus;
     }
     return "Booking is in status " + bookingStatus;
+  }
+
+  private boolean isPendingPaymentExpired(BookingEntity booking, String bookingStatus) {
+    if (booking == null || !BOOKING_STATUS_PENDING_PAYMENT.equalsIgnoreCase(bookingStatus)) {
+      return false;
+    }
+    OffsetDateTime expireAt = booking.getPnrExpiresAt();
+    return expireAt != null && !expireAt.isAfter(OffsetDateTime.now());
   }
 
   private static int durationMinutes(OffsetDateTime departure, OffsetDateTime arrival) {
