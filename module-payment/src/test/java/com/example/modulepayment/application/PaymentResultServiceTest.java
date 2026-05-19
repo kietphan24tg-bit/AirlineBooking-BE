@@ -76,9 +76,10 @@ class PaymentResultServiceTest {
     when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
         .thenReturn(List.of(contact));
     when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
-    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(10L, List.of("BOOKED")))
+    when(
+            passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+                10L, List.of("RESERVED", "BOOKED")))
         .thenReturn(List.of(seatAssignment));
-    when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of());
 
     PaymentResultSummaryView result = service.getResultSummaryForUser(5L, 7L);
 
@@ -204,7 +205,7 @@ class PaymentResultServiceTest {
     hold.setBooking(booking);
     hold.setFlightFare(fare);
     hold.setQuantity(1);
-    hold.setStatus("CONFIRMED");
+    hold.setStatus("HELD");
     return hold;
   }
 
@@ -223,7 +224,7 @@ class PaymentResultServiceTest {
     assignment.setBooking(booking);
     assignment.setPassenger(passenger);
     assignment.setFlightSeat(seat);
-    assignment.setStatus("BOOKED");
+    assignment.setStatus("RESERVED");
     assignment.setSurchargeAmount(BigDecimal.ZERO.setScale(2));
     assignment.setCurrency("VND");
     return assignment;

@@ -152,17 +152,19 @@ public class PaymentResultService {
     }
 
     Long bookingId = booking.getId();
-    List<BookingFareHoldEntity> confirmedHolds = confirmedFareHolds(bookingId);
+    boolean pendingResult = "PENDING".equals(resultPage);
+    List<BookingFareHoldEntity> fareHolds = fareHoldsForSummary(bookingId, pendingResult);
     List<PassengerEntity> passengers = passengerRepository.findByBookingIdOrderById(bookingId);
     List<BookingContactEntity> contacts =
         bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(bookingId);
     List<BookingServiceEntity> services =
         bookingServiceRepository.findDetailedByBookingId(bookingId);
     List<PassengerSeatAssignmentEntity> seatAssignments =
-        passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(bookingId, List.of("BOOKED"));
-    List<TicketEntity> tickets = ticketRepository.findByBookingIdWithDetails(bookingId);
+        seatAssignmentsForSummary(bookingId, pendingResult);
+    List<TicketEntity> tickets =
+        pendingResult ? List.of() : ticketRepository.findByBookingIdWithDetails(bookingId);
 
-    List<PaymentResultSummaryView.SegmentView> segmentViews = buildSegments(confirmedHolds);
+    List<PaymentResultSummaryView.SegmentView> segmentViews = buildSegments(fareHolds);
     Map<Long, String> segmentKeyByFlightId =
         segmentViews.stream()
             .collect(
@@ -195,7 +197,7 @@ public class PaymentResultService {
     List<PaymentResultSummaryView.TicketView> ticketViews =
         buildTickets(tickets, segmentKeyByFlightId, seatByPassengerFlight);
 
-    SummaryTotals totals = computeTotals(booking, confirmedHolds, services, seatAssignments);
+    SummaryTotals totals = computeTotals(booking, fareHolds, services, seatAssignments);
 
     return new PaymentResultSummaryView(
         payment.getId(),
@@ -221,17 +223,24 @@ public class PaymentResultService {
         passengerViews,
         ticketViews,
         buildFareBreakdown(
-            booking, passengers, confirmedHolds, services, seatAssignments, segmentKeyByFlightId));
+            booking, passengers, fareHolds, services, seatAssignments, segmentKeyByFlightId));
   }
 
   private static String segmentKey(PaymentResultSummaryView.SegmentView segment) {
     return segment.segmentKey();
   }
 
-  private List<BookingFareHoldEntity> confirmedFareHolds(Long bookingId) {
+  private List<BookingFareHoldEntity> fareHoldsForSummary(Long bookingId, boolean pendingResult) {
     List<BookingFareHoldEntity> holds =
         bookingFareHoldRepository.findByBookingIdOrderByIdAsc(bookingId).stream()
-            .filter(item -> BOOKING_STATUS_CONFIRMED.equalsIgnoreCase(normalize(item.getStatus())))
+            .filter(
+                item -> {
+                  String status = normalize(item.getStatus());
+                  if (pendingResult) {
+                    return "HELD".equals(status) || BOOKING_STATUS_CONFIRMED.equals(status);
+                  }
+                  return BOOKING_STATUS_CONFIRMED.equals(status);
+                })
             .sorted(
                 Comparator.comparing(
                         (BookingFareHoldEntity item) ->
@@ -242,7 +251,16 @@ public class PaymentResultService {
     if (!holds.isEmpty()) {
       return holds;
     }
-    throw new AppException("BOOKING_FARE_NOT_CONFIRMED", "Booking fare is not confirmed", 409);
+    throw new AppException(
+        pendingResult ? "BOOKING_FARE_NOT_HELD" : "BOOKING_FARE_NOT_CONFIRMED",
+        pendingResult ? "Booking fare is not being held" : "Booking fare is not confirmed",
+        409);
+  }
+
+  private List<PassengerSeatAssignmentEntity> seatAssignmentsForSummary(
+      Long bookingId, boolean pendingResult) {
+    return passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+        bookingId, pendingResult ? List.of("RESERVED", "BOOKED") : List.of("BOOKED"));
   }
 
   private List<PaymentResultSummaryView.SegmentView> buildSegments(
