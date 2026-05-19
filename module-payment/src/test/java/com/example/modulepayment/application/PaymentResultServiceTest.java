@@ -76,9 +76,8 @@ class PaymentResultServiceTest {
     when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
         .thenReturn(List.of(contact));
     when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
-    when(
-            passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
-                10L, List.of("RESERVED", "BOOKED")))
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+            10L, List.of("RESERVED", "BOOKED")))
         .thenReturn(List.of(seatAssignment));
 
     PaymentResultSummaryView result = service.getResultSummaryForUser(5L, 7L);
