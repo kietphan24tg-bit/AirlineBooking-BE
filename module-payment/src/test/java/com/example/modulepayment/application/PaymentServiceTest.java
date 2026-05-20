@@ -440,6 +440,64 @@ class PaymentServiceTest {
     assertEquals("https://pay.payos.vn/web/5", result.action().paymentUrl());
     assertEquals("PENDING_PAYMENT", booking.getStatus());
     verify(paymentGateway, never()).createPaymentLink(any());
+    verify(paymentRepository, never())
+        .findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(any(), any());
+  }
+
+  @Test
+  void shouldRejectPaymentCreationDuringCooldown() {
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    PaymentEntity recent = paymentForBooking(9L, booking, "FAILED");
+    recent.setCreatedAt(OffsetDateTime.now().minusSeconds(5));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            any(), any()))
+        .thenReturn(List.of(recent));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    assertEquals("PAYMENT_CREATION_COOLDOWN", exception.getCode());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+    verify(paymentGateway, never()).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldRejectPaymentCreationWhenRateLimitExceeded() {
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    PaymentEntity first = paymentForBooking(11L, booking, "FAILED");
+    first.setCreatedAt(OffsetDateTime.now().minusSeconds(20));
+    PaymentEntity second = paymentForBooking(12L, booking, "FAILED");
+    second.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+    PaymentEntity third = paymentForBooking(13L, booking, "FAILED");
+    third.setCreatedAt(OffsetDateTime.now().minusMinutes(2));
+    PaymentEntity fourth = paymentForBooking(14L, booking, "FAILED");
+    fourth.setCreatedAt(OffsetDateTime.now().minusMinutes(3));
+    PaymentEntity fifth = paymentForBooking(15L, booking, "FAILED");
+    fifth.setCreatedAt(OffsetDateTime.now().minusMinutes(4));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            any(), any()))
+        .thenReturn(List.of(first, second, third, fourth, fifth));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    assertEquals("PAYMENT_CREATION_LIMIT_EXCEEDED", exception.getCode());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+    verify(paymentGateway, never()).createPaymentLink(any());
   }
 
   @Test

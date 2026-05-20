@@ -47,6 +47,17 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       select p
       from PaymentEntity p
       where p.booking.id = :bookingId
+        and p.createdAt >= :createdAfter
+      order by p.createdAt desc, p.id desc
+      """)
+  List<PaymentEntity> findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+      @Param("bookingId") Long bookingId, @Param("createdAfter") java.time.OffsetDateTime createdAfter);
+
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      where p.booking.id = :bookingId
         and p.paymentStatus in :statuses
       order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
       """)

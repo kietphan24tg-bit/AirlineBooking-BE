@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class PaymentService {
+  private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
   private static final String METHOD_PAYOS = "PAYOS";
   private static final String METHOD_PAYOS_QR = "PAYOS_QR";
@@ -52,6 +55,9 @@ public class PaymentService {
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYMENT_WINDOW_EXTENSION_MINUTES = 5;
   private static final long PAY_LATER_HOLD_MINUTES = 60;
+  private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
+  private static final long PAYMENT_CREATION_WINDOW_MINUTES = 10;
+  private static final int PAYMENT_CREATION_LIMIT_PER_WINDOW = 5;
   private static final String DEFAULT_CANCELLATION_REASON = "User requested cancellation";
 
   private final BookingRepository bookingRepository;
@@ -345,9 +351,17 @@ public class PaymentService {
             booking.getId(), PAYMENT_STATUS_PENDING);
     PaymentEntity reusablePending = findReusablePending(previousPending, normalizedMethod);
     if (reusablePending != null) {
+      log.info(
+          "Reusing pending payment: bookingId={}, paymentId={}, requestedMethod={}, paymentMethod={}",
+          booking.getId(),
+          reusablePending.getId(),
+          normalizedMethod,
+          reusablePending.getPaymentMethod());
       ensureBookingPendingPayment(booking, now);
       return buildCreatePaymentResult(reusablePending, booking, expireAt);
     }
+
+    assertPaymentCreationAllowed(booking, normalizedMethod, now);
 
     for (PaymentEntity existing : previousPending) {
       if (isSamePaymentMethod(existing, normalizedMethod)) {
@@ -356,6 +370,12 @@ public class PaymentService {
         // booking.
         existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
       } else if (isReusablePending(existing)) {
+        log.info(
+            "Cancelling previous pending payment because payment method changed: bookingId={}, oldPaymentId={}, oldMethod={}, newMethod={}",
+            booking.getId(),
+            existing.getId(),
+            existing.getPaymentMethod(),
+            normalizedMethod);
         cancelWithProvider(existing, "Payment method changed");
         existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
       } else {
@@ -374,6 +394,13 @@ public class PaymentService {
     payment.setCreatedAt(now);
     payment.setUpdatedAt(now);
     paymentRepository.saveAndFlush(payment);
+    log.info(
+        "Created pending payment record: bookingId={}, paymentId={}, method={}, amount={}, currency={}",
+        booking.getId(),
+        payment.getId(),
+        normalizedMethod,
+        payment.getAmount(),
+        payment.getCurrency());
 
     PaymentGatewayResult gatewayResult;
     try {
@@ -414,6 +441,45 @@ public class PaymentService {
 
     ensureBookingPendingPayment(booking, OffsetDateTime.now());
     return buildCreatePaymentResult(payment, booking, expireAt);
+  }
+
+  private void assertPaymentCreationAllowed(
+      BookingEntity booking, String normalizedMethod, OffsetDateTime now) {
+    OffsetDateTime windowStart = now.minusMinutes(PAYMENT_CREATION_WINDOW_MINUTES);
+    List<PaymentEntity> recentPayments =
+        paymentRepository.findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            booking.getId(), windowStart);
+    if (recentPayments == null || recentPayments.isEmpty()) {
+      return;
+    }
+
+    PaymentEntity newestPayment = recentPayments.getFirst();
+    if (newestPayment.getCreatedAt() != null
+        && newestPayment.getCreatedAt().isAfter(now.minusSeconds(PAYMENT_CREATION_COOLDOWN_SECONDS))) {
+      log.info(
+          "Blocked payment creation by cooldown: bookingId={}, latestPaymentId={}, latestCreatedAt={}, requestedMethod={}",
+          booking.getId(),
+          newestPayment.getId(),
+          newestPayment.getCreatedAt(),
+          normalizedMethod);
+      throw new AppException(
+          "PAYMENT_CREATION_COOLDOWN",
+          "Please wait 15 seconds before creating another payment for this booking",
+          429);
+    }
+
+    if (recentPayments.size() >= PAYMENT_CREATION_LIMIT_PER_WINDOW) {
+      log.info(
+          "Blocked payment creation by rate limit: bookingId={}, requestedMethod={}, attemptsInWindow={}, windowMinutes={}",
+          booking.getId(),
+          normalizedMethod,
+          recentPayments.size(),
+          PAYMENT_CREATION_WINDOW_MINUTES);
+      throw new AppException(
+          "PAYMENT_CREATION_LIMIT_EXCEEDED",
+          "You have reached the payment creation limit for this booking. Please wait a few minutes before trying again",
+          429);
+    }
   }
 
   private void maybeExtendPaymentWindow(BookingEntity booking, OffsetDateTime now) {
