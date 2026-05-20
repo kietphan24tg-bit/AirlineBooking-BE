@@ -90,7 +90,8 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     PassengerSeatAssignmentEntity savedAssignment =
-        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+        activeAssignment(
+            booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
     savedAssignment.setSurchargeAmount(new BigDecimal("20000.00"));
     when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
         .thenReturn(List.of(savedAssignment));
@@ -129,7 +130,8 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     PassengerSeatAssignmentEntity savedAssignment =
-        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+        activeAssignment(
+            booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
     savedAssignment.setSurchargeAmount(BigDecimal.ZERO.setScale(2));
     when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
         .thenReturn(List.of(savedAssignment));

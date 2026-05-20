@@ -1,7 +1,9 @@
 package com.example.appbootstrap.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,21 +16,30 @@ import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.TicketEntity;
 import com.example.modulebooking.repository.BookingContactRepository;
 import com.example.modulebooking.repository.BookingRepository;
+import com.example.modulebooking.repository.BookingServiceRepository;
+import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.modulebooking.repository.TicketRepository;
 import com.example.moduleflight.entity.AirportEntity;
+import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleflight.entity.FlightFareEntity;
+import com.example.modulepayment.repository.PaymentRepository;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +49,9 @@ class BookingConfirmationEmailServiceTest {
   @Mock private BookingRepository bookingRepository;
   @Mock private BookingContactRepository bookingContactRepository;
   @Mock private TicketRepository ticketRepository;
+  @Mock private PaymentRepository paymentRepository;
+  @Mock private BookingServiceRepository bookingServiceRepository;
+  @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
 
   private BookingConfirmationEmailService service;
 
@@ -49,13 +63,18 @@ class BookingConfirmationEmailServiceTest {
             new MailProperties("no-reply@example.com"),
             bookingRepository,
             bookingContactRepository,
-            ticketRepository);
+            ticketRepository,
+            paymentRepository,
+            bookingServiceRepository,
+            passengerSeatAssignmentRepository);
   }
 
   @Test
-  void shouldSendConfirmationEmailToPrimaryBookingContactAndMarkBooking() {
+  void shouldSendConfirmationEmailToPrimaryBookingContactAndMarkBooking() throws Exception {
     BookingEntity booking = booking();
     TicketEntity ticket = ticket(booking);
+    MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+
     when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
     when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
     when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
@@ -65,52 +84,83 @@ class BookingConfirmationEmailServiceTest {
                 contact("buyer@example.com", false),
                 contact(" guest@example.com ", false),
                 contact(" ", false)));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(10L, List.of("SUCCESS")))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(10L, List.of("BOOKED")))
+        .thenReturn(List.of());
+    when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
     service.sendIfNeeded(10L);
 
-    ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(captor.capture());
-    SimpleMailMessage message = captor.getValue();
-    assertEquals("no-reply@example.com", message.getFrom());
-    assertEquals(List.of("guest@example.com"), List.of(message.getTo()));
-    assertEquals("Your booking is confirmed - PNR ABC123", message.getSubject());
-    assertTrue(message.getText().contains("PNR: ABC123"));
-    assertTrue(message.getText().contains("Ticket: ABC123-1"));
-    assertTrue(message.getText().contains("Seat: 12A"));
-    assertTrue(booking.getTicketEmailSentAt() != null);
+    MimeMessage message = captor.getValue();
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    message.writeTo(output);
+    String html = output.toString(StandardCharsets.UTF_8);
+
+    assertEquals("no-reply@example.com", message.getFrom()[0].toString());
+    assertEquals("guest@example.com", message.getAllRecipients()[0].toString());
+    assertEquals("Xac nhan dat cho - Ma dat cho ABC123", message.getSubject());
+    assertTrue(html.contains("1. Thong tin dat cho"));
+    assertTrue(html.contains("2. Thong tin hanh khach"));
+    assertTrue(html.contains("3. Thong tin chuyen bay"));
+    assertTrue(html.contains("Gia ve va le phi"));
+    assertTrue(html.contains("Tinh trang thanh toan"));
+    assertTrue(html.contains("ABC123"));
+    assertTrue(html.contains("NGUYEN, An"));
+    assertTrue(html.contains("12A"));
+    assertNotNull(booking.getTicketEmailSentAt());
     verify(bookingRepository).save(booking);
   }
 
   @Test
-  void shouldFallbackToBookingContactEmailWhenNoBookingContactEmailExists() {
+  void shouldFallbackToBookingContactEmailWhenNoBookingContactEmailExists() throws Exception {
     BookingEntity booking = booking();
     TicketEntity ticket = ticket(booking);
+    MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+
     when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
     when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
     when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
         .thenReturn(List.of(contact(null, true)));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(10L, List.of("SUCCESS")))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(10L, List.of("BOOKED")))
+        .thenReturn(List.of());
+    when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
     service.sendIfNeeded(10L);
 
-    ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(captor.capture());
-    assertEquals(List.of("guest@example.com"), List.of(captor.getValue().getTo()));
+    assertEquals("guest@example.com", captor.getValue().getAllRecipients()[0].toString());
   }
 
   @Test
-  void shouldFallbackToBookingContactEmailWhenPrimaryContactHasNoEmail() {
+  void shouldFallbackToBookingContactEmailWhenPrimaryContactHasNoEmail() throws Exception {
     BookingEntity booking = booking();
     TicketEntity ticket = ticket(booking);
+    MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+
     when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
     when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
     when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
         .thenReturn(List.of(contact(" ", true), contact("buyer@example.com", false)));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(10L, List.of("SUCCESS")))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(10L, List.of("BOOKED")))
+        .thenReturn(List.of());
+    when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
     service.sendIfNeeded(10L);
 
-    ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(captor.capture());
-    assertEquals(List.of("guest@example.com"), List.of(captor.getValue().getTo()));
+    assertEquals("guest@example.com", captor.getValue().getAllRecipients()[0].toString());
   }
 
   @Test
@@ -121,7 +171,7 @@ class BookingConfirmationEmailServiceTest {
 
     service.sendIfNeeded(10L);
 
-    verify(mailSender, never()).send(org.mockito.ArgumentMatchers.any(SimpleMailMessage.class));
+    verify(mailSender, never()).send(any(MimeMessage.class));
     verify(ticketRepository, never()).findByBookingIdWithDetails(10L);
   }
 
@@ -139,6 +189,7 @@ class BookingConfirmationEmailServiceTest {
     booking.setContactEmail("guest@example.com");
     booking.setTotalAmount(new BigDecimal("1200000"));
     booking.setCurrency("VND");
+    booking.setCreatedAt(OffsetDateTime.parse("2026-04-30T09:00:00+07:00"));
     booking.setUpdatedAt(OffsetDateTime.parse("2026-04-30T09:00:00Z"));
     return booking;
   }
@@ -146,23 +197,38 @@ class BookingConfirmationEmailServiceTest {
   private TicketEntity ticket(BookingEntity booking) {
     AirportEntity departure = new AirportEntity();
     departure.setCode("SGN");
+    departure.setCity("Ho Chi Minh");
     AirportEntity arrival = new AirportEntity();
     arrival.setCode("HAN");
+    arrival.setCity("Ha Noi");
 
     FlightEntity flight = new FlightEntity();
+    flight.setId(55L);
     flight.setFlightNumber("VN123");
     flight.setFlightDate(LocalDate.parse("2026-05-01"));
     flight.setDepartureAirport(departure);
     flight.setArrivalAirport(arrival);
+    flight.setDepartureTerminal("T1");
+    flight.setArrivalTerminal("T1");
     flight.setDepartureTime(OffsetDateTime.parse("2026-05-01T08:30:00+07:00"));
     flight.setArrivalTime(OffsetDateTime.parse("2026-05-01T10:40:00+07:00"));
 
     PassengerEntity passenger = new PassengerEntity();
+    passenger.setId(99L);
     passenger.setFirstName("An");
-    passenger.setLastName("Nguyen");
+    passenger.setLastName("NGUYEN");
 
     FlightSeatEntity seat = new FlightSeatEntity();
     seat.setSeatNumber("12A");
+
+    FareClassEntity fareClass = new FareClassEntity();
+    fareClass.setCode("Eco");
+    fareClass.setName("Economy");
+
+    FlightFareEntity flightFare = new FlightFareEntity();
+    flightFare.setBasePrice(new BigDecimal("1000000"));
+    flightFare.setTotalTaxAmount(new BigDecimal("200000"));
+    flightFare.setTotalPrice(new BigDecimal("1200000"));
 
     TicketEntity ticket = new TicketEntity();
     ticket.setBooking(booking);
@@ -170,6 +236,8 @@ class BookingConfirmationEmailServiceTest {
     ticket.setPassenger(passenger);
     ticket.setFlight(flight);
     ticket.setFlightSeat(seat);
+    ticket.setFareClass(fareClass);
+    ticket.setFlightFare(flightFare);
     return ticket;
   }
 }
