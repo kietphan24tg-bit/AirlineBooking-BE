@@ -51,7 +51,8 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       order by p.createdAt desc, p.id desc
       """)
   List<PaymentEntity> findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
-      @Param("bookingId") Long bookingId, @Param("createdAfter") java.time.OffsetDateTime createdAfter);
+      @Param("bookingId") Long bookingId,
+      @Param("createdAfter") java.time.OffsetDateTime createdAfter);
 
   @Query(
       """

@@ -455,7 +455,9 @@ public class PaymentService {
 
     PaymentEntity newestPayment = recentPayments.getFirst();
     if (newestPayment.getCreatedAt() != null
-        && newestPayment.getCreatedAt().isAfter(now.minusSeconds(PAYMENT_CREATION_COOLDOWN_SECONDS))) {
+        && newestPayment
+            .getCreatedAt()
+            .isAfter(now.minusSeconds(PAYMENT_CREATION_COOLDOWN_SECONDS))) {
       log.info(
           "Blocked payment creation by cooldown: bookingId={}, latestPaymentId={}, latestCreatedAt={}, requestedMethod={}",
           booking.getId(),
