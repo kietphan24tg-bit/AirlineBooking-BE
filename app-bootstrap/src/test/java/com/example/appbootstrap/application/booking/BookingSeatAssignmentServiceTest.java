@@ -89,6 +89,11 @@ class BookingSeatAssignmentServiceTest {
         .thenReturn(BigDecimal.ZERO, new BigDecimal("20000.00"), new BigDecimal("20000.00"));
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
+    PassengerSeatAssignmentEntity savedAssignment =
+        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+    savedAssignment.setSurchargeAmount(new BigDecimal("20000.00"));
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of(savedAssignment));
 
     SeatAssignmentResponse response =
         service.assignSeats(
@@ -123,6 +128,11 @@ class BookingSeatAssignmentServiceTest {
         .thenReturn(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
+    PassengerSeatAssignmentEntity savedAssignment =
+        activeAssignment(booking, passenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+    savedAssignment.setSurchargeAmount(BigDecimal.ZERO.setScale(2));
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of(savedAssignment));
 
     SeatAssignmentResponse response =
         service.assignSeats(
@@ -156,6 +166,16 @@ class BookingSeatAssignmentServiceTest {
         .thenReturn(BigDecimal.ZERO, new BigDecimal("260000.00"), new BigDecimal("260000.00"));
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
+    PassengerSeatAssignmentEntity firstSavedAssignment =
+        activeAssignment(
+            booking, firstPassenger, 100L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+    firstSavedAssignment.setSurchargeAmount(new BigDecimal("60000.00"));
+    PassengerSeatAssignmentEntity secondSavedAssignment =
+        activeAssignment(
+            booking, secondPassenger, 101L, hold.getFlightFare().getFlight().getId(), "RESERVED");
+    secondSavedAssignment.setSurchargeAmount(new BigDecimal("200000.00"));
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of(firstSavedAssignment, secondSavedAssignment));
 
     SeatAssignmentResponse response =
         service.assignSeats(

@@ -204,29 +204,7 @@ public class BookingSeatAssignmentService {
             .toList();
     passengerSeatAssignmentRepository.saveAll(entities);
 
-    BigDecimal seatSurchargeTotal =
-        normalizeMoney(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(bookingId));
-    if ("PENDING_PAYMENT".equals(booking.getStatus())) {
-      BookingTotalRecalculationService.BookingTotalBreakdown totalBreakdown =
-          bookingTotalRecalculationService.refreshTotal(booking, fareTotal);
-      seatSurchargeTotal = totalBreakdown.seatSurchargeTotal();
-    }
-
-    return new SeatAssignmentResponse(
-        bookingId,
-        assignmentStatus,
-        seatSurchargeTotal,
-        booking.getTotalAmount(),
-        entities.stream()
-            .map(
-                entity ->
-                    new SeatAssignmentResponse.AssignmentResponse(
-                        entity.getPassenger().getId(),
-                        entity.getFlightSeat().getId(),
-                        entity.getStatus(),
-                        entity.getSurchargeAmount(),
-                        entity.getCurrency()))
-            .toList());
+    return buildActiveSeatAssignmentResponse(booking, bookingId, fareTotal);
   }
 
   @Transactional
