@@ -548,7 +548,8 @@ public class PaymentService {
       return;
     }
     boolean hasPendingPayLater =
-        previousPending.stream().anyMatch(payment -> isSamePaymentMethod(payment, METHOD_PAY_LATER));
+        previousPending.stream()
+            .anyMatch(payment -> isSamePaymentMethod(payment, METHOD_PAY_LATER));
     if (!hasPendingPayLater) {
       return;
     }
