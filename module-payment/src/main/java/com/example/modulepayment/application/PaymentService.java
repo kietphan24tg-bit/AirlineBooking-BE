@@ -349,7 +349,18 @@ public class PaymentService {
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
             booking.getId(), PAYMENT_STATUS_PENDING);
+    PaymentEntity reusablePending = findReusablePending(previousPending, normalizedMethod);
     if (METHOD_PAY_LATER.equals(normalizedMethod)) {
+      if (reusablePending != null) {
+        log.info(
+            "Reusing pending payment without refreshing hold: bookingId={}, paymentId={}, requestedMethod={}, paymentMethod={}",
+            booking.getId(),
+            reusablePending.getId(),
+            normalizedMethod,
+            reusablePending.getPaymentMethod());
+        ensureBookingPendingPayment(booking, now);
+        return buildCreatePaymentResult(reusablePending, booking, booking.getPnrExpiresAt());
+      }
       synchronizePayLaterWindow(booking, now);
     } else {
       normalizeWindowAfterPayLaterSwitch(previousPending, booking, now);
@@ -360,7 +371,6 @@ public class PaymentService {
       assertSufficientImmediatePaymentWindow(booking, expireAt, now);
     }
 
-    PaymentEntity reusablePending = findReusablePending(previousPending, normalizedMethod);
     if (reusablePending != null) {
       log.info(
           "Reusing pending payment: bookingId={}, paymentId={}, requestedMethod={}, paymentMethod={}",

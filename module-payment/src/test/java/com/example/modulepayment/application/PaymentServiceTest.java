@@ -335,6 +335,33 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldReusePayLaterPaymentWithoutRefreshingHoldWindow() {
+    OffsetDateTime originalExpireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", originalExpireAt);
+    PaymentEntity existing = paymentForBooking(456L, booking, "PENDING");
+    existing.setPaymentMethod("PAY_LATER");
+    existing.setTransactionId("plink_456");
+    existing.setType("QR");
+    existing.setCheckoutUrl("https://pay.payos.vn/web/456");
+    existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAY_LATER"));
+
+    assertEquals(456L, result.payment().id());
+    assertEquals("PAY_LATER", result.payment().method());
+    assertEquals(originalExpireAt, result.payment().expireAt());
+    assertEquals(originalExpireAt, booking.getPnrExpiresAt());
+    verify(paymentGateway, never()).createPaymentLink(any());
+    verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
+    verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
+  }
+
+  @Test
   void shouldCreatePendingPaymentPublicly() {
     BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(15));
     when(bookingRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(booking));
