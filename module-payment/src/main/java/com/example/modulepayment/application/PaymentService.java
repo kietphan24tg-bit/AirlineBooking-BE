@@ -107,7 +107,8 @@ public class PaymentService {
 
   private List<PaymentMethodView> buildPaymentMethodsForBooking(
       BookingEntity booking, boolean onlySupported) {
-    boolean paymentWindowEligible = hasSufficientImmediatePaymentWindow(booking, OffsetDateTime.now());
+    boolean paymentWindowEligible =
+        hasSufficientImmediatePaymentWindow(booking, OffsetDateTime.now());
     boolean payosSupported =
         paymentProperties.isPayosConfigured()
             && supportsCurrency(booking.getCurrency())
