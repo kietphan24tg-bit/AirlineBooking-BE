@@ -346,9 +346,13 @@ public class PaymentService {
     }
 
     OffsetDateTime now = OffsetDateTime.now();
+    List<PaymentEntity> previousPending =
+        paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
+            booking.getId(), PAYMENT_STATUS_PENDING);
     if (METHOD_PAY_LATER.equals(normalizedMethod)) {
       synchronizePayLaterWindow(booking, now);
     } else {
+      normalizeWindowAfterPayLaterSwitch(previousPending, booking, now);
       maybeExtendPaymentWindow(booking, now);
     }
     OffsetDateTime expireAt = booking.getPnrExpiresAt();
@@ -356,9 +360,6 @@ public class PaymentService {
       assertSufficientImmediatePaymentWindow(booking, expireAt, now);
     }
 
-    List<PaymentEntity> previousPending =
-        paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
-            booking.getId(), PAYMENT_STATUS_PENDING);
     PaymentEntity reusablePending = findReusablePending(previousPending, normalizedMethod);
     if (reusablePending != null) {
       log.info(
@@ -539,6 +540,29 @@ public class PaymentService {
     booking.setUpdatedAt(now);
     bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
     flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
+  }
+
+  private void normalizeWindowAfterPayLaterSwitch(
+      List<PaymentEntity> previousPending, BookingEntity booking, OffsetDateTime now) {
+    if (booking == null || previousPending == null || previousPending.isEmpty()) {
+      return;
+    }
+    boolean hasPendingPayLater =
+        previousPending.stream().anyMatch(payment -> isSamePaymentMethod(payment, METHOD_PAY_LATER));
+    if (!hasPendingPayLater) {
+      return;
+    }
+
+    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
+    OffsetDateTime immediateExpireAt = now.plusMinutes(MIN_PAYMENT_WINDOW_MINUTES);
+    if (currentExpireAt == null || !currentExpireAt.isAfter(immediateExpireAt)) {
+      return;
+    }
+
+    booking.setPnrExpiresAt(immediateExpireAt);
+    booking.setUpdatedAt(now);
+    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), immediateExpireAt, now);
+    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), immediateExpireAt);
   }
 
   private void assertSufficientImmediatePaymentWindow(

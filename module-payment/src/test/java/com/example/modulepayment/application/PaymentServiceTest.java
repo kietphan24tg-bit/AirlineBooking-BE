@@ -440,6 +440,8 @@ class PaymentServiceTest {
     booking.setPaymentWindowExtendedAt(start.minusMinutes(1));
 
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
 
     AppException exception =
         assertThrows(
@@ -447,7 +449,7 @@ class PaymentServiceTest {
             () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
 
     assertEquals("PAYMENT_WINDOW_TOO_SHORT", exception.getCode());
-    verify(paymentRepository, never()).findAllByBookingIdAndPaymentStatusForUpdate(any(), any());
+    verify(paymentRepository).findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING");
     verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
     verify(paymentGateway, never()).createPaymentLink(any());
   }
@@ -462,6 +464,8 @@ class PaymentServiceTest {
     existing.setCreatedAt(start.minusMinutes(1));
 
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
 
     AppException exception =
         assertThrows(
@@ -469,7 +473,7 @@ class PaymentServiceTest {
             () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
 
     assertEquals("PAYMENT_WINDOW_TOO_SHORT", exception.getCode());
-    verify(paymentRepository, never()).findAllByBookingIdAndPaymentStatusForUpdate(any(), any());
+    verify(paymentRepository).findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING");
     verify(paymentGateway, never()).createPaymentLink(any());
   }
 
@@ -680,6 +684,53 @@ class PaymentServiceTest {
     assertEquals(expireAt, result.payment().expireAt());
     verify(stripePaymentGateway).expireCheckoutSession("cs_old_123");
     verify(paymentGateway).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldShrinkPayLaterWindowWhenSwitchingToPayos() {
+    OffsetDateTime payLaterExpireAt = OffsetDateTime.now().plusMinutes(60);
+    BookingEntity booking = booking("PENDING_PAYMENT", payLaterExpireAt);
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+    existing.setPaymentMethod("PAY_LATER");
+    existing.setTransactionId("plink_old_123");
+    existing.setType("QR");
+    existing.setCheckoutUrl("https://pay.payos.vn/web/5");
+    existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(existing));
+    doNothing().when(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenAnswer(
+            invocation ->
+                new PaymentGatewayResult(
+                    "plink_123",
+                    "https://pay.payos.vn/web/123",
+                    "000201PAYOSQR",
+                    "PENDING",
+                    "QR",
+                    booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals("CANCELLED", existing.getPaymentStatus());
+    assertEquals("PAYOS", result.payment().method());
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
+    assertEquals(true, booking.getPnrExpiresAt().isBefore(payLaterExpireAt.minusMinutes(50)));
+    verify(bookingFareHoldRepository)
+        .extendHeldExpiryByBookingId(10L, booking.getPnrExpiresAt(), booking.getUpdatedAt());
+    verify(flightSeatRepository).extendReservedUntilForBooking(10L, booking.getPnrExpiresAt());
   }
 
   @Test
