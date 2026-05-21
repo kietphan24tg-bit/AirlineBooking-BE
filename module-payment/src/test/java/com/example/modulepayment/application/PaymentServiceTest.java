@@ -135,6 +135,19 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldHideImmediatePaymentMethodsWhenRemainingWindowIsTooShort() {
+    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(4));
+    booking.setPaymentWindowExtendedAt(OffsetDateTime.now().minusMinutes(1));
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+
+    List<PaymentMethodView> groups = paymentService.getPaymentMethods(10L, 7L, true);
+
+    assertEquals(1, groups.size());
+    assertEquals("PAY_LATER", groups.getFirst().type());
+    assertEquals("PAY_LATER", groups.getFirst().methods().getFirst().code());
+  }
+
+  @Test
   void shouldCreateStripeCheckoutPayment() {
     PaymentService stripeService = paymentService(stripeProperties());
     BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(35));
@@ -393,9 +406,9 @@ class PaymentServiceTest {
   }
 
   @Test
-  void shouldReusePendingPaymentWithoutExtendingAgainWhenAlreadyExtended() {
+  void shouldReusePendingPaymentWithoutExtendingAgainWhenAlreadyExtendedAndStillHasEnoughTime() {
     OffsetDateTime start = OffsetDateTime.now();
-    BookingEntity booking = booking("PENDING", start.plusMinutes(3));
+    BookingEntity booking = booking("PENDING", start.plusMinutes(6));
     OffsetDateTime previousExtendedAt = start.minusMinutes(2);
     booking.setPaymentWindowExtendedAt(previousExtendedAt);
 
@@ -412,12 +425,52 @@ class PaymentServiceTest {
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
 
     assertEquals(5L, result.payment().id());
-    assertEquals(start.plusMinutes(3), booking.getPnrExpiresAt());
+    assertEquals(start.plusMinutes(6), booking.getPnrExpiresAt());
     assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
     assertEquals(previousExtendedAt, booking.getPaymentWindowExtendedAt());
     verify(paymentGateway, never()).createPaymentLink(any());
     verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
     verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
+  }
+
+  @Test
+  void shouldRejectCreatingPaymentWhenRemainingWindowIsTooShortAfterExtensionWasUsed() {
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING_PAYMENT", start.plusMinutes(3));
+    booking.setPaymentWindowExtendedAt(start.minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    assertEquals("PAYMENT_WINDOW_TOO_SHORT", exception.getCode());
+    verify(paymentRepository, never()).findAllByBookingIdAndPaymentStatusForUpdate(any(), any());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+    verify(paymentGateway, never()).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldRejectReusingPendingPaymentWhenRemainingWindowIsTooShortAfterExtensionWasUsed() {
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING_PAYMENT", start.plusMinutes(3));
+    booking.setPaymentWindowExtendedAt(start.minusMinutes(1));
+    PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
+    existing.setCheckoutUrl("https://pay.payos.vn/web/5");
+    existing.setCreatedAt(start.minusMinutes(1));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    assertEquals("PAYMENT_WINDOW_TOO_SHORT", exception.getCode());
+    verify(paymentRepository, never()).findAllByBookingIdAndPaymentStatusForUpdate(any(), any());
+    verify(paymentGateway, never()).createPaymentLink(any());
   }
 
   @Test

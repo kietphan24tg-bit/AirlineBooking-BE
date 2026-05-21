@@ -54,6 +54,7 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYMENT_WINDOW_EXTENSION_MINUTES = 5;
+  private static final long MIN_PAYMENT_WINDOW_MINUTES = 5;
   private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
   private static final long PAYMENT_CREATION_WINDOW_MINUTES = 10;
@@ -106,10 +107,15 @@ public class PaymentService {
 
   private List<PaymentMethodView> buildPaymentMethodsForBooking(
       BookingEntity booking, boolean onlySupported) {
+    boolean paymentWindowEligible = hasSufficientImmediatePaymentWindow(booking, OffsetDateTime.now());
     boolean payosSupported =
-        paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
+        paymentProperties.isPayosConfigured()
+            && supportsCurrency(booking.getCurrency())
+            && paymentWindowEligible;
     boolean stripeSupported =
-        paymentProperties.isStripeConfigured() && supportsCurrency(booking.getCurrency());
+        paymentProperties.isStripeConfigured()
+            && supportsCurrency(booking.getCurrency())
+            && paymentWindowEligible;
     boolean payLaterSupported =
         paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
     String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
@@ -345,6 +351,9 @@ public class PaymentService {
       maybeExtendPaymentWindow(booking, now);
     }
     OffsetDateTime expireAt = booking.getPnrExpiresAt();
+    if (!METHOD_PAY_LATER.equals(normalizedMethod)) {
+      assertSufficientImmediatePaymentWindow(booking, expireAt, now);
+    }
 
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
@@ -524,6 +533,28 @@ public class PaymentService {
     booking.setUpdatedAt(now);
     bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
     flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
+  }
+
+  private void assertSufficientImmediatePaymentWindow(
+      BookingEntity booking, OffsetDateTime expireAt, OffsetDateTime now) {
+    if (!hasSufficientImmediatePaymentWindow(booking, now, expireAt)) {
+      throw new AppException(
+          "PAYMENT_WINDOW_TOO_SHORT",
+          "Booking must have at least 5 minutes remaining to create a new payment",
+          409);
+    }
+  }
+
+  private boolean hasSufficientImmediatePaymentWindow(BookingEntity booking, OffsetDateTime now) {
+    return hasSufficientImmediatePaymentWindow(booking, now, booking.getPnrExpiresAt());
+  }
+
+  private boolean hasSufficientImmediatePaymentWindow(
+      BookingEntity booking, OffsetDateTime now, OffsetDateTime expireAt) {
+    if (booking == null || expireAt == null) {
+      return true;
+    }
+    return !expireAt.isBefore(now.plusMinutes(MIN_PAYMENT_WINDOW_MINUTES));
   }
 
   private void ensureBookingPendingPayment(BookingEntity booking, OffsetDateTime now) {
