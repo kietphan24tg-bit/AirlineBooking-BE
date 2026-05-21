@@ -463,16 +463,21 @@ public class PaymentService {
       return;
     }
 
-    PaymentEntity newestPayment = recentPayments.getFirst();
-    if (newestPayment.getCreatedAt() != null
-        && newestPayment
+    PaymentEntity newestPaymentForMethod =
+        recentPayments.stream()
+            .filter(payment -> isSamePaymentMethod(payment, normalizedMethod))
+            .filter(payment -> payment.getCreatedAt() != null)
+            .findFirst()
+            .orElse(null);
+    if (newestPaymentForMethod != null
+        && newestPaymentForMethod
             .getCreatedAt()
             .isAfter(now.minusSeconds(PAYMENT_CREATION_COOLDOWN_SECONDS))) {
       log.info(
           "Blocked payment creation by cooldown: bookingId={}, latestPaymentId={}, latestCreatedAt={}, requestedMethod={}",
           booking.getId(),
-          newestPayment.getId(),
-          newestPayment.getCreatedAt(),
+          newestPaymentForMethod.getId(),
+          newestPaymentForMethod.getCreatedAt(),
           normalizedMethod);
       throw new AppException(
           "PAYMENT_CREATION_COOLDOWN",

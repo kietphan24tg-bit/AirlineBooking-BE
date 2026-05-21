@@ -522,6 +522,48 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldAllowSwitchingPaymentMethodDuringCooldownWindow() {
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    PaymentEntity recentPayLater = paymentForBooking(9L, booking, "FAILED");
+    recentPayLater.setPaymentMethod("PAY_LATER");
+    recentPayLater.setCreatedAt(OffsetDateTime.now().minusSeconds(5));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            any(), any()))
+        .thenReturn(List.of(recentPayLater));
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_123",
+                "https://pay.payos.vn/web/123",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                expireAt));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals("PAYOS", result.payment().method());
+    assertEquals(123L, result.payment().id());
+    verify(paymentRepository).saveAndFlush(any(PaymentEntity.class));
+    verify(paymentGateway).createPaymentLink(any());
+  }
+
+  @Test
   void shouldRejectPaymentCreationWhenRateLimitExceeded() {
     OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
     BookingEntity booking = booking("PENDING_PAYMENT", expireAt);

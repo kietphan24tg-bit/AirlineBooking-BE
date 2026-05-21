@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.gradle-user/
 .gradle-user-home
 .gradle-user-home-*
 build/
