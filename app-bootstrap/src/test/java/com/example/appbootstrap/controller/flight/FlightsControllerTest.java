@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.flight.FlightSeatMapService;
+import com.example.appbootstrap.application.flight.PromotionCatalogService;
 import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
@@ -49,6 +50,7 @@ class FlightsControllerTest {
   @Mock private FlightSearchFacadeService flightSearchFacadeService;
   @Mock private BookingRevalidateService bookingRevalidateService;
   @Mock private FlightSeatMapService flightSeatMapService;
+  @Mock private PromotionCatalogService promotionCatalogService;
   @Mock private UserRecentAirportService userRecentAirportService;
 
   private FlightsController controller;
@@ -60,6 +62,7 @@ class FlightsControllerTest {
             flightSearchFacadeService,
             bookingRevalidateService,
             flightSeatMapService,
+            promotionCatalogService,
             userRecentAirportService);
   }
 

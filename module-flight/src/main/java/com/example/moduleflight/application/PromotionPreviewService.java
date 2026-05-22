@@ -36,6 +36,7 @@ public class PromotionPreviewService {
       String countryCode,
       boolean fareAvailable) {
     Objects.requireNonNull(originalPrice, "originalPrice must not be null");
+    String normalizedCurrency = normalizeCurrency(currency);
     if (!StringUtils.hasText(promoCode)) {
       return PromoPreview.notApplicable("No promo code provided", originalPrice);
     }
@@ -65,17 +66,21 @@ public class PromotionPreviewService {
     }
 
     PromotionValueSnapshotEntity scopedValue =
-        resolvePromotionValue(
-            promotion, normalizeCurrency(currency), normalizeCountry(countryCode));
-    BigDecimal discountAmount = calculateDiscount(promotion, scopedValue, originalPrice);
+        resolvePromotionValue(promotion, normalizedCurrency, normalizeCountry(countryCode));
+    BigDecimal discountAmount =
+        calculateDiscount(promotion, scopedValue, originalPrice, normalizedCurrency);
     if (discountAmount == null) {
       return PromoPreview.mayApply("Promo may apply at booking step", originalPrice);
     }
     if (discountAmount.signum() <= 0) {
       return PromoPreview.notApplicable("Promo discount is not applicable", originalPrice);
     }
-    BigDecimal clampedDiscount = discountAmount.min(originalPrice);
-    BigDecimal discounted = originalPrice.subtract(clampedDiscount).max(BigDecimal.ZERO);
+    BigDecimal clampedDiscount =
+        CurrencyAmountNormalizer.normalize(
+            discountAmount.min(originalPrice), normalizedCurrency);
+    BigDecimal discounted =
+        CurrencyAmountNormalizer.normalize(
+            originalPrice.subtract(clampedDiscount).max(BigDecimal.ZERO), normalizedCurrency);
     int discountPercent =
         originalPrice.signum() == 0
             ? 0
@@ -122,7 +127,8 @@ public class PromotionPreviewService {
   private BigDecimal calculateDiscount(
       PromotionSnapshotEntity promotion,
       PromotionValueSnapshotEntity valueScope,
-      BigDecimal originalPrice) {
+      BigDecimal originalPrice,
+      String currency) {
     String type = promotion.getDiscountType() == null ? "" : promotion.getDiscountType().trim();
     if (DISCOUNT_TYPE_PERCENT.equalsIgnoreCase(type)) {
       BigDecimal percent = promotion.getDiscountValue();
@@ -130,7 +136,12 @@ public class PromotionPreviewService {
         return null;
       }
       BigDecimal discount =
-          originalPrice.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+          originalPrice
+              .multiply(percent)
+              .divide(
+                  BigDecimal.valueOf(100),
+                  CurrencyAmountNormalizer.scaleFor(currency),
+                  RoundingMode.HALF_UP);
       BigDecimal maxDiscount = null;
       if (valueScope != null && valueScope.getMaxDiscountValue() != null) {
         maxDiscount = valueScope.getMaxDiscountValue();
@@ -140,13 +151,13 @@ public class PromotionPreviewService {
       if (maxDiscount != null && discount.compareTo(maxDiscount) > 0) {
         discount = maxDiscount;
       }
-      return discount;
+      return CurrencyAmountNormalizer.normalize(discount, currency);
     }
     if (DISCOUNT_TYPE_FIXED.equalsIgnoreCase(type)) {
       if (valueScope != null && valueScope.getFixedDiscountValue() != null) {
-        return valueScope.getFixedDiscountValue();
+        return CurrencyAmountNormalizer.normalize(valueScope.getFixedDiscountValue(), currency);
       }
-      return promotion.getDiscountValue();
+      return CurrencyAmountNormalizer.normalize(promotion.getDiscountValue(), currency);
     }
     return null;
   }

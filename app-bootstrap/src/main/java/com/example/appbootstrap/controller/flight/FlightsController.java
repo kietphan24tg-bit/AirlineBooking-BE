@@ -2,11 +2,13 @@ package com.example.appbootstrap.controller.flight;
 
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.flight.FlightSeatMapService;
+import com.example.appbootstrap.application.flight.PromotionCatalogService;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
+import com.example.appbootstrap.controller.flight.dto.PromotionCatalogResponse;
 import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FlightConnectionFilter;
@@ -51,16 +53,19 @@ public class FlightsController {
   private final FlightSearchFacadeService flightSearchFacadeService;
   private final BookingRevalidateService bookingRevalidateService;
   private final FlightSeatMapService flightSeatMapService;
+  private final PromotionCatalogService promotionCatalogService;
   private final UserRecentAirportService userRecentAirportService;
 
   public FlightsController(
       FlightSearchFacadeService flightSearchFacadeService,
       BookingRevalidateService bookingRevalidateService,
       FlightSeatMapService flightSeatMapService,
+      PromotionCatalogService promotionCatalogService,
       UserRecentAirportService userRecentAirportService) {
     this.flightSearchFacadeService = flightSearchFacadeService;
     this.bookingRevalidateService = bookingRevalidateService;
     this.flightSeatMapService = flightSeatMapService;
+    this.promotionCatalogService = promotionCatalogService;
     this.userRecentAirportService = userRecentAirportService;
   }
 
@@ -135,6 +140,23 @@ public class FlightsController {
   })
   RevalidateFareResponse revalidateFare(@Valid @RequestBody RevalidateFareRequest request) {
     return bookingRevalidateService.revalidate(request);
+  }
+
+  @GetMapping("/promotions")
+  @Operation(
+      summary = "List active promotion codes",
+      description =
+          "Returns currently active promotion codes from seeded or persisted promotion data so the "
+              + "frontend can display suggested promo chips.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Promotion list returned",
+        content = @Content(schema = @Schema(implementation = PromotionCatalogResponse.class)))
+  })
+  PromotionCatalogResponse getPromotions() {
+    return PromotionCatalogResponse.from(promotionCatalogService.getActivePromotions());
   }
 
   @GetMapping("/{flightId}/seats")

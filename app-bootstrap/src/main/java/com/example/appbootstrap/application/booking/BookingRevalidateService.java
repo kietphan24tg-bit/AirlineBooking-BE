@@ -18,6 +18,7 @@ import com.example.modulebooking.repository.FlightSeatRepository;
 import com.example.modulebooking.repository.PassengerRepository;
 import com.example.modulebooking.repository.PromotionRepository;
 import com.example.moduleflight.application.CountryCurrencyResolver;
+import com.example.moduleflight.application.CurrencyAmountNormalizer;
 import com.example.moduleflight.application.FlightInventoryAvailabilityService;
 import com.example.moduleflight.application.FlightPricingService;
 import com.example.moduleflight.application.PromotionPreviewService;
@@ -66,8 +67,6 @@ public class BookingRevalidateService {
   private static final int ADULT_MIN_AGE = 12;
   private static final BigDecimal CHILD_RATE = new BigDecimal("0.75");
   private static final BigDecimal INFANT_RATE = new BigDecimal("0.10");
-  private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-
   private final FlightFareRepository flightFareRepository;
   private final FlightPricingService flightPricingService;
   private final PromotionPreviewService promotionPreviewService;
@@ -136,22 +135,22 @@ public class BookingRevalidateService {
           "FARE_SOLD_OUT", "Selected fare does not have enough available seats", 409);
     }
 
-    PricingBreakdown pricing = buildPricing(fare, request.passengerSummary());
+    String countryCode = countryCurrencyResolver.resolveCountryCode(fare);
+    String currency = countryCurrencyResolver.resolveCurrency(countryCode);
+    PricingBreakdown pricing = buildPricing(fare, request.passengerSummary(), currency);
     PromoPreview preview =
-        applyPromotion(
-            request.promoCode(),
-            pricing.originalTotalPrice(),
-            countryCurrencyResolver.resolveCurrency(
-                countryCurrencyResolver.resolveCountryCode(fare)),
-            countryCurrencyResolver.resolveCountryCode(fare));
+        applyPromotion(request.promoCode(), pricing.originalTotalPrice(), currency, countryCode);
     String normalizedPromoCode = normalizePromoCode(request.promoCode());
     Long promotionId = resolvePromotionId(normalizedPromoCode, preview);
 
     BigDecimal discountAmount =
-        "APPLIED".equals(preview.status()) ? preview.discountAmount() : ZERO;
+        "APPLIED".equals(preview.status())
+            ? CurrencyAmountNormalizer.normalizeOrZero(preview.discountAmount(), currency)
+            : zeroMoney(currency);
     Integer discountPercent = "APPLIED".equals(preview.status()) ? preview.discountPercent() : null;
     BigDecimal discountedTotal =
-        pricing.originalTotalPrice().subtract(discountAmount).setScale(2, RoundingMode.HALF_UP);
+        CurrencyAmountNormalizer.normalize(
+            pricing.originalTotalPrice().subtract(discountAmount), currency);
 
     String revalidateId =
         "RV_"
@@ -766,33 +765,48 @@ public class BookingRevalidateService {
   }
 
   private PricingBreakdown buildPricing(FlightFareEntity fare, PassengerSummaryRequest summary) {
+    String currency = countryCurrencyResolver.resolveCurrency(countryCurrencyResolver.resolveCountryCode(fare));
+    return buildPricing(fare, summary, currency);
+  }
+
+  private PricingBreakdown buildPricing(
+      FlightFareEntity fare, PassengerSummaryRequest summary, String currency) {
     BigDecimal oneAdultTotal = nonNullMoney(fare.getTotalPrice());
     BigDecimal oneAdultBase = nonNullMoney(fare.getBasePrice());
     BigDecimal original =
         flightPricingService.calculateTotalPrice(
             oneAdultTotal, summary.adult(), summary.child(), summary.infant());
     BigDecimal baseFare =
-        calculateTieredPrice(oneAdultBase, summary.adult(), summary.child(), summary.infant());
-    BigDecimal taxes = original.subtract(baseFare).max(ZERO).setScale(2, RoundingMode.HALF_UP);
+        calculateTieredPrice(
+            oneAdultBase, summary.adult(), summary.child(), summary.infant(), currency);
+    original = CurrencyAmountNormalizer.normalize(original, currency);
+    BigDecimal taxes =
+        CurrencyAmountNormalizer.normalize(
+            original.subtract(baseFare).max(BigDecimal.ZERO), currency);
     return new PricingBreakdown(
-        countryCurrencyResolver.resolveCurrency(countryCurrencyResolver.resolveCountryCode(fare)),
+        currency,
         baseFare,
         taxes,
-        ZERO,
+        zeroMoney(currency),
         original);
   }
 
   private BigDecimal calculateTieredPrice(
-      BigDecimal oneAdultPrice, int adult, int child, int infant) {
+      BigDecimal oneAdultPrice, int adult, int child, int infant, String currency) {
     BigDecimal adultTotal = oneAdultPrice.multiply(BigDecimal.valueOf(adult));
     BigDecimal childTotal = oneAdultPrice.multiply(CHILD_RATE).multiply(BigDecimal.valueOf(child));
     BigDecimal infantTotal =
         oneAdultPrice.multiply(INFANT_RATE).multiply(BigDecimal.valueOf(infant));
-    return adultTotal.add(childTotal).add(infantTotal).setScale(2, RoundingMode.HALF_UP);
+    return CurrencyAmountNormalizer.normalize(
+        adultTotal.add(childTotal).add(infantTotal), currency);
   }
 
   private BigDecimal nonNullMoney(BigDecimal value) {
-    return value == null ? ZERO : value.setScale(2, RoundingMode.HALF_UP);
+    return value == null ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP) : value.setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private BigDecimal zeroMoney(String currency) {
+    return CurrencyAmountNormalizer.normalizeOrZero(null, currency);
   }
 
   private String normalizeStatus(String status) {

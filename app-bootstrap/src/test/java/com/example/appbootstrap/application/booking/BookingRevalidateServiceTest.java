@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -132,7 +133,7 @@ class BookingRevalidateServiceTest {
     assertEquals("VN123", response.flight().flightNumber());
     assertEquals(101L, response.fare().fareId());
     assertEquals("AVAILABLE", response.fare().status());
-    assertEquals(new BigDecimal("1500000.00"), response.pricing().originalTotalPrice());
+    assertEquals(0, response.pricing().originalTotalPrice().compareTo(new BigDecimal("1500000")));
     assertEquals("user@example.com", response.contacts().getFirst().email());
     assertEquals(10L, response.passengers().getFirst().passengerId());
     assertEquals("ADULT", response.passengers().getFirst().passengerType());
@@ -191,7 +192,7 @@ class BookingRevalidateServiceTest {
                         null,
                         null))));
 
-    assertEquals(new BigDecimal("2775000.00"), response.pricing().originalTotalPrice());
+    assertEquals(0, response.pricing().originalTotalPrice().compareTo(new BigDecimal("2775000")));
     assertEquals(2, response.seatReservation().reservedSeatCount());
     assertEquals("ADULT", response.passengers().get(0).passengerType());
     assertEquals("VN", response.passengers().get(0).nationality());
@@ -443,6 +444,33 @@ class BookingRevalidateServiceTest {
         .reserveForBooking(anyLong(), anyLong(), anyLong(), anyInt(), any());
   }
 
+  @Test
+  void revalidate_normalizesAppliedPromoDiscountForVnd() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 0);
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(flightInventoryAvailabilityService.countAvailableSeats(11L, 5L)).thenReturn(1L);
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1500000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal("2808054.00"));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(promotionPreviewService.preview("SAVE10", new BigDecimal("2808054"), "VND", "VN", true))
+        .thenReturn(
+            new PromotionPreviewService.PromoPreview(
+                "APPLIED",
+                "Promo applied successfully",
+                new BigDecimal("2808054"),
+                new BigDecimal("2509248.60"),
+                new BigDecimal("298805.40"),
+                11));
+
+    var response = service.revalidate(new RevalidateFareRequest(11L, 101L, "SAVE10", summary));
+
+    assertEquals(new BigDecimal("298805"), response.pricing().discountAmount());
+    assertEquals(new BigDecimal("2509249"), response.pricing().discountedTotalPrice());
+  }
+
   private void stubBookingPersistence(
       String revalidateId, String idempotencyKey, long bookingId, int reservedSeatCount) {
     stubRevalidateSnapshotAccess(revalidateId, idempotencyKey);
@@ -499,8 +527,13 @@ class BookingRevalidateServiceTest {
         .thenReturn(new BigDecimal(originalTotalPrice));
     when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    BigDecimal expectedOriginalTotal = new BigDecimal(originalTotalPrice);
     when(promotionPreviewService.preview(
-            null, new BigDecimal(originalTotalPrice), "VND", "VN", true))
+            eq(null),
+            argThat(amount -> amount != null && amount.compareTo(expectedOriginalTotal) == 0),
+            eq("VND"),
+            eq("VN"),
+            eq(true)))
         .thenReturn(
             PromotionPreviewService.PromoPreview.notApplicable(
                 "No promo code provided", new BigDecimal(originalTotalPrice)));

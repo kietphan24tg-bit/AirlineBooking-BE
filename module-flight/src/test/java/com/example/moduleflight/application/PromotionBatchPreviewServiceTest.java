@@ -68,4 +68,27 @@ class PromotionBatchPreviewServiceTest {
     verify(promotionSnapshotRepository, times(1)).findByCodeIgnoreCase("SAVE20");
     verify(promotionValueSnapshotRepository, times(1)).findAllByPromotion(promotion);
   }
+
+  @Test
+  void preview_roundsPercentDiscountToWholeNumberForVnd() {
+    PromotionSnapshotEntity promotion = new PromotionSnapshotEntity();
+    promotion.setCode("SAVE10");
+    promotion.setDiscountType("PERCENT");
+    promotion.setDiscountValue(new BigDecimal("10.64"));
+    promotion.setActive(true);
+    promotion.setStartsAt(OffsetDateTime.now().minusDays(1));
+    promotion.setExpiresAt(OffsetDateTime.now().plusDays(1));
+    promotion.setUsedCount(0);
+    when(promotionSnapshotRepository.findByCodeIgnoreCase("SAVE10"))
+        .thenReturn(Optional.of(promotion));
+    when(promotionValueSnapshotRepository.findAllByPromotion(promotion)).thenReturn(List.of());
+
+    PromotionBatchPreviewService.PromotionContext context = service.loadContext("SAVE10");
+    PromotionBatchPreviewService.PromoPreview preview =
+        service.preview(context, new BigDecimal("2808054"), "VND", "VN", true);
+
+    assertEquals("APPLIED", preview.status());
+    assertEquals(new BigDecimal("298777"), preview.discountAmount());
+    assertEquals(new BigDecimal("2509277"), preview.discountedPrice());
+  }
 }
