@@ -453,7 +453,8 @@ class BookingSeatAssignmentServiceTest {
                         List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 100L)))));
 
     assertEquals("BOOKING_PAYMENT_ALREADY_STARTED", exception.getCode());
-    verify(bookingFareHoldRepository, never()).findByBookingIdAndFlightIdAndStatusIn(any(), any(), any());
+    verify(bookingFareHoldRepository, never())
+        .findByBookingIdAndFlightIdAndStatusIn(any(), any(), any());
   }
 
   @Test
