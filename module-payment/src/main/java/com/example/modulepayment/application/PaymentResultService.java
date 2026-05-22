@@ -649,11 +649,11 @@ public class PaymentResultService {
   }
 
   private String passengerLabel(PassengerEntity passenger) {
-    String prefix = "Người lớn";
+    String prefix = "Adult";
     if ("CHILD".equalsIgnoreCase(normalize(passenger.getPassengerType()))) {
-      prefix = "Trẻ em";
+      prefix = "Child";
     } else if ("INFANT".equalsIgnoreCase(normalize(passenger.getPassengerType()))) {
-      prefix = "Em bé";
+      prefix = "Infant";
     }
     return prefix + ": " + fullNameWithTitle(passenger);
   }

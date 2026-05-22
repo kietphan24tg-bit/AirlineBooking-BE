@@ -15,6 +15,8 @@ import com.example.appbootstrap.application.flight.PromotionCatalogService;
 import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
@@ -209,6 +211,77 @@ class FlightsControllerTest {
 
     assertEquals(expected, response);
     verify(bookingRevalidateService).revalidate(request);
+  }
+
+  @Test
+  void revalidateItinerary_delegatesToBookingRevalidateService() {
+    RevalidateItineraryRequest request =
+        new RevalidateItineraryRequest(
+            "ROUND_TRIP",
+            "SAVE20",
+            new PassengerSummaryRequest(1, 0, 0),
+            List.of(
+                new RevalidateItineraryRequest.SegmentRequest("OUTBOUND", 11L, 101L),
+                new RevalidateItineraryRequest.SegmentRequest("INBOUND", 12L, 202L)));
+    RevalidateItineraryResponse expected =
+        new RevalidateItineraryResponse(
+            "RV_RT_ABC123",
+            900,
+            "ROUND_TRIP",
+            "SAVE20",
+            new RevalidateItineraryResponse.PassengerSummaryResponse(1, 0, 0),
+            new RevalidateItineraryResponse.PricingResponse(
+                "VND",
+                new BigDecimal("2300000"),
+                new BigDecimal("700000"),
+                BigDecimal.ZERO,
+                new BigDecimal("3000000"),
+                new BigDecimal("300000"),
+                10,
+                new BigDecimal("2700000")),
+            List.of(
+                new RevalidateItineraryResponse.SegmentResponse(
+                    "OUTBOUND",
+                    11L,
+                    101L,
+                    5L,
+                    "ECO",
+                    "Economy",
+                    "ECONOMY",
+                    "VND",
+                    new RevalidateItineraryResponse.PricingResponse(
+                        "VND",
+                        new BigDecimal("1100000"),
+                        new BigDecimal("400000"),
+                        BigDecimal.ZERO,
+                        new BigDecimal("1500000"),
+                        BigDecimal.ZERO,
+                        null,
+                        new BigDecimal("1500000"))),
+                new RevalidateItineraryResponse.SegmentResponse(
+                    "INBOUND",
+                    12L,
+                    202L,
+                    6L,
+                    "BUS",
+                    "Business",
+                    "BUSINESS",
+                    "VND",
+                    new RevalidateItineraryResponse.PricingResponse(
+                        "VND",
+                        new BigDecimal("1200000"),
+                        new BigDecimal("300000"),
+                        BigDecimal.ZERO,
+                        new BigDecimal("1500000"),
+                        BigDecimal.ZERO,
+                        null,
+                        new BigDecimal("1500000")))));
+    when(bookingRevalidateService.revalidateItinerary(request)).thenReturn(expected);
+
+    RevalidateItineraryResponse response = controller.revalidateItinerary(request);
+
+    assertEquals(expected, response);
+    verify(bookingRevalidateService).revalidateItinerary(request);
   }
 
   @Test

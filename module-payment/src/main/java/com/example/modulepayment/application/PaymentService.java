@@ -55,7 +55,6 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
-  private static final long PAYOS_PAYMENT_CAP_MINUTES = 15;
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
   private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
@@ -556,7 +555,7 @@ public class PaymentService {
     if (METHOD_PAY_LATER.equals(method)) {
       return booking.getCreatedAt().plusMinutes(PAY_LATER_HOLD_MINUTES);
     }
-    return booking.getCreatedAt().plusMinutes(PAYOS_PAYMENT_CAP_MINUTES);
+    return null;
   }
 
   private void applyEffectiveExpireAt(

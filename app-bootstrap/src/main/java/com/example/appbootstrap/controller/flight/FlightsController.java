@@ -5,6 +5,8 @@ import com.example.appbootstrap.application.flight.FlightSeatMapService;
 import com.example.appbootstrap.application.flight.PromotionCatalogService;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
@@ -140,6 +142,34 @@ public class FlightsController {
   })
   RevalidateFareResponse revalidateFare(@Valid @RequestBody RevalidateFareRequest request) {
     return bookingRevalidateService.revalidate(request);
+  }
+
+  @PostMapping("/revalidate-itinerary")
+  @Operation(
+      summary = "Revalidate itinerary fares",
+      description =
+          "Validates one-way or round-trip fare selections, computes aggregate pricing, verifies "
+              + "seat availability for all selected segments, and returns a revalidateId without "
+              + "reserving seats.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Itinerary revalidated",
+        content = @Content(schema = @Schema(implementation = RevalidateItineraryResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Flight or fare not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Fare sold out or price changed",
+        content = @Content)
+  })
+  RevalidateItineraryResponse revalidateItinerary(
+      @Valid @RequestBody RevalidateItineraryRequest request) {
+    return bookingRevalidateService.revalidateItinerary(request);
   }
 
   @GetMapping("/promotions")

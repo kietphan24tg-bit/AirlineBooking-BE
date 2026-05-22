@@ -5,6 +5,8 @@ import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
@@ -44,10 +46,12 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,93 +122,188 @@ public class BookingRevalidateService {
 
   @Transactional(readOnly = true)
   public RevalidateFareResponse revalidate(RevalidateFareRequest request) {
-    validatePassengerSummary(request.passengerSummary());
-    FlightFareEntity fare = requireFareForFlight(request.fareId(), request.flightId());
-    ensureSaleable(fare);
+    RevalidateItineraryResponse itinerary =
+        revalidateItinerary(
+            new RevalidateItineraryRequest(
+                "ONE_WAY",
+                request.promoCode(),
+                request.passengerSummary(),
+                List.of(
+                    new RevalidateItineraryRequest.SegmentRequest(
+                        "OUTBOUND", request.flightId(), request.fareId()))));
+    RevalidateItineraryResponse.SegmentResponse segment = itinerary.segments().getFirst();
+    return new RevalidateFareResponse(
+        itinerary.revalidateId(),
+        itinerary.expiresInSeconds(),
+        segment.flightId(),
+        segment.fareId(),
+        itinerary.promoCode(),
+        new RevalidateFareResponse.PassengerSummaryResponse(
+            itinerary.passengerSummary().adult(),
+            itinerary.passengerSummary().child(),
+            itinerary.passengerSummary().infant()),
+        new RevalidateFareResponse.PricingResponse(
+            itinerary.pricing().currency(),
+            itinerary.pricing().baseFare(),
+            itinerary.pricing().taxes(),
+            itinerary.pricing().fees(),
+            itinerary.pricing().originalTotalPrice(),
+            itinerary.pricing().discountAmount(),
+            itinerary.pricing().discountPercent(),
+            itinerary.pricing().discountedTotalPrice()));
+  }
 
-    int requiredSeats = request.passengerSummary().seatedPassengers();
+  @Transactional(readOnly = true)
+  public RevalidateItineraryResponse revalidateItinerary(RevalidateItineraryRequest request) {
+    validatePassengerSummary(request.passengerSummary());
+    PassengerSummary canonicalSummary =
+        new PassengerSummary(
+            request.passengerSummary().adult(),
+            request.passengerSummary().child(),
+            request.passengerSummary().infant());
+    int requiredSeats = canonicalSummary.seatedPassengers();
     if (requiredSeats <= 0) {
       throw new AppException(
           "INVALID_PASSENGER_BREAKDOWN", "At least one seated passenger required", 400);
     }
-    long availableSeats =
-        flightInventoryAvailabilityService.countAvailableSeats(
-            fare.getFlight().getId(), fare.getFareClass().getId());
-    if (availableSeats < requiredSeats) {
-      throw new AppException(
-          "FARE_SOLD_OUT", "Selected fare does not have enough available seats", 409);
+
+    String normalizedTripType = normalizeTripType(request.tripType());
+    List<RevalidateItineraryRequest.SegmentRequest> segmentRequests =
+        normalizeAndValidateSegmentRequests(normalizedTripType, request.segments());
+
+    List<SegmentRuntime> segmentRuntimes = new ArrayList<>(segmentRequests.size());
+    for (RevalidateItineraryRequest.SegmentRequest segmentRequest : segmentRequests) {
+      FlightFareEntity fare = requireFareForFlight(segmentRequest.fareId(), segmentRequest.flightId());
+      ensureSaleable(fare);
+      long availableSeats =
+          flightInventoryAvailabilityService.countAvailableSeats(
+              fare.getFlight().getId(), fare.getFareClass().getId());
+      if (availableSeats < requiredSeats) {
+        throw new AppException(
+            "FARE_SOLD_OUT",
+            "Selected fare does not have enough available seats",
+            409);
+      }
+      String countryCode = countryCurrencyResolver.resolveCountryCode(fare);
+      String currency = countryCurrencyResolver.resolveCurrency(countryCode);
+      PricingBreakdown pricing = buildPricing(fare, request.passengerSummary(), currency);
+      segmentRuntimes.add(
+          new SegmentRuntime(normalizeSegmentDirection(segmentRequest.direction()), fare, countryCode, pricing));
     }
 
-    String countryCode = countryCurrencyResolver.resolveCountryCode(fare);
-    String currency = countryCurrencyResolver.resolveCurrency(countryCode);
-    PricingBreakdown pricing = buildPricing(fare, request.passengerSummary(), currency);
+    String pricingCurrency = segmentRuntimes.getFirst().pricing().currency();
+    BigDecimal originalTotalPrice = zeroMoney(pricingCurrency);
+    BigDecimal baseFareTotal = zeroMoney(pricingCurrency);
+    BigDecimal taxesTotal = zeroMoney(pricingCurrency);
+    BigDecimal feesTotal = zeroMoney(pricingCurrency);
+    for (SegmentRuntime segment : segmentRuntimes) {
+      if (!pricingCurrency.equals(segment.pricing().currency())) {
+        throw new AppException(
+            "MULTI_CURRENCY_NOT_SUPPORTED",
+            "Round-trip pricing across multiple currencies is not supported",
+            409);
+      }
+      originalTotalPrice =
+          CurrencyAmountNormalizer.normalize(
+              originalTotalPrice.add(segment.pricing().originalTotalPrice()), pricingCurrency);
+      baseFareTotal =
+          CurrencyAmountNormalizer.normalize(baseFareTotal.add(segment.pricing().baseFare()), pricingCurrency);
+      taxesTotal =
+          CurrencyAmountNormalizer.normalize(taxesTotal.add(segment.pricing().taxes()), pricingCurrency);
+      feesTotal =
+          CurrencyAmountNormalizer.normalize(feesTotal.add(segment.pricing().fees()), pricingCurrency);
+    }
+
     PromoPreview preview =
-        applyPromotion(request.promoCode(), pricing.originalTotalPrice(), currency, countryCode);
+        applyPromotion(
+            request.promoCode(),
+            originalTotalPrice,
+            pricingCurrency,
+            segmentRuntimes.getFirst().countryCode());
     String normalizedPromoCode = normalizePromoCode(request.promoCode());
     Long promotionId = resolvePromotionId(normalizedPromoCode, preview);
-
     BigDecimal discountAmount =
         "APPLIED".equals(preview.status())
-            ? CurrencyAmountNormalizer.normalizeOrZero(preview.discountAmount(), currency)
-            : zeroMoney(currency);
+            ? CurrencyAmountNormalizer.normalizeOrZero(preview.discountAmount(), pricingCurrency)
+            : zeroMoney(pricingCurrency);
     Integer discountPercent = "APPLIED".equals(preview.status()) ? preview.discountPercent() : null;
     BigDecimal discountedTotal =
-        CurrencyAmountNormalizer.normalize(
-            pricing.originalTotalPrice().subtract(discountAmount), currency);
+        CurrencyAmountNormalizer.normalize(originalTotalPrice.subtract(discountAmount), pricingCurrency);
 
-    String revalidateId =
-        "RV_"
-            + UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 12)
-                .toUpperCase(Locale.ROOT);
+    String revalidateId = generateRevalidateId();
+    PricingSnapshot aggregatePricing =
+        new PricingSnapshot(
+            pricingCurrency,
+            baseFareTotal,
+            taxesTotal,
+            feesTotal,
+            originalTotalPrice,
+            discountAmount,
+            discountPercent,
+            discountedTotal);
+
+    List<SegmentSnapshot> segmentSnapshots = new ArrayList<>(segmentRuntimes.size());
+    for (SegmentRuntime segment : segmentRuntimes) {
+      FlightFareEntity fare = segment.fare();
+      FareClassEntity fareClass = fare.getFareClass();
+      segmentSnapshots.add(
+          new SegmentSnapshot(
+              segment.direction(),
+              fare.getFlight().getId(),
+              fare.getId(),
+              fareClass.getId(),
+              fareVersionOf(fare),
+              fareClass.getCode(),
+              fareClass.getName(),
+              fareClass.getCabinClass(),
+              segment.pricing().currency(),
+              new PricingSnapshot(
+                  segment.pricing().currency(),
+                  segment.pricing().baseFare(),
+                  segment.pricing().taxes(),
+                  segment.pricing().fees(),
+                  segment.pricing().originalTotalPrice(),
+                  zeroMoney(segment.pricing().currency()),
+                  null,
+                  segment.pricing().originalTotalPrice())));
+    }
+
+    SegmentSnapshot primarySegment = segmentSnapshots.getFirst();
     RevalidateSnapshot snapshot =
         new RevalidateSnapshot(
             revalidateId,
-            fare.getFlight().getId(),
-            fare.getId(),
-            fare.getFareClass().getId(),
-            fareVersionOf(fare),
+            normalizedTripType,
+            primarySegment.flightId(),
+            primarySegment.fareId(),
+            primarySegment.fareClassId(),
+            primarySegment.fareVersion(),
             normalizedPromoCode,
             promotionId,
-            new PassengerSummary(
-                request.passengerSummary().adult(),
-                request.passengerSummary().child(),
-                request.passengerSummary().infant()),
-            new PricingSnapshot(
-                pricing.currency(),
-                pricing.baseFare(),
-                pricing.taxes(),
-                pricing.fees(),
-                pricing.originalTotalPrice(),
-                discountAmount,
-                discountPercent,
-                discountedTotal),
+            canonicalSummary,
+            aggregatePricing,
+            segmentSnapshots,
             OffsetDateTime.now().plus(REVALIDATE_TTL),
             "ACTIVE");
     saveRevalidateSnapshot(snapshot);
     LOG.info(
-        "revalidate created id={} flightId={} fareId={} fareClassId={} promoCode={} promotionId={} expiresAt={}",
+        "revalidate itinerary created id={} tripType={} segments={} promoCode={} promotionId={} expiresAt={}",
         snapshot.revalidateId(),
-        snapshot.flightId(),
-        snapshot.fareId(),
-        snapshot.fareClassId(),
+        snapshot.tripType(),
+        snapshot.segments().size(),
         snapshot.promoCode(),
         snapshot.promotionId(),
         snapshot.expiresAt());
 
-    return new RevalidateFareResponse(
+    return new RevalidateItineraryResponse(
         snapshot.revalidateId(),
         REVALIDATE_TTL.toSeconds(),
-        snapshot.flightId(),
-        snapshot.fareId(),
+        snapshot.tripType(),
         snapshot.promoCode(),
-        new RevalidateFareResponse.PassengerSummaryResponse(
+        new RevalidateItineraryResponse.PassengerSummaryResponse(
             snapshot.passengerSummary().adult(),
             snapshot.passengerSummary().child(),
             snapshot.passengerSummary().infant()),
-        new RevalidateFareResponse.PricingResponse(
+        new RevalidateItineraryResponse.PricingResponse(
             snapshot.pricing().currency(),
             snapshot.pricing().baseFare(),
             snapshot.pricing().taxes(),
@@ -212,7 +311,29 @@ public class BookingRevalidateService {
             snapshot.pricing().originalTotalPrice(),
             snapshot.pricing().discountAmount(),
             snapshot.pricing().discountPercent(),
-            snapshot.pricing().discountedTotalPrice()));
+            snapshot.pricing().discountedTotalPrice()),
+        snapshot.segments().stream()
+            .map(
+                segment ->
+                    new RevalidateItineraryResponse.SegmentResponse(
+                        segment.direction(),
+                        segment.flightId(),
+                        segment.fareId(),
+                        segment.fareClassId(),
+                        segment.fareCode(),
+                        segment.fareName(),
+                        segment.cabinClass(),
+                        segment.currency(),
+                        new RevalidateItineraryResponse.PricingResponse(
+                            segment.pricing().currency(),
+                            segment.pricing().baseFare(),
+                            segment.pricing().taxes(),
+                            segment.pricing().fees(),
+                            segment.pricing().originalTotalPrice(),
+                            segment.pricing().discountAmount(),
+                            segment.pricing().discountPercent(),
+                            segment.pricing().discountedTotalPrice())))
+            .toList());
   }
 
   @Transactional
@@ -241,8 +362,9 @@ public class BookingRevalidateService {
             toJson(
                 new CreateBookingFingerprint(
                     snapshot.revalidateId(),
-                    snapshot.flightId(),
-                    snapshot.fareId(),
+                    snapshot.segments().stream()
+                        .map(segment -> new SegmentFingerprint(segment.flightId(), segment.fareId()))
+                        .toList(),
                     canonical,
                     contacts,
                     passengers)));
@@ -252,20 +374,29 @@ public class BookingRevalidateService {
     }
 
     try {
-      FlightFareEntity fare = requireFareForFlightForUpdate(snapshot.fareId(), snapshot.flightId());
-      if (!Objects.equals(fareVersionOf(fare), snapshot.fareVersion())) {
-        throw new AppException(
-            "PRICE_CHANGED", "Fare changed after revalidation. Please revalidate again.", 409);
+      List<SegmentSnapshot> segments = snapshot.segments();
+      if (segments == null || segments.isEmpty()) {
+        throw new AppException("REVALIDATE_FAILED", "Revalidate snapshot has no segment data", 500);
       }
-      validatePassengerAges(passengers, fare.getFlight().getFlightDate());
 
       int requiredSeats = snapshot.passengerSummary().seatedPassengers();
-      long availableSeats =
-          flightInventoryAvailabilityService.countAvailableSeats(
-              snapshot.flightId(), snapshot.fareClassId());
-      if (availableSeats < requiredSeats) {
-        throw new AppException("FARE_SOLD_OUT", "Selected fare is sold out during booking", 409);
+      List<FlightFareEntity> faresForBooking = new ArrayList<>(segments.size());
+      for (SegmentSnapshot segment : segments) {
+        FlightFareEntity fare = requireFareForFlightForUpdate(segment.fareId(), segment.flightId());
+        if (!Objects.equals(fareVersionOf(fare), segment.fareVersion())) {
+          throw new AppException(
+              "PRICE_CHANGED", "Fare changed after revalidation. Please revalidate again.", 409);
+        }
+        validatePassengerAges(passengers, fare.getFlight().getFlightDate());
+        long availableSeats =
+            flightInventoryAvailabilityService.countAvailableSeats(
+                segment.flightId(), segment.fareClassId());
+        if (availableSeats < requiredSeats) {
+          throw new AppException("FARE_SOLD_OUT", "Selected fare is sold out during booking", 409);
+        }
+        faresForBooking.add(fare);
       }
+
       UserEntity user = resolveBookingUser(userId);
       BookingEntity booking = new BookingEntity();
       booking.setUser(user);
@@ -289,13 +420,22 @@ public class BookingRevalidateService {
 
       List<BookingContactEntity> contactEntities = saveContacts(booking, contacts);
       List<PassengerEntity> passengerEntities = savePassengers(booking, passengers);
-      BookingFareHoldEntity fareHold = saveFareHold(booking, fare, requiredSeats);
+      int totalReservedSeats = 0;
+      for (FlightFareEntity fare : faresForBooking) {
+        BookingFareHoldEntity fareHold = saveFareHold(booking, fare, requiredSeats);
+        totalReservedSeats += fareHold.getQuantity();
+      }
 
       deleteRevalidateSnapshot(snapshot.revalidateId());
 
       CreateBookingResponse response =
           toCreateBookingResponse(
-              booking, fare, snapshot, contactEntities, passengerEntities, fareHold.getQuantity());
+              booking,
+              faresForBooking.getFirst(),
+              snapshot,
+              contactEntities,
+              passengerEntities,
+              totalReservedSeats);
       markIdempotencySuccess(request.idempotencyKey(), requestHash, response);
       LOG.info(
           "booking created bookingId={} userId={} revalidateId={} fareId={} flightId={} seats={}",
@@ -732,6 +872,77 @@ public class BookingRevalidateService {
     return fare;
   }
 
+  private String normalizeTripType(String tripType) {
+    if (!StringUtils.hasText(tripType)) {
+      throw new AppException("INVALID_TRIP_TYPE", "tripType is required", 400);
+    }
+    String normalized = tripType.trim().toUpperCase(Locale.ROOT);
+    if (!"ONE_WAY".equals(normalized) && !"ROUND_TRIP".equals(normalized)) {
+      throw new AppException("INVALID_TRIP_TYPE", "tripType must be ONE_WAY or ROUND_TRIP", 400);
+    }
+    return normalized;
+  }
+
+  private List<RevalidateItineraryRequest.SegmentRequest> normalizeAndValidateSegmentRequests(
+      String tripType, List<RevalidateItineraryRequest.SegmentRequest> segments) {
+    if (segments == null || segments.isEmpty()) {
+      throw new AppException("INVALID_ITINERARY_SEGMENTS", "segments is required", 400);
+    }
+    List<RevalidateItineraryRequest.SegmentRequest> normalized = new ArrayList<>(segments.size());
+    Set<String> directions = new HashSet<>();
+    for (RevalidateItineraryRequest.SegmentRequest segment : segments) {
+      if (segment == null) continue;
+      String direction = normalizeSegmentDirection(segment.direction());
+      if (!directions.add(direction)) {
+        throw new AppException(
+            "INVALID_ITINERARY_SEGMENTS",
+            "Each segment direction must be unique for this itinerary",
+            400);
+      }
+      normalized.add(
+          new RevalidateItineraryRequest.SegmentRequest(
+              direction, segment.flightId(), segment.fareId()));
+    }
+    if (normalized.isEmpty()) {
+      throw new AppException("INVALID_ITINERARY_SEGMENTS", "segments is required", 400);
+    }
+    if ("ONE_WAY".equals(tripType)) {
+      if (normalized.size() != 1 || !"OUTBOUND".equals(normalized.getFirst().direction())) {
+        throw new AppException(
+            "INVALID_ITINERARY_SEGMENTS",
+            "ONE_WAY itinerary requires exactly one OUTBOUND segment",
+            400);
+      }
+      return normalized;
+    }
+    if (normalized.size() != 2 || !directions.contains("OUTBOUND") || !directions.contains("INBOUND")) {
+      throw new AppException(
+          "INVALID_ITINERARY_SEGMENTS",
+          "ROUND_TRIP itinerary requires OUTBOUND and INBOUND segments",
+          400);
+    }
+    return normalized;
+  }
+
+  private String normalizeSegmentDirection(String rawDirection) {
+    if (!StringUtils.hasText(rawDirection)) {
+      throw new AppException("INVALID_SEGMENT_DIRECTION", "segment direction is required", 400);
+    }
+    String normalized = rawDirection.trim().toUpperCase(Locale.ROOT);
+    if (!"OUTBOUND".equals(normalized) && !"INBOUND".equals(normalized)) {
+      throw new AppException(
+          "INVALID_SEGMENT_DIRECTION",
+          "segment direction must be OUTBOUND or INBOUND",
+          400);
+    }
+    return normalized;
+  }
+
+  private String generateRevalidateId() {
+    return "RV_"
+        + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT);
+  }
+
   private void ensureSaleable(FlightFareEntity fare) {
     String fareStatus = normalizeStatus(fare.getStatus());
     String flightStatus = normalizeStatus(fare.getFlight().getStatus());
@@ -962,10 +1173,11 @@ public class BookingRevalidateService {
       String identifyNumber,
       LocalDate expiryDate) {}
 
+  private record SegmentFingerprint(Long flightId, Long fareId) {}
+
   private record CreateBookingFingerprint(
       String revalidateId,
-      Long flightId,
-      Long fareId,
+      List<SegmentFingerprint> segments,
       PassengerSummary passengerSummary,
       List<NormalizedContact> contacts,
       List<NormalizedPassenger> passengers) {}
@@ -980,8 +1192,24 @@ public class BookingRevalidateService {
       Integer discountPercent,
       BigDecimal discountedTotalPrice) {}
 
+  private record SegmentSnapshot(
+      String direction,
+      Long flightId,
+      Long fareId,
+      Long fareClassId,
+      String fareVersion,
+      String fareCode,
+      String fareName,
+      String cabinClass,
+      String currency,
+      PricingSnapshot pricing) {}
+
+  private record SegmentRuntime(
+      String direction, FlightFareEntity fare, String countryCode, PricingBreakdown pricing) {}
+
   private record RevalidateSnapshot(
       String revalidateId,
+      String tripType,
       Long flightId,
       Long fareId,
       Long fareClassId,
@@ -990,6 +1218,7 @@ public class BookingRevalidateService {
       Long promotionId,
       PassengerSummary passengerSummary,
       PricingSnapshot pricing,
+      List<SegmentSnapshot> segments,
       OffsetDateTime expiresAt,
       String status) {}
 

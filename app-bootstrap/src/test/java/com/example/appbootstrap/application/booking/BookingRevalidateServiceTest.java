@@ -17,6 +17,8 @@ import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
+import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
@@ -77,6 +79,7 @@ class BookingRevalidateServiceTest {
 
   private BookingRevalidateService service;
   private FlightFareEntity fare;
+  private FlightFareEntity returnFare;
 
   @BeforeEach
   void setUp() {
@@ -98,6 +101,7 @@ class BookingRevalidateServiceTest {
             flightInventoryAvailabilityService,
             passwordEncoder);
     fare = fare();
+    returnFare = returnFare();
   }
 
   @Test
@@ -275,6 +279,127 @@ class BookingRevalidateServiceTest {
 
     assertEquals(125L, response.booking().bookingId());
     verify(userRepository).save(any(UserEntity.class));
+  }
+
+  @Test
+  void revalidateItinerary_roundTripAggregatesPricingAndReturnsSegments() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 0);
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(flightFareRepository.findByIdWithDetails(202L)).thenReturn(Optional.of(returnFare));
+    when(flightInventoryAvailabilityService.countAvailableSeats(11L, 5L)).thenReturn(5L);
+    when(flightInventoryAvailabilityService.countAvailableSeats(22L, 6L)).thenReturn(5L);
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1500000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal("1500000.00"));
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1800000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal("1800000.00"));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(returnFare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(promotionPreviewService.preview(eq(null), eq(new BigDecimal("3300000")), eq("VND"), eq("VN"), eq(true)))
+        .thenReturn(
+            PromotionPreviewService.PromoPreview.notApplicable(
+                "No promo code provided", new BigDecimal("3300000.00")));
+
+    RevalidateItineraryResponse response =
+        service.revalidateItinerary(
+            new RevalidateItineraryRequest(
+                "ROUND_TRIP",
+                null,
+                summary,
+                List.of(
+                    new RevalidateItineraryRequest.SegmentRequest("OUTBOUND", 11L, 101L),
+                    new RevalidateItineraryRequest.SegmentRequest("INBOUND", 22L, 202L))));
+
+    assertEquals("ROUND_TRIP", response.tripType());
+    assertEquals(2, response.segments().size());
+    assertEquals(0, response.pricing().originalTotalPrice().compareTo(new BigDecimal("3300000")));
+    assertEquals("OUTBOUND", response.segments().get(0).direction());
+    assertEquals("INBOUND", response.segments().get(1).direction());
+  }
+
+  @Test
+  void createBooking_roundTripCreatesMultipleFareHolds() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 0);
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(flightFareRepository.findByIdWithDetails(202L)).thenReturn(Optional.of(returnFare));
+    when(flightInventoryAvailabilityService.countAvailableSeats(11L, 5L)).thenReturn(5L);
+    when(flightInventoryAvailabilityService.countAvailableSeats(22L, 6L)).thenReturn(5L);
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1500000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal("1500000.00"));
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1800000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal("1800000.00"));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCountryCode(returnFare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(promotionPreviewService.preview(eq(null), eq(new BigDecimal("3300000")), eq("VND"), eq("VN"), eq(true)))
+        .thenReturn(
+            PromotionPreviewService.PromoPreview.notApplicable(
+                "No promo code provided", new BigDecimal("3300000.00")));
+    RevalidateItineraryResponse itinerary =
+        service.revalidateItinerary(
+            new RevalidateItineraryRequest(
+                "ROUND_TRIP",
+                null,
+                summary,
+                List.of(
+                    new RevalidateItineraryRequest.SegmentRequest("OUTBOUND", 11L, 101L),
+                    new RevalidateItineraryRequest.SegmentRequest("INBOUND", 22L, 202L))));
+
+    stubRevalidateSnapshotAccess(itinerary.revalidateId(), "idem-roundtrip");
+    when(flightFareRepository.findByIdWithDetailsForUpdate(202L)).thenReturn(Optional.of(returnFare));
+    UserEntity user = new UserEntity();
+    user.setId(7L);
+    when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              BookingEntity booking = invocation.getArgument(0, BookingEntity.class);
+              booking.setId(555L);
+              return booking;
+            });
+    when(bookingContactRepository.saveAll(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(passengerRepository.saveAll(any()))
+        .thenAnswer(
+            invocation -> {
+              List<PassengerEntity> passengers = invocation.getArgument(0);
+              for (int i = 0; i < passengers.size(); i++) {
+                passengers.get(i).setId((long) i + 1);
+              }
+              return passengers;
+            });
+    when(bookingFareHoldRepository.save(any(BookingFareHoldEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, BookingFareHoldEntity.class));
+
+    CreateBookingResponse response =
+        service.createBooking(
+            7L,
+            new CreateBookingRequest(
+                itinerary.revalidateId(),
+                "idem-roundtrip",
+                summary,
+                List.of(new CreateBookingRequest.BookingContactRequest("user@example.com", "0900000000", true)),
+                List.of(
+                    new CreateBookingRequest.BookingPassengerRequest(
+                        "AN",
+                        "NGUYEN",
+                        LocalDate.parse("1998-01-01"),
+                        "male",
+                        "VN",
+                        "adult",
+                        "passport",
+                        "B1234567",
+                        LocalDate.parse("2030-01-01")))));
+
+    assertEquals(0, response.pricing().originalTotalPrice().compareTo(new BigDecimal("3300000")));
+    assertEquals(2, response.seatReservation().reservedSeatCount());
+    verify(bookingFareHoldRepository, times(2)).save(any(BookingFareHoldEntity.class));
   }
 
   @Test
@@ -599,6 +724,68 @@ class BookingRevalidateServiceTest {
     fare.setTotalPrice(new BigDecimal("1500000.00"));
     fare.setStatus("AVAILABLE");
     fare.setUpdatedAt(OffsetDateTime.parse("2026-04-17T09:00:00+07:00"));
+    return fare;
+  }
+
+  private static FlightFareEntity returnFare() {
+    AirlineEntity airline = new AirlineEntity();
+    airline.setId(1L);
+    airline.setCode("VN");
+    airline.setName("Vietnam Airlines");
+    airline.setLogoUrl("https://example.com/vn.png");
+
+    AirportEntity departure = new AirportEntity();
+    departure.setId(2L);
+    departure.setCode("HAN");
+    departure.setName("Noi Bai International Airport");
+    departure.setCity("Hanoi");
+    departure.setCountry("Vietnam");
+    departure.setTimeZone("Asia/Ho_Chi_Minh");
+
+    AirportEntity arrival = new AirportEntity();
+    arrival.setId(1L);
+    arrival.setCode("SGN");
+    arrival.setName("Tan Son Nhat International Airport");
+    arrival.setCity("Ho Chi Minh City");
+    arrival.setCountry("Vietnam");
+    arrival.setTimeZone("Asia/Ho_Chi_Minh");
+
+    FlightEntity flight = new FlightEntity();
+    flight.setId(22L);
+    flight.setAirline(airline);
+    flight.setFlightNumber("VN456");
+    flight.setFlightDate(LocalDate.parse("2026-05-03"));
+    flight.setDepartureAirport(departure);
+    flight.setArrivalAirport(arrival);
+    flight.setDepartureTerminal("T2");
+    flight.setDepartureGate("C1");
+    flight.setArrivalTerminal("T1");
+    flight.setArrivalGate("D1");
+    flight.setDepartureTime(OffsetDateTime.parse("2026-05-03T10:00:00+07:00"));
+    flight.setArrivalTime(OffsetDateTime.parse("2026-05-03T12:20:00+07:00"));
+    flight.setStatus("SCHEDULED");
+
+    FareClassEntity fareClass = new FareClassEntity();
+    fareClass.setId(6L);
+    fareClass.setCode("PREMIUM");
+    fareClass.setName("Premium");
+    fareClass.setCabinClass("PREMIUM_ECONOMY");
+    fareClass.setBaggageCheckinKg(25);
+    fareClass.setBaggageHandKg(8);
+    fareClass.setRefundable(false);
+    fareClass.setChangeable(true);
+    fareClass.setChangeFee(new BigDecimal("300000.00"));
+    fareClass.setRefundFee(new BigDecimal("500000.00"));
+
+    FlightFareEntity fare = new FlightFareEntity();
+    fare.setId(202L);
+    fare.setFlight(flight);
+    fare.setFareClass(fareClass);
+    fare.setBasePrice(new BigDecimal("1400000.00"));
+    fare.setTotalTaxAmount(new BigDecimal("400000.00"));
+    fare.setTotalPrice(new BigDecimal("1800000.00"));
+    fare.setStatus("AVAILABLE");
+    fare.setUpdatedAt(OffsetDateTime.parse("2026-04-17T09:30:00+07:00"));
     return fare;
   }
 }
