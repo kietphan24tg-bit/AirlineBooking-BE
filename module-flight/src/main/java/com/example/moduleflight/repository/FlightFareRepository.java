@@ -43,7 +43,9 @@ public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Lo
       select ff
       from FlightFareEntity ff
       join fetch ff.flight f
+      join fetch f.airline a
       join fetch f.departureAirport dep
+      join fetch f.arrivalAirport arr
       join fetch ff.fareClass fc
       left join fetch fc.includedSeatCategory isc
       where ff.id = :id
@@ -56,7 +58,9 @@ public interface FlightFareRepository extends JpaRepository<FlightFareEntity, Lo
       select ff
       from FlightFareEntity ff
       join fetch ff.flight f
+      join fetch f.airline a
       join fetch f.departureAirport dep
+      join fetch f.arrivalAirport arr
       join fetch ff.fareClass fc
       left join fetch fc.includedSeatCategory isc
       where ff.id = :id

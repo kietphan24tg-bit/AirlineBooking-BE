@@ -1100,6 +1100,10 @@ public class BookingRevalidateService {
     if ("SUCCESS".equals(existing.status()) && existing.response() != null) {
       return new IdempotencyResult(existing.response());
     }
+    if ("FAILED".equals(existing.status())) {
+      writeValue(key, processingPayload, IDEMPOTENCY_TTL);
+      return new IdempotencyResult(null);
+    }
     throw new AppException("REQUEST_IN_PROGRESS", "Booking request is processing", 409);
   }
 
