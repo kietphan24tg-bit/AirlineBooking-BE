@@ -28,6 +28,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +54,9 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_QR = "QR";
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
-  private static final long PAYMENT_WINDOW_EXTENSION_MINUTES = 5;
-  private static final long MIN_PAYMENT_WINDOW_MINUTES = 5;
+  private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
+  private static final long PAYOS_PAYMENT_CAP_MINUTES = 15;
+  private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
   private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
   private static final long PAYMENT_CREATION_WINDOW_MINUTES = 10;
@@ -107,16 +109,17 @@ public class PaymentService {
 
   private List<PaymentMethodView> buildPaymentMethodsForBooking(
       BookingEntity booking, boolean onlySupported) {
-    boolean paymentWindowEligible =
-        hasSufficientImmediatePaymentWindow(booking, OffsetDateTime.now());
+    OffsetDateTime now = OffsetDateTime.now();
+    boolean payosWindowEligible = hasValidEffectivePaymentWindow(booking, METHOD_PAYOS, now);
+    boolean stripeWindowEligible = hasValidEffectivePaymentWindow(booking, METHOD_STRIPE_CARD, now);
     boolean payosSupported =
         paymentProperties.isPayosConfigured()
             && supportsCurrency(booking.getCurrency())
-            && paymentWindowEligible;
+            && payosWindowEligible;
     boolean stripeSupported =
         paymentProperties.isStripeConfigured()
             && supportsCurrency(booking.getCurrency())
-            && paymentWindowEligible;
+            && stripeWindowEligible;
     boolean payLaterSupported =
         paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
     String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
@@ -349,29 +352,17 @@ public class PaymentService {
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
             booking.getId(), PAYMENT_STATUS_PENDING);
-    PaymentEntity reusablePending = findReusablePending(previousPending, normalizedMethod);
-    if (METHOD_PAY_LATER.equals(normalizedMethod)) {
-      if (reusablePending != null) {
-        log.info(
-            "Reusing pending payment without refreshing hold: bookingId={}, paymentId={}, requestedMethod={}, paymentMethod={}",
-            booking.getId(),
-            reusablePending.getId(),
-            normalizedMethod,
-            reusablePending.getPaymentMethod());
-        ensureBookingPendingPayment(booking, now);
-        return buildCreatePaymentResult(reusablePending, booking, booking.getPnrExpiresAt());
-      }
-      synchronizePayLaterWindow(booking, now);
-    } else {
-      normalizeWindowAfterPayLaterSwitch(previousPending, booking, now);
-      maybeExtendPaymentWindow(booking, now);
-    }
-    OffsetDateTime expireAt = booking.getPnrExpiresAt();
-    if (!METHOD_PAY_LATER.equals(normalizedMethod)) {
-      assertSufficientImmediatePaymentWindow(booking, expireAt, now);
-    }
+    PaymentEntity latestReusablePending = findLatestReusablePending(previousPending, normalizedMethod);
+    OffsetDateTime expireAt =
+        resolveEffectiveExpireAt(booking, normalizedMethod, now, latestReusablePending != null);
+    assertSufficientPaymentWindow(booking, normalizedMethod, expireAt, now);
 
-    if (reusablePending != null) {
+    PaymentEntity reusablePending =
+        findReusablePending(previousPending, normalizedMethod, booking.getPnrExpiresAt(), expireAt);
+    boolean shouldReusePending =
+        reusablePending != null && Objects.equals(booking.getPnrExpiresAt(), expireAt);
+
+    if (shouldReusePending) {
       log.info(
           "Reusing pending payment: bookingId={}, paymentId={}, requestedMethod={}, paymentMethod={}",
           booking.getId(),
@@ -382,14 +373,18 @@ public class PaymentService {
       return buildCreatePaymentResult(reusablePending, booking, expireAt);
     }
 
+    applyEffectiveExpireAt(booking, expireAt, now);
+
     assertPaymentCreationAllowed(booking, normalizedMethod, now);
 
     for (PaymentEntity existing : previousPending) {
       if (isSamePaymentMethod(existing, normalizedMethod)) {
-        // Non-reusable PENDING payments for the requested method (e.g. provider link missing) are
-        // treated as failed so that we don't block creating a new payment link for the same
-        // booking.
-        existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        if (isReusablePending(existing)) {
+          cancelWithProvider(existing, "Payment refreshed");
+          existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+        } else {
+          existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        }
       } else if (isReusablePending(existing)) {
         log.info(
             "Cancelling previous pending payment because payment method changed: bookingId={}, oldPaymentId={}, oldMethod={}, newMethod={}",
@@ -510,95 +505,110 @@ public class PaymentService {
     }
   }
 
-  private void maybeExtendPaymentWindow(BookingEntity booking, OffsetDateTime now) {
+  private OffsetDateTime resolveEffectiveExpireAt(
+      BookingEntity booking,
+      String method,
+      OffsetDateTime now,
+      boolean preserveLongerCurrentWindow) {
     if (booking == null) {
-      return;
+      return null;
     }
-    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
-    if (currentExpireAt == null) {
-      return;
+    OffsetDateTime targetExpireAt = resolveTargetExpireAt(method, now);
+    OffsetDateTime cappedExpireAt = capExpireAt(booking, method, targetExpireAt);
+    if (cappedExpireAt == null) {
+      return booking.getPnrExpiresAt();
     }
-    if (booking.getPaymentWindowExtendedAt() != null) {
-      return; // one-time extension per booking
+    if (preserveLongerCurrentWindow
+        && booking.getPnrExpiresAt() != null
+        && booking.getPnrExpiresAt().isAfter(cappedExpireAt)) {
+      return booking.getPnrExpiresAt();
     }
-
-    OffsetDateTime targetExpireAt = now.plusMinutes(PAYMENT_WINDOW_EXTENSION_MINUTES);
-    if (!currentExpireAt.isBefore(targetExpireAt)) {
-      return; // already has >= 5 minutes remaining
-    }
-
-    targetExpireAt = currentExpireAt.plusMinutes(PAYMENT_WINDOW_EXTENSION_MINUTES);
-    booking.setPnrExpiresAt(targetExpireAt);
-    booking.setPaymentWindowExtendedAt(now);
-    booking.setUpdatedAt(now);
-
-    // Keep all holds/reservations aligned with the new booking expiry.
-    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
-    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
+    return cappedExpireAt;
   }
 
-  private void synchronizePayLaterWindow(BookingEntity booking, OffsetDateTime now) {
-    if (booking == null) {
-      return;
+  private OffsetDateTime resolveTargetExpireAt(String method, OffsetDateTime now) {
+    if (METHOD_STRIPE_CARD.equals(method)) {
+      return now.plusMinutes(STRIPE_PAYMENT_WINDOW_MINUTES);
     }
-    OffsetDateTime targetExpireAt = now.plusMinutes(PAY_LATER_HOLD_MINUTES);
-    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
-    if (currentExpireAt != null && !currentExpireAt.isBefore(targetExpireAt)) {
-      return;
+    if (METHOD_PAY_LATER.equals(method)) {
+      return now.plusMinutes(PAY_LATER_HOLD_MINUTES);
     }
-    booking.setPnrExpiresAt(targetExpireAt);
-    booking.setUpdatedAt(now);
-    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), targetExpireAt, now);
-    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), targetExpireAt);
+    return now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
   }
 
-  private void normalizeWindowAfterPayLaterSwitch(
-      List<PaymentEntity> previousPending, BookingEntity booking, OffsetDateTime now) {
-    if (booking == null || previousPending == null || previousPending.isEmpty()) {
-      return;
+  private OffsetDateTime capExpireAt(
+      BookingEntity booking, String method, OffsetDateTime targetExpireAt) {
+    OffsetDateTime capExpireAt = resolveMethodCapExpireAt(booking, method);
+    if (capExpireAt == null || targetExpireAt == null || !targetExpireAt.isAfter(capExpireAt)) {
+      return targetExpireAt;
     }
-    boolean hasPendingPayLater =
-        previousPending.stream()
-            .anyMatch(payment -> isSamePaymentMethod(payment, METHOD_PAY_LATER));
-    if (!hasPendingPayLater) {
-      return;
-    }
-
-    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
-    OffsetDateTime immediateExpireAt = now.plusMinutes(MIN_PAYMENT_WINDOW_MINUTES);
-    if (currentExpireAt == null || !currentExpireAt.isAfter(immediateExpireAt)) {
-      return;
-    }
-
-    booking.setPnrExpiresAt(immediateExpireAt);
-    booking.setUpdatedAt(now);
-    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), immediateExpireAt, now);
-    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), immediateExpireAt);
+    return capExpireAt;
   }
 
-  private void assertSufficientImmediatePaymentWindow(
-      BookingEntity booking, OffsetDateTime expireAt, OffsetDateTime now) {
-    if (!hasSufficientImmediatePaymentWindow(booking, now, expireAt)) {
+  private OffsetDateTime resolveMethodCapExpireAt(BookingEntity booking, String method) {
+    if (booking == null || booking.getCreatedAt() == null) {
+      return booking == null ? null : booking.getPnrExpiresAt();
+    }
+    if (METHOD_STRIPE_CARD.equals(method)) {
+      return booking.getCreatedAt().plusMinutes(STRIPE_PAYMENT_WINDOW_MINUTES);
+    }
+    if (METHOD_PAY_LATER.equals(method)) {
+      return booking.getCreatedAt().plusMinutes(PAY_LATER_HOLD_MINUTES);
+    }
+    return booking.getCreatedAt().plusMinutes(PAYOS_PAYMENT_CAP_MINUTES);
+  }
+
+  private void applyEffectiveExpireAt(
+      BookingEntity booking, OffsetDateTime effectiveExpireAt, OffsetDateTime now) {
+    if (booking == null || effectiveExpireAt == null) {
+      return;
+    }
+    if (Objects.equals(booking.getPnrExpiresAt(), effectiveExpireAt)) {
+      return;
+    }
+    if (booking.getPnrExpiresAt() == null || effectiveExpireAt.isAfter(booking.getPnrExpiresAt())) {
+      booking.setPaymentWindowExtendedAt(now);
+    }
+    booking.setPnrExpiresAt(effectiveExpireAt);
+    booking.setUpdatedAt(now);
+    bookingFareHoldRepository.extendHeldExpiryByBookingId(booking.getId(), effectiveExpireAt, now);
+    flightSeatRepository.extendReservedUntilForBooking(booking.getId(), effectiveExpireAt);
+  }
+
+  private void assertSufficientPaymentWindow(
+      BookingEntity booking, String method, OffsetDateTime expireAt, OffsetDateTime now) {
+    if (hasValidEffectivePaymentWindow(booking, method, now, expireAt)) {
+      return;
+    }
+    if (METHOD_STRIPE_CARD.equals(method)) {
       throw new AppException(
-          "PAYMENT_WINDOW_TOO_SHORT",
-          "Booking must have at least 5 minutes remaining to create a new payment",
+          "STRIPE_PAYMENT_WINDOW_TOO_SHORT",
+          "Booking must have at least 30 minutes remaining to create a Stripe payment",
           409);
     }
+    if (METHOD_PAY_LATER.equals(method)) {
+      throw new AppException(
+          "PAY_LATER_WINDOW_TOO_SHORT",
+          "Booking cannot be extended for pay later anymore",
+          409);
+    }
+    throw new AppException(
+        "PAYMENT_WINDOW_TOO_SHORT",
+        "Booking must have at least 5 minutes remaining to create a new payment",
+        409);
   }
 
-  private boolean hasSufficientImmediatePaymentWindow(BookingEntity booking, OffsetDateTime now) {
-    return hasSufficientImmediatePaymentWindow(booking, now, booking.getPnrExpiresAt());
+  private boolean hasValidEffectivePaymentWindow(BookingEntity booking, String method, OffsetDateTime now) {
+    return hasValidEffectivePaymentWindow(
+        booking, method, now, resolveEffectiveExpireAt(booking, method, now, false));
   }
 
-  private boolean hasSufficientImmediatePaymentWindow(
-      BookingEntity booking, OffsetDateTime now, OffsetDateTime expireAt) {
+  private boolean hasValidEffectivePaymentWindow(
+      BookingEntity booking, String method, OffsetDateTime now, OffsetDateTime expireAt) {
     if (booking == null || expireAt == null) {
       return true;
     }
-    if (booking.getPaymentWindowExtendedAt() != null) {
-      return expireAt.isAfter(now);
-    }
-    return !expireAt.isBefore(now.plusMinutes(MIN_PAYMENT_WINDOW_MINUTES));
+    return expireAt.isAfter(now);
   }
 
   private void ensureBookingPendingPayment(BookingEntity booking, OffsetDateTime now) {
@@ -609,19 +619,33 @@ public class PaymentService {
     }
   }
 
-  private PaymentEntity findReusablePending(List<PaymentEntity> previousPending, String method) {
+  private PaymentEntity findReusablePending(
+      List<PaymentEntity> previousPending,
+      String method,
+      OffsetDateTime currentExpireAt,
+      OffsetDateTime effectiveExpireAt) {
     if (previousPending == null || previousPending.isEmpty()) {
       return null;
     }
-    // Prefer the newest payment to avoid returning a stale link.
-    PaymentEntity candidate =
-        previousPending.stream()
-            .filter(payment -> isSamePaymentMethod(payment, method))
-            .filter(this::isReusablePending)
-            .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-            .findFirst()
-            .orElse(null);
-    return candidate;
+    return previousPending.stream()
+        .filter(payment -> isSamePaymentMethod(payment, method))
+        .filter(this::isReusablePending)
+        .filter(payment -> Objects.equals(currentExpireAt, effectiveExpireAt))
+        .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private PaymentEntity findLatestReusablePending(List<PaymentEntity> previousPending, String method) {
+    if (previousPending == null || previousPending.isEmpty()) {
+      return null;
+    }
+    return previousPending.stream()
+        .filter(payment -> isSamePaymentMethod(payment, method))
+        .filter(this::isReusablePending)
+        .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+        .findFirst()
+        .orElse(null);
   }
 
   private boolean isSamePaymentMethod(PaymentEntity payment, String method) {
