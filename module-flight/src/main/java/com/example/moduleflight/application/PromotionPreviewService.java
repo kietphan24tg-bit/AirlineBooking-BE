@@ -76,8 +76,7 @@ public class PromotionPreviewService {
       return PromoPreview.notApplicable("Promo discount is not applicable", originalPrice);
     }
     BigDecimal clampedDiscount =
-        CurrencyAmountNormalizer.normalize(
-            discountAmount.min(originalPrice), normalizedCurrency);
+        CurrencyAmountNormalizer.normalize(discountAmount.min(originalPrice), normalizedCurrency);
     BigDecimal discounted =
         CurrencyAmountNormalizer.normalize(
             originalPrice.subtract(clampedDiscount).max(BigDecimal.ZERO), normalizedCurrency);

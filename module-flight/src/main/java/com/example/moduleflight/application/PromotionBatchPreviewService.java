@@ -108,8 +108,7 @@ public class PromotionBatchPreviewService {
     }
 
     BigDecimal clampedDiscount =
-        CurrencyAmountNormalizer.normalize(
-            discountAmount.min(originalPrice), normalizedCurrency);
+        CurrencyAmountNormalizer.normalize(discountAmount.min(originalPrice), normalizedCurrency);
     BigDecimal discountedPrice =
         CurrencyAmountNormalizer.normalize(
             originalPrice.subtract(clampedDiscount).max(BigDecimal.ZERO), normalizedCurrency);
