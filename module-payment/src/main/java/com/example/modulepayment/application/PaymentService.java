@@ -352,7 +352,8 @@ public class PaymentService {
     List<PaymentEntity> previousPending =
         paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
             booking.getId(), PAYMENT_STATUS_PENDING);
-    PaymentEntity latestReusablePending = findLatestReusablePending(previousPending, normalizedMethod);
+    PaymentEntity latestReusablePending =
+        findLatestReusablePending(previousPending, normalizedMethod);
     OffsetDateTime expireAt =
         resolveEffectiveExpireAt(booking, normalizedMethod, now, latestReusablePending != null);
     assertSufficientPaymentWindow(booking, normalizedMethod, expireAt, now);
@@ -588,9 +589,7 @@ public class PaymentService {
     }
     if (METHOD_PAY_LATER.equals(method)) {
       throw new AppException(
-          "PAY_LATER_WINDOW_TOO_SHORT",
-          "Booking cannot be extended for pay later anymore",
-          409);
+          "PAY_LATER_WINDOW_TOO_SHORT", "Booking cannot be extended for pay later anymore", 409);
     }
     throw new AppException(
         "PAYMENT_WINDOW_TOO_SHORT",
@@ -598,7 +597,8 @@ public class PaymentService {
         409);
   }
 
-  private boolean hasValidEffectivePaymentWindow(BookingEntity booking, String method, OffsetDateTime now) {
+  private boolean hasValidEffectivePaymentWindow(
+      BookingEntity booking, String method, OffsetDateTime now) {
     return hasValidEffectivePaymentWindow(
         booking, method, now, resolveEffectiveExpireAt(booking, method, now, false));
   }
@@ -636,7 +636,8 @@ public class PaymentService {
         .orElse(null);
   }
 
-  private PaymentEntity findLatestReusablePending(List<PaymentEntity> previousPending, String method) {
+  private PaymentEntity findLatestReusablePending(
+      List<PaymentEntity> previousPending, String method) {
     if (previousPending == null || previousPending.isEmpty()) {
       return null;
     }
