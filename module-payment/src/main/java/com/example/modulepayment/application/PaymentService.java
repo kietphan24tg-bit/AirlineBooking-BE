@@ -608,6 +608,9 @@ public class PaymentService {
     if (booking == null || expireAt == null) {
       return true;
     }
+    if (METHOD_PAYOS.equals(method)) {
+      return !expireAt.plusSeconds(1).isBefore(now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES));
+    }
     return expireAt.isAfter(now);
   }
 
