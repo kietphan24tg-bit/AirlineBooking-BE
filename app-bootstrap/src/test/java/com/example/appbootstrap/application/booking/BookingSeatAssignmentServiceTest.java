@@ -230,6 +230,46 @@ class BookingSeatAssignmentServiceTest {
   }
 
   @Test
+  void assignSeats_rejectsInfantPassenger() {
+    BookingEntity booking = booking("PENDING_PAYMENT", "1400.00");
+    BookingFareHoldEntity hold = hold("PAID", null, 1);
+    PassengerEntity passenger = passenger(1L, booking, "INFANT");
+    FlightSeatEntity seat =
+        seat(
+            100L,
+            hold.getFlightFare().getFlight(),
+            category("STANDARD", 1, "0.00"),
+            type("MIDDLE", "0.00"));
+
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
+    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+        .thenReturn(Optional.of(hold));
+    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any()))
+        .thenReturn(0L);
+    when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(100L));
+    when(flightSeatRepository.findAllById(List.of(100L))).thenReturn(List.of(seat));
+    when(passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
+            100L, List.of("RESERVED", "BOOKED")))
+        .thenReturn(false);
+    when(passengerRepository.findByIdAndBookingId(1L, 10L)).thenReturn(Optional.of(passenger));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.assignSeats(
+                    7L,
+                    10L,
+                    new SeatAssignmentRequest(
+                        List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 100L)))));
+
+    assertEquals("SEAT_NOT_ALLOWED", exception.getCode());
+    assertEquals("INFANT passengers cannot be assigned seats", exception.getMessage());
+    verify(passengerSeatAssignmentRepository, never()).saveAll(any());
+  }
+
+  @Test
   void unassignSeats_releasesSeatsAndClearsSurchargeWhenNoneRemain() {
     BookingEntity booking = booking("CONFIRMED", "5000.00");
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
@@ -431,6 +471,31 @@ class BookingSeatAssignmentServiceTest {
                     entity.getPassenger().getId().equals(1L)
                         && entity.getFlightSeat().getId().equals(101L)
                         && entity.getSurchargeAmount().compareTo(new BigDecimal("60000.00")) == 0));
+  }
+
+  @Test
+  void changeSeat_rejectsInfantPassenger() {
+    BookingEntity booking = booking("CONFIRMED", "5000.00");
+    PassengerEntity passenger = passenger(1L, booking, "INFANT");
+    PassengerSeatAssignmentEntity currentAssignment =
+        activeAssignment(booking, passenger, 100L, 1L, "BOOKED");
+
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
+    when(passengerSeatAssignmentRepository.findFirstByActiveAssignment(
+            10L, 1L, 100L, List.of("RESERVED", "BOOKED")))
+        .thenReturn(Optional.of(currentAssignment));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> service.changeSeat(7L, 10L, new SeatChangeRequest(1L, 100L, 101L)));
+
+    assertEquals("SEAT_NOT_ALLOWED", exception.getCode());
+    assertEquals("INFANT passengers cannot be assigned seats", exception.getMessage());
+    verify(passengerSeatAssignmentRepository, never()).saveAll(any());
+    verify(passengerSeatAssignmentRepository, never()).save(any());
+    verify(flightSeatRepository, never()).releaseSelectedForBooking(any(), any());
   }
 
   @Test

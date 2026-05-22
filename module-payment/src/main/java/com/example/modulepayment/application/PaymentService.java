@@ -595,6 +595,9 @@ public class PaymentService {
     if (booking == null || expireAt == null) {
       return true;
     }
+    if (booking.getPaymentWindowExtendedAt() != null) {
+      return expireAt.isAfter(now);
+    }
     return !expireAt.isBefore(now.plusMinutes(MIN_PAYMENT_WINDOW_MINUTES));
   }
 
