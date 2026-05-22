@@ -765,7 +765,8 @@ public class BookingRevalidateService {
   }
 
   private PricingBreakdown buildPricing(FlightFareEntity fare, PassengerSummaryRequest summary) {
-    String currency = countryCurrencyResolver.resolveCurrency(countryCurrencyResolver.resolveCountryCode(fare));
+    String currency =
+        countryCurrencyResolver.resolveCurrency(countryCurrencyResolver.resolveCountryCode(fare));
     return buildPricing(fare, summary, currency);
   }
 
@@ -783,12 +784,7 @@ public class BookingRevalidateService {
     BigDecimal taxes =
         CurrencyAmountNormalizer.normalize(
             original.subtract(baseFare).max(BigDecimal.ZERO), currency);
-    return new PricingBreakdown(
-        currency,
-        baseFare,
-        taxes,
-        zeroMoney(currency),
-        original);
+    return new PricingBreakdown(currency, baseFare, taxes, zeroMoney(currency), original);
   }
 
   private BigDecimal calculateTieredPrice(
@@ -802,7 +798,9 @@ public class BookingRevalidateService {
   }
 
   private BigDecimal nonNullMoney(BigDecimal value) {
-    return value == null ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP) : value.setScale(2, RoundingMode.HALF_UP);
+    return value == null
+        ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+        : value.setScale(2, RoundingMode.HALF_UP);
   }
 
   private BigDecimal zeroMoney(String currency) {

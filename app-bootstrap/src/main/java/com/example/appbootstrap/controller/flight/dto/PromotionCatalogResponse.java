@@ -15,7 +15,8 @@ public record PromotionCatalogResponse(List<PromotionItem> promotions) {
 
   public record PromotionItem(
       @Schema(example = "WELCOME10") String code,
-      @Schema(example = "10% off for newly onboarded users on their first booking.") String description,
+      @Schema(example = "10% off for newly onboarded users on their first booking.")
+          String description,
       @Schema(example = "PERCENT") String discountType,
       @Schema(example = "10") BigDecimal discountValue,
       @Schema(example = "300000") BigDecimal maxDiscount,
