@@ -298,7 +298,8 @@ class BookingRevalidateServiceTest {
     when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
     when(countryCurrencyResolver.resolveCountryCode(returnFare)).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
-    when(promotionPreviewService.preview(eq(null), eq(new BigDecimal("3300000")), eq("VND"), eq("VN"), eq(true)))
+    when(promotionPreviewService.preview(
+            eq(null), eq(new BigDecimal("3300000")), eq("VND"), eq("VN"), eq(true)))
         .thenReturn(
             PromotionPreviewService.PromoPreview.notApplicable(
                 "No promo code provided", new BigDecimal("3300000.00")));
@@ -337,7 +338,8 @@ class BookingRevalidateServiceTest {
     when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
     when(countryCurrencyResolver.resolveCountryCode(returnFare)).thenReturn("VN");
     when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
-    when(promotionPreviewService.preview(eq(null), eq(new BigDecimal("3300000")), eq("VND"), eq("VN"), eq(true)))
+    when(promotionPreviewService.preview(
+            eq(null), eq(new BigDecimal("3300000")), eq("VND"), eq("VN"), eq(true)))
         .thenReturn(
             PromotionPreviewService.PromoPreview.notApplicable(
                 "No promo code provided", new BigDecimal("3300000.00")));
@@ -352,7 +354,8 @@ class BookingRevalidateServiceTest {
                     new RevalidateItineraryRequest.SegmentRequest("INBOUND", 22L, 202L))));
 
     stubRevalidateSnapshotAccess(itinerary.revalidateId(), "idem-roundtrip");
-    when(flightFareRepository.findByIdWithDetailsForUpdate(202L)).thenReturn(Optional.of(returnFare));
+    when(flightFareRepository.findByIdWithDetailsForUpdate(202L))
+        .thenReturn(Optional.of(returnFare));
     UserEntity user = new UserEntity();
     user.setId(7L);
     when(userRepository.findById(7L)).thenReturn(Optional.of(user));
@@ -384,7 +387,9 @@ class BookingRevalidateServiceTest {
                 itinerary.revalidateId(),
                 "idem-roundtrip",
                 summary,
-                List.of(new CreateBookingRequest.BookingContactRequest("user@example.com", "0900000000", true)),
+                List.of(
+                    new CreateBookingRequest.BookingContactRequest(
+                        "user@example.com", "0900000000", true)),
                 List.of(
                     new CreateBookingRequest.BookingPassengerRequest(
                         "AN",

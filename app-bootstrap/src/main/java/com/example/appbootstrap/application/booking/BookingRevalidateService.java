@@ -173,22 +173,22 @@ public class BookingRevalidateService {
 
     List<SegmentRuntime> segmentRuntimes = new ArrayList<>(segmentRequests.size());
     for (RevalidateItineraryRequest.SegmentRequest segmentRequest : segmentRequests) {
-      FlightFareEntity fare = requireFareForFlight(segmentRequest.fareId(), segmentRequest.flightId());
+      FlightFareEntity fare =
+          requireFareForFlight(segmentRequest.fareId(), segmentRequest.flightId());
       ensureSaleable(fare);
       long availableSeats =
           flightInventoryAvailabilityService.countAvailableSeats(
               fare.getFlight().getId(), fare.getFareClass().getId());
       if (availableSeats < requiredSeats) {
         throw new AppException(
-            "FARE_SOLD_OUT",
-            "Selected fare does not have enough available seats",
-            409);
+            "FARE_SOLD_OUT", "Selected fare does not have enough available seats", 409);
       }
       String countryCode = countryCurrencyResolver.resolveCountryCode(fare);
       String currency = countryCurrencyResolver.resolveCurrency(countryCode);
       PricingBreakdown pricing = buildPricing(fare, request.passengerSummary(), currency);
       segmentRuntimes.add(
-          new SegmentRuntime(normalizeSegmentDirection(segmentRequest.direction()), fare, countryCode, pricing));
+          new SegmentRuntime(
+              normalizeSegmentDirection(segmentRequest.direction()), fare, countryCode, pricing));
     }
 
     String pricingCurrency = segmentRuntimes.getFirst().pricing().currency();
@@ -207,11 +207,14 @@ public class BookingRevalidateService {
           CurrencyAmountNormalizer.normalize(
               originalTotalPrice.add(segment.pricing().originalTotalPrice()), pricingCurrency);
       baseFareTotal =
-          CurrencyAmountNormalizer.normalize(baseFareTotal.add(segment.pricing().baseFare()), pricingCurrency);
+          CurrencyAmountNormalizer.normalize(
+              baseFareTotal.add(segment.pricing().baseFare()), pricingCurrency);
       taxesTotal =
-          CurrencyAmountNormalizer.normalize(taxesTotal.add(segment.pricing().taxes()), pricingCurrency);
+          CurrencyAmountNormalizer.normalize(
+              taxesTotal.add(segment.pricing().taxes()), pricingCurrency);
       feesTotal =
-          CurrencyAmountNormalizer.normalize(feesTotal.add(segment.pricing().fees()), pricingCurrency);
+          CurrencyAmountNormalizer.normalize(
+              feesTotal.add(segment.pricing().fees()), pricingCurrency);
     }
 
     PromoPreview preview =
@@ -228,7 +231,8 @@ public class BookingRevalidateService {
             : zeroMoney(pricingCurrency);
     Integer discountPercent = "APPLIED".equals(preview.status()) ? preview.discountPercent() : null;
     BigDecimal discountedTotal =
-        CurrencyAmountNormalizer.normalize(originalTotalPrice.subtract(discountAmount), pricingCurrency);
+        CurrencyAmountNormalizer.normalize(
+            originalTotalPrice.subtract(discountAmount), pricingCurrency);
 
     String revalidateId = generateRevalidateId();
     PricingSnapshot aggregatePricing =
@@ -363,7 +367,8 @@ public class BookingRevalidateService {
                 new CreateBookingFingerprint(
                     snapshot.revalidateId(),
                     snapshot.segments().stream()
-                        .map(segment -> new SegmentFingerprint(segment.flightId(), segment.fareId()))
+                        .map(
+                            segment -> new SegmentFingerprint(segment.flightId(), segment.fareId()))
                         .toList(),
                     canonical,
                     contacts,
@@ -891,7 +896,9 @@ public class BookingRevalidateService {
     List<RevalidateItineraryRequest.SegmentRequest> normalized = new ArrayList<>(segments.size());
     Set<String> directions = new HashSet<>();
     for (RevalidateItineraryRequest.SegmentRequest segment : segments) {
-      if (segment == null) continue;
+      if (segment == null) {
+        continue;
+      }
       String direction = normalizeSegmentDirection(segment.direction());
       if (!directions.add(direction)) {
         throw new AppException(
@@ -915,7 +922,9 @@ public class BookingRevalidateService {
       }
       return normalized;
     }
-    if (normalized.size() != 2 || !directions.contains("OUTBOUND") || !directions.contains("INBOUND")) {
+    if (normalized.size() != 2
+        || !directions.contains("OUTBOUND")
+        || !directions.contains("INBOUND")) {
       throw new AppException(
           "INVALID_ITINERARY_SEGMENTS",
           "ROUND_TRIP itinerary requires OUTBOUND and INBOUND segments",
@@ -931,9 +940,7 @@ public class BookingRevalidateService {
     String normalized = rawDirection.trim().toUpperCase(Locale.ROOT);
     if (!"OUTBOUND".equals(normalized) && !"INBOUND".equals(normalized)) {
       throw new AppException(
-          "INVALID_SEGMENT_DIRECTION",
-          "segment direction must be OUTBOUND or INBOUND",
-          400);
+          "INVALID_SEGMENT_DIRECTION", "segment direction must be OUTBOUND or INBOUND", 400);
     }
     return normalized;
   }
