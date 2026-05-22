@@ -149,6 +149,78 @@ class BookingSeatAssignmentServiceTest {
   }
 
   @Test
+  void assignSeats_allowsReturnFlightAfterOutboundSeatAssigned() {
+    BookingEntity booking = booking("PENDING_PAYMENT", "50000.00");
+    BookingFareHoldEntity outboundHold = hold("PAID", null, 1);
+    outboundHold.getFlightFare().getFlight().setId(82825L);
+    BookingFareHoldEntity returnHold = hold("PAID", null, 1);
+    returnHold.getFlightFare().getFlight().setId(82826L);
+    PassengerEntity passenger = passenger(1L, booking, "ADULT");
+    FlightSeatEntity outboundSeat =
+        seat(
+            100L,
+            outboundHold.getFlightFare().getFlight(),
+            category("STANDARD", 1, "0.00"),
+            type("MIDDLE", "0.00"));
+    FlightSeatEntity returnSeat =
+        seat(
+            200L,
+            returnHold.getFlightFare().getFlight(),
+            category("PREFERRED", 2, "40000.00"),
+            type("MIDDLE", "0.00"));
+
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
+    when(flightSeatRepository.findAllById(List.of(200L))).thenReturn(List.of(returnSeat));
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(82826L), any()))
+        .thenReturn(Optional.of(returnHold));
+    when(passengerSeatAssignmentRepository.countByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(82826L), any()))
+        .thenReturn(0L);
+    when(flightSeatRepository.findAllowedSeatIdsForFare(82826L, 5L)).thenReturn(Set.of(200L));
+    when(passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
+            200L, List.of("RESERVED", "BOOKED")))
+        .thenReturn(false);
+    when(passengerRepository.findByIdAndBookingId(1L, 10L)).thenReturn(Optional.of(passenger));
+    when(passengerSeatAssignmentRepository.existsByPassengerIdAndFlightIdAndStatusIn(
+            1L, 82826L, List.of("RESERVED", "BOOKED")))
+        .thenReturn(false);
+    when(flightSeatRepository.reserveSelectedForBooking(
+            10L, List.of(200L), booking.getPnrExpiresAt()))
+        .thenReturn(1);
+    when(bookingServiceRepository.sumPriceByBookingId(10L))
+        .thenReturn(BigDecimal.ZERO, BigDecimal.ZERO);
+    when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
+        .thenReturn(
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            new BigDecimal("40000.00"),
+            new BigDecimal("40000.00"));
+    when(passengerSeatAssignmentRepository.saveAll(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    PassengerSeatAssignmentEntity outboundAssignment =
+        activeAssignment(booking, passenger, 100L, 82825L, "RESERVED");
+    PassengerSeatAssignmentEntity returnAssignment =
+        activeAssignment(booking, passenger, 200L, 82826L, "RESERVED");
+    returnAssignment.setSurchargeAmount(new BigDecimal("40000.00"));
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of(outboundAssignment, returnAssignment));
+
+    SeatAssignmentResponse response =
+        service.assignSeats(
+            7L,
+            10L,
+            new SeatAssignmentRequest(
+                List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 200L))));
+
+    assertEquals(2, response.assignments().size());
+    assertEquals(new BigDecimal("40000.00"), response.seatSurchargeTotal());
+    verify(passengerSeatAssignmentRepository)
+        .existsByPassengerIdAndFlightIdAndStatusIn(1L, 82826L, List.of("RESERVED", "BOOKED"));
+  }
+
+  @Test
   void assignSeats_multiplePaidSeatsRefreshTotal() {
     BookingEntity booking = booking("PENDING_PAYMENT", "1400.00");
     BookingFareHoldEntity hold = hold("PAID", null, 2);
@@ -205,12 +277,15 @@ class BookingSeatAssignmentServiceTest {
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+    Long flightId = hold.getFlightFare().getFlight().getId();
+    when(flightSeatRepository.findAllById(List.of(100L))).thenReturn(List.of(seat));
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(flightId), any()))
         .thenReturn(Optional.of(hold));
-    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any()))
+    when(passengerSeatAssignmentRepository.countByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(flightId), any()))
         .thenReturn(0L);
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(100L));
-    when(flightSeatRepository.findAllById(List.of(100L))).thenReturn(List.of(seat));
     when(passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
             100L, List.of("RESERVED", "BOOKED")))
         .thenReturn(false);
@@ -243,12 +318,15 @@ class BookingSeatAssignmentServiceTest {
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+    Long flightId = hold.getFlightFare().getFlight().getId();
+    when(flightSeatRepository.findAllById(List.of(100L))).thenReturn(List.of(seat));
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(flightId), any()))
         .thenReturn(Optional.of(hold));
-    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any()))
+    when(passengerSeatAssignmentRepository.countByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(flightId), any()))
         .thenReturn(0L);
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(100L));
-    when(flightSeatRepository.findAllById(List.of(100L))).thenReturn(List.of(seat));
     when(passengerSeatAssignmentRepository.existsByFlightSeatIdAndStatusIn(
             100L, List.of("RESERVED", "BOOKED")))
         .thenReturn(false);
@@ -375,7 +453,7 @@ class BookingSeatAssignmentServiceTest {
                         List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 100L)))));
 
     assertEquals("BOOKING_PAYMENT_ALREADY_STARTED", exception.getCode());
-    verify(bookingFareHoldRepository, never()).findFirstByBookingIdAndStatusIn(any(), any());
+    verify(bookingFareHoldRepository, never()).findByBookingIdAndFlightIdAndStatusIn(any(), any(), any());
   }
 
   @Test
@@ -429,7 +507,8 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(flightSeatRepository.releaseSelectedForBooking(10L, List.of(100L))).thenReturn(1);
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(hold.getFlightFare().getFlight().getId()), any()))
         .thenReturn(Optional.of(hold));
     when(flightSeatRepository.findById(101L)).thenReturn(Optional.of(nextSeat));
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(101L));
@@ -521,7 +600,8 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(flightSeatRepository.releaseSelectedForBooking(10L, List.of(100L))).thenReturn(1);
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(hold.getFlightFare().getFlight().getId()), any()))
         .thenReturn(Optional.of(hold));
     when(flightSeatRepository.findById(101L)).thenReturn(Optional.of(nextSeat));
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(101L));
@@ -577,7 +657,8 @@ class BookingSeatAssignmentServiceTest {
     when(passengerSeatAssignmentRepository.saveAll(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(flightSeatRepository.releaseSelectedForBooking(10L, List.of(100L))).thenReturn(1);
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(hold.getFlightFare().getFlight().getId()), any()))
         .thenReturn(Optional.of(hold));
     when(flightSeatRepository.findById(101L)).thenReturn(Optional.of(nextSeat));
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any())).thenReturn(Set.of(101L));
@@ -633,9 +714,12 @@ class BookingSeatAssignmentServiceTest {
       List<FlightSeatEntity> seats) {
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.existsByBookingIdAndPaymentStatus(10L, "PENDING")).thenReturn(false);
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(any(), any()))
+    Long flightId = hold.getFlightFare().getFlight().getId();
+    when(bookingFareHoldRepository.findByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(flightId), any()))
         .thenReturn(Optional.of(hold));
-    when(passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(any(), any()))
+    when(passengerSeatAssignmentRepository.countByBookingIdAndFlightIdAndStatusIn(
+            eq(10L), eq(flightId), any()))
         .thenReturn(0L);
     when(flightSeatRepository.findAllowedSeatIdsForFare(any(), any()))
         .thenReturn(
@@ -652,8 +736,8 @@ class BookingSeatAssignmentServiceTest {
     for (PassengerEntity passenger : passengers) {
       when(passengerRepository.findByIdAndBookingId(passenger.getId(), 10L))
           .thenReturn(Optional.of(passenger));
-      when(passengerSeatAssignmentRepository.existsByPassengerIdAndStatusIn(
-              passenger.getId(), List.of("RESERVED", "BOOKED")))
+      when(passengerSeatAssignmentRepository.existsByPassengerIdAndFlightIdAndStatusIn(
+              passenger.getId(), flightId, List.of("RESERVED", "BOOKED")))
           .thenReturn(false);
     }
     when(flightSeatRepository.reserveSelectedForBooking(

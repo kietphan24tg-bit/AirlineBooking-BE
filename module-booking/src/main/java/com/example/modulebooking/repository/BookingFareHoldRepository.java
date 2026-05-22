@@ -2,6 +2,7 @@ package com.example.modulebooking.repository;
 
 import com.example.modulebooking.entity.BookingFareHoldEntity;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +15,21 @@ public interface BookingFareHoldRepository extends JpaRepository<BookingFareHold
 
   Optional<BookingFareHoldEntity> findFirstByBookingIdAndStatusIn(
       Long bookingId, java.util.Collection<String> statuses);
+
+  @Query(
+      """
+      select h
+      from BookingFareHoldEntity h
+        join h.flightFare ff
+        join ff.flight f
+      where h.booking.id = :bookingId
+        and f.id = :flightId
+        and h.status in :statuses
+      """)
+  Optional<BookingFareHoldEntity> findByBookingIdAndFlightIdAndStatusIn(
+      @Param("bookingId") Long bookingId,
+      @Param("flightId") Long flightId,
+      @Param("statuses") Collection<String> statuses);
 
   @Modifying
   @Query(

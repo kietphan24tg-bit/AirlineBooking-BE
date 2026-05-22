@@ -22,9 +22,35 @@ public interface PassengerSeatAssignmentRepository
 
   boolean existsByPassengerIdAndStatusIn(Long passengerId, Collection<String> statuses);
 
+  @Query(
+      """
+      select case when count(psa) > 0 then true else false end
+      from PassengerSeatAssignmentEntity psa
+      where psa.passenger.id = :passengerId
+        and psa.flightSeat.flight.id = :flightId
+        and psa.status in :statuses
+      """)
+  boolean existsByPassengerIdAndFlightIdAndStatusIn(
+      @Param("passengerId") Long passengerId,
+      @Param("flightId") Long flightId,
+      @Param("statuses") Collection<String> statuses);
+
   boolean existsByFlightSeatIdAndStatusIn(Long flightSeatId, Collection<String> statuses);
 
   long countByBookingIdAndStatusIn(Long bookingId, Collection<String> statuses);
+
+  @Query(
+      """
+      select count(psa)
+      from PassengerSeatAssignmentEntity psa
+      where psa.booking.id = :bookingId
+        and psa.flightSeat.flight.id = :flightId
+        and psa.status in :statuses
+      """)
+  long countByBookingIdAndFlightIdAndStatusIn(
+      @Param("bookingId") Long bookingId,
+      @Param("flightId") Long flightId,
+      @Param("statuses") Collection<String> statuses);
 
   @Query(
       """

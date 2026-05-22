@@ -75,16 +75,19 @@ public class BookingSeatAssignmentService {
             ? bookingTotalRecalculationService.captureFareTotal(booking)
             : null;
 
-    BookingFareHoldEntity hold =
-        bookingFareHoldRepository
-            .findFirstByBookingIdAndStatusIn(bookingId, ACTIVE_HOLD_STATUSES)
-            .orElseThrow(() -> new AppException("FARE_HOLD_NOT_FOUND", "Fare hold not found", 409));
-
     List<SeatAssignmentRequest.AssignmentRequest> assignments = request.assignments();
     validateNoDuplicates(assignments);
+    List<Long> requestedSeatIds =
+        assignments.stream().map(SeatAssignmentRequest.AssignmentRequest::seatId).toList();
+    List<FlightSeatEntity> seats = flightSeatRepository.findAllById(requestedSeatIds);
+    if (seats.size() != requestedSeatIds.size()) {
+      throw new AppException("SEAT_NOT_FOUND", "One or more seats were not found", 404);
+    }
+    Long flightId = resolveSingleFlightId(seats);
+    BookingFareHoldEntity hold = requireActiveHold(bookingId, flightId);
     long existingAssignments =
-        passengerSeatAssignmentRepository.countByBookingIdAndStatusIn(
-            bookingId, ACTIVE_ASSIGNMENT_STATUSES);
+        passengerSeatAssignmentRepository.countByBookingIdAndFlightIdAndStatusIn(
+            bookingId, flightId, ACTIVE_ASSIGNMENT_STATUSES);
     if (existingAssignments + assignments.size() > hold.getQuantity()) {
       throw new AppException(
           "SEAT_ASSIGNMENT_LIMIT_EXCEEDED", "Seat assignments exceed held seat quantity", 409);
@@ -99,12 +102,6 @@ public class BookingSeatAssignmentService {
     if (!selectionPolicy.allowsAdvanceSelection()) {
       throw new AppException(
           "SEAT_NOT_ALLOWED", "Seat selection is not allowed for selected fare", 409);
-    }
-    List<Long> requestedSeatIds =
-        assignments.stream().map(SeatAssignmentRequest.AssignmentRequest::seatId).toList();
-    List<FlightSeatEntity> seats = flightSeatRepository.findAllById(requestedSeatIds);
-    if (seats.size() != requestedSeatIds.size()) {
-      throw new AppException("SEAT_NOT_FOUND", "One or more seats were not found", 404);
     }
     for (FlightSeatEntity seat : seats) {
       if (!hold.getFlightFare().getFlight().getId().equals(seat.getFlight().getId())) {
@@ -158,8 +155,8 @@ public class BookingSeatAssignmentService {
         throw new AppException(
             "SEAT_NOT_ALLOWED", "INFANT passengers cannot be assigned seats", 409);
       }
-      if (passengerSeatAssignmentRepository.existsByPassengerIdAndStatusIn(
-          passenger.getId(), ACTIVE_ASSIGNMENT_STATUSES)) {
+      if (passengerSeatAssignmentRepository.existsByPassengerIdAndFlightIdAndStatusIn(
+          passenger.getId(), flightId, ACTIVE_ASSIGNMENT_STATUSES)) {
         throw new AppException(
             "PASSENGER_ALREADY_ASSIGNED", "Passenger already has an assigned seat", 409);
       }
@@ -292,7 +289,11 @@ public class BookingSeatAssignmentService {
       return buildActiveSeatAssignmentResponse(booking, bookingId, fareTotal);
     }
 
-    BookingFareHoldEntity hold = requireActiveHold(bookingId);
+    FlightSeatEntity nextSeat =
+        flightSeatRepository
+            .findById(request.toSeatId())
+            .orElseThrow(() -> new AppException("SEAT_NOT_FOUND", "Seat not found", 404));
+    BookingFareHoldEntity hold = requireActiveHold(bookingId, nextSeat.getFlight().getId());
     FareClassEntity fareClass = hold.getFlightFare().getFareClass();
     SeatSelectionPolicy selectionPolicy =
         SeatSelectionPolicy.fromValue(fareClass.getSeatSelectionPolicy());
@@ -300,11 +301,6 @@ public class BookingSeatAssignmentService {
       throw new AppException(
           "SEAT_NOT_ALLOWED", "Seat selection is not allowed for selected fare", 409);
     }
-
-    FlightSeatEntity nextSeat =
-        flightSeatRepository
-            .findById(request.toSeatId())
-            .orElseThrow(() -> new AppException("SEAT_NOT_FOUND", "Seat not found", 404));
     validateRequestedSeat(hold, nextSeat, request.toSeatId());
 
     Map<Long, BigDecimal> surchargeBySeatId =
@@ -417,10 +413,29 @@ public class BookingSeatAssignmentService {
     return value == null ? ZERO : value.setScale(2, RoundingMode.HALF_UP);
   }
 
-  private BookingFareHoldEntity requireActiveHold(Long bookingId) {
+  private BookingFareHoldEntity requireActiveHold(Long bookingId, Long flightId) {
     return bookingFareHoldRepository
-        .findFirstByBookingIdAndStatusIn(bookingId, ACTIVE_HOLD_STATUSES)
+        .findByBookingIdAndFlightIdAndStatusIn(bookingId, flightId, ACTIVE_HOLD_STATUSES)
         .orElseThrow(() -> new AppException("FARE_HOLD_NOT_FOUND", "Fare hold not found", 409));
+  }
+
+  private Long resolveSingleFlightId(List<FlightSeatEntity> seats) {
+    Long flightId = null;
+    for (FlightSeatEntity seat : seats) {
+      Long seatFlightId = seat.getFlight().getId();
+      if (flightId == null) {
+        flightId = seatFlightId;
+        continue;
+      }
+      if (!flightId.equals(seatFlightId)) {
+        throw new AppException(
+            "SEAT_NOT_ALLOWED", "All seats in one request must belong to the same flight", 409);
+      }
+    }
+    if (flightId == null) {
+      throw new AppException("SEAT_NOT_FOUND", "One or more seats were not found", 404);
+    }
+    return flightId;
   }
 
   private void validateRequestedSeat(
