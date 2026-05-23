@@ -153,7 +153,10 @@ class PaymentServiceTest {
   @Test
   void shouldCreateStripeCheckoutPayment() {
     PaymentService stripeService = paymentService(stripeProperties());
-    BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(35));
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING", start.plusMinutes(35));
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
         .thenReturn(List.of());
@@ -198,10 +201,54 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldRejectStripeWhenLessThanThirtyMinutesRemainBeforeCap() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING", start.plusMinutes(4));
+    booking.setCreatedAt(start.minusMinutes(31));
+    booking.setUpdatedAt(start.minusMinutes(31));
+    booking.setPnrExpiresAt(booking.getCreatedAt().plusMinutes(60));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> stripeService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE_CARD")));
+
+    assertEquals("STRIPE_PAYMENT_WINDOW_TOO_SHORT", exception.getCode());
+    verify(stripePaymentGateway, never()).createCheckoutSession(any());
+  }
+
+  @Test
+  void shouldHideStripeMethodWhenLessThanThirtyMinutesRemainBeforeCap() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING", start.plusMinutes(4));
+    booking.setCreatedAt(start.minusMinutes(31));
+    booking.setPnrExpiresAt(booking.getCreatedAt().plusMinutes(60));
+
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+
+    List<PaymentMethodView> groups = stripeService.getPaymentMethods(10L, 7L, false);
+    boolean stripeSupported =
+        groups.stream()
+            .flatMap(group -> group.methods().stream())
+            .filter(method -> "STRIPE_CARD".equals(method.code()))
+            .findFirst()
+            .orElseThrow()
+            .supported();
+
+    assertEquals(false, stripeSupported);
+  }
+
+  @Test
   void shouldExtendBookingWindowToThirtyMinutesWhenCreatingStripePaymentLate() {
     PaymentService stripeService = paymentService(stripeProperties());
     OffsetDateTime start = OffsetDateTime.now();
     BookingEntity booking = booking("PENDING", start.plusMinutes(3));
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
 
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
@@ -837,8 +884,11 @@ class PaymentServiceTest {
   @Test
   void shouldCancelPayosPendingPaymentWhenSwitchingToStripe() {
     PaymentService stripeService = paymentService(stripeProperties());
-    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
+    OffsetDateTime start = OffsetDateTime.now();
+    OffsetDateTime expireAt = start.plusMinutes(15);
     BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
     PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
     existing.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
 
@@ -974,7 +1024,10 @@ class PaymentServiceTest {
   @Test
   void shouldNotCreateNewPaymentWhenCancellingPreviousMethodFails() {
     PaymentService stripeService = paymentService(stripeProperties());
-    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(15));
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING_PAYMENT", start.plusMinutes(15));
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
     PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
 
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));

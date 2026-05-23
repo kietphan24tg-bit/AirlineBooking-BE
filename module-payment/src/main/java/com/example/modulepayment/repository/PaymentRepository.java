@@ -94,4 +94,19 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
           """,
       nativeQuery = true)
   int expirePendingPaymentsForExpiredBookings(@Param("now") java.time.OffsetDateTime now);
+
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      join fetch p.booking b
+      where p.paymentStatus = 'PENDING'
+        and p.paymentMethod = 'STRIPE_CARD'
+        and p.transactionId is not null
+        and trim(p.transactionId) <> ''
+        and b.pnrExpiresAt is not null
+        and b.pnrExpiresAt < :now
+      """)
+  List<PaymentEntity> findPendingStripeCardPaymentsPastBookingExpiry(
+      @Param("now") java.time.OffsetDateTime now);
 }

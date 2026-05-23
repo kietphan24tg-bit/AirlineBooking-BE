@@ -9,6 +9,7 @@ import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
 import com.example.modulepayment.gateway.PayosWebhookSupport.NormalizedPayosWebhookEvent;
+import com.example.modulepayment.gateway.PaymentRefundGateway.PaymentRefundResult;
 import com.example.modulepayment.gateway.StripeWebhookSupport;
 import com.example.modulepayment.gateway.StripeWebhookSupport.NormalizedStripeWebhookEvent;
 import com.example.modulepayment.repository.PaymentRepository;
@@ -42,6 +43,8 @@ public class PaymentWebhookService {
   private static final String STRIPE_EVENT_CHECKOUT_EXPIRED = "checkout.session.expired";
   private static final String STRIPE_EVENT_PAYMENT_FAILED = "payment_intent.payment_failed";
   private static final String STRIPE_PAYMENT_STATUS_PAID = "paid";
+  private static final String LATE_STRIPE_CAPTURE_REFUND_REASON =
+      "Booking payment window expired before Stripe capture was confirmed";
 
   private final PaymentRepository paymentRepository;
   private final PaymentWebhookEventRepository paymentWebhookEventRepository;
@@ -53,6 +56,7 @@ public class PaymentWebhookService {
   private final TicketIssuanceService ticketIssuanceService;
   private final BookingConfirmationNotifier bookingConfirmationNotifier;
   private final TicketFinancialSnapshotService ticketFinancialSnapshotService;
+  private final PaymentRefundService paymentRefundService;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
@@ -64,7 +68,8 @@ public class PaymentWebhookService {
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
       TicketIssuanceService ticketIssuanceService,
       BookingConfirmationNotifier bookingConfirmationNotifier,
-      TicketFinancialSnapshotService ticketFinancialSnapshotService) {
+      TicketFinancialSnapshotService ticketFinancialSnapshotService,
+      PaymentRefundService paymentRefundService) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
@@ -75,6 +80,7 @@ public class PaymentWebhookService {
     this.ticketIssuanceService = ticketIssuanceService;
     this.bookingConfirmationNotifier = bookingConfirmationNotifier;
     this.ticketFinancialSnapshotService = ticketFinancialSnapshotService;
+    this.paymentRefundService = paymentRefundService;
   }
 
   @Transactional
@@ -299,6 +305,7 @@ public class PaymentWebhookService {
 
     if (bookingExpired(booking, now)) {
       expirePaymentAndBooking(payment, booking, now);
+      refundLateStripeCapture(payment, event);
       saveStripeAudit(
           payment, booking, event, OUTCOME_REJECTED, "BOOKING_EXPIRED", "Booking expired");
       return;
@@ -411,6 +418,38 @@ public class PaymentWebhookService {
     flightSeatRepository.releaseReservedForBooking(booking.getId());
     passengerSeatAssignmentRepository.releaseReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
+  }
+
+  private void refundLateStripeCapture(PaymentEntity payment, NormalizedStripeWebhookEvent event) {
+    if (payment == null || payment.getAmount() == null) {
+      return;
+    }
+    String paymentIntentId = event.paymentIntentId();
+    if (paymentIntentId != null && !paymentIntentId.isBlank()) {
+      payment.setProviderPaymentReference(paymentIntentId.trim());
+    }
+    try {
+      paymentRefundService.preparePaymentForRefund(payment);
+      PaymentRefundResult refundResult =
+          paymentRefundService.refund(
+              payment.getId(),
+              "booking-expired-refund-" + payment.getId(),
+              payment,
+              payment.getAmount(),
+              LATE_STRIPE_CAPTURE_REFUND_REASON);
+      log.warn(
+          "Refunded late Stripe capture after booking expired: paymentId={}, bookingId={}, refundId={}, refundStatus={}",
+          payment.getId(),
+          payment.getBooking() == null ? null : payment.getBooking().getId(),
+          refundResult.providerRefundId(),
+          refundResult.providerStatus());
+    } catch (RuntimeException exception) {
+      log.error(
+          "Failed to refund late Stripe capture after booking expired: paymentId={}, bookingId={}",
+          payment.getId(),
+          payment.getBooking() == null ? null : payment.getBooking().getId(),
+          exception);
+    }
   }
 
   private void confirmSuccessfulPayment(

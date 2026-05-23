@@ -20,7 +20,9 @@ import org.springframework.stereotype.Component;
 public class StripePaymentGateway {
 
   private static final String ACTION_TYPE_CHECKOUT = "CHECKOUT";
-  private static final long MIN_CHECKOUT_TTL_SECONDS = 30L * 60L;
+  /** Stripe Checkout allows {@code expires_at} between 30 minutes and 24 hours after creation. */
+  static final long STRIPE_MIN_CHECKOUT_TTL_SECONDS = 30L * 60L;
+  static final long STRIPE_MAX_CHECKOUT_TTL_SECONDS = 24L * 60L * 60L;
 
   private final PaymentProperties paymentProperties;
 
@@ -251,13 +253,24 @@ public class StripePaymentGateway {
     return RequestOptions.builder().setApiKey(paymentProperties.stripe().secretKey()).build();
   }
 
-  private static Long checkoutExpiresAt(OffsetDateTime expiredAt) {
+  /**
+   * Aligns Stripe Checkout expiry with the booking/payment cap. When the cap is sooner than
+   * Stripe's 30-minute minimum, the returned value uses that minimum and callers must expire the
+   * session at the cap via {@link #expireCheckoutSession(String)}.
+   */
+  static Long checkoutExpiresAt(OffsetDateTime expiredAt) {
     if (expiredAt == null) {
       return null;
     }
-    long expiresAt = expiredAt.toEpochSecond();
-    long minExpiresAt = OffsetDateTime.now().toEpochSecond() + MIN_CHECKOUT_TTL_SECONDS;
-    return expiresAt >= minExpiresAt ? expiresAt : null;
+    long nowEpoch = OffsetDateTime.now().toEpochSecond();
+    long capEpoch = expiredAt.toEpochSecond();
+    if (capEpoch <= nowEpoch) {
+      return null;
+    }
+    long stripeMinEpoch = nowEpoch + STRIPE_MIN_CHECKOUT_TTL_SECONDS;
+    long stripeMaxEpoch = nowEpoch + STRIPE_MAX_CHECKOUT_TTL_SECONDS;
+    long stripeEpoch = Math.min(Math.max(capEpoch, stripeMinEpoch), stripeMaxEpoch);
+    return stripeEpoch;
   }
 
   private static boolean isZeroDecimal(String currency) {

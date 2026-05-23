@@ -5,6 +5,7 @@ plugins {
 dependencies {
     implementation project(':common')
     implementation project(':module-booking')
+    implementation project(':module-payment')
     implementation project(':module-flight')
     implementation project(':module-notification')
     implementation 'org.springframework.boot:spring-boot-starter'

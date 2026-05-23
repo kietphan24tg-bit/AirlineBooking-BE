@@ -17,6 +17,7 @@ import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
 import com.example.modulepayment.gateway.PayosWebhookSupport.NormalizedPayosWebhookEvent;
+import com.example.modulepayment.gateway.PaymentRefundGateway.PaymentRefundResult;
 import com.example.modulepayment.gateway.StripeWebhookSupport;
 import com.example.modulepayment.gateway.StripeWebhookSupport.NormalizedStripeWebhookEvent;
 import com.example.modulepayment.repository.PaymentRepository;
@@ -44,6 +45,7 @@ class PaymentWebhookServiceTest {
   @Mock private TicketIssuanceService ticketIssuanceService;
   @Mock private BookingConfirmationNotifier bookingConfirmationNotifier;
   @Mock private TicketFinancialSnapshotService ticketFinancialSnapshotService;
+  @Mock private PaymentRefundService paymentRefundService;
 
   private PaymentWebhookService paymentWebhookService;
 
@@ -60,7 +62,8 @@ class PaymentWebhookServiceTest {
             passengerSeatAssignmentRepository,
             ticketIssuanceService,
             bookingConfirmationNotifier,
-            ticketFinancialSnapshotService);
+            ticketFinancialSnapshotService,
+            paymentRefundService);
   }
 
   @Test
@@ -185,6 +188,48 @@ class PaymentWebhookServiceTest {
     assertEquals("STRIPE", captor.getValue().getProvider());
     assertEquals("evt_123", captor.getValue().getIdempotencyKey());
     assertEquals("PROCESSED", captor.getValue().getProcessingStatus());
+  }
+
+  @Test
+  void shouldRefundLateStripeSuccessWhenBookingAlreadyExpired() {
+    NormalizedStripeWebhookEvent event =
+        new NormalizedStripeWebhookEvent(
+            "STRIPE",
+            "checkout.session.completed",
+            123L,
+            "cs_test_123",
+            "pi_test_123",
+            1200000L,
+            "vnd",
+            "paid",
+            OffsetDateTime.parse("2025-08-10T03:03:09Z"),
+            "evt_456",
+            "t=1,v1=sig",
+            "{\"id\":\"evt_456\"}");
+    PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
+    payment.setPaymentMethod("STRIPE_CARD");
+    payment.setTransactionId("cs_test_123");
+    payment.getBooking().setPnrExpiresAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(stripeWebhookSupport.parseAndVerify("payload", "signature")).thenReturn(event);
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("STRIPE", "evt_456"))
+        .thenReturn(false);
+    when(paymentRepository.findByTransactionIdForUpdate("cs_test_123"))
+        .thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+    when(paymentRefundService.refund(any(), any(), any(), any(), any()))
+        .thenReturn(new PaymentRefundResult("re_123", "succeeded"));
+
+    paymentWebhookService.handleStripeWebhook("payload", "signature");
+
+    assertEquals("EXPIRED", payment.getPaymentStatus());
+    assertEquals("EXPIRED", payment.getBooking().getStatus());
+    verify(paymentRefundService).preparePaymentForRefund(payment);
+    verify(paymentRefundService).refund(any(), any(), any(), any(), any());
+    verify(ticketIssuanceService, never()).issueTicketsForConfirmedBooking(any());
+    verify(bookingConfirmationNotifier, never()).sendIfNeeded(any());
   }
 
   @Test
