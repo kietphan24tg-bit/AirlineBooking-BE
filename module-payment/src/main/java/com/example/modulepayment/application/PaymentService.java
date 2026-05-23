@@ -581,7 +581,8 @@ public class PaymentService {
     if (booking == null || booking.getCreatedAt() == null) {
       return booking == null ? null : booking.getPnrExpiresAt();
     }
-    return booking.getCreatedAt()
+    return booking
+        .getCreatedAt()
         .plusMinutes(BOOKING_PNR_EXPIRATION_MINUTES + PAYOS_PAYMENT_WINDOW_MINUTES);
   }
 
@@ -619,7 +620,9 @@ public class PaymentService {
       return true;
     }
     OffsetDateTime methodCapExpireAt =
-        METHOD_PAYOS.equals(method) ? resolvePayosMaxExpireAt(booking) : resolveMethodCapExpireAt(booking, method);
+        METHOD_PAYOS.equals(method)
+            ? resolvePayosMaxExpireAt(booking)
+            : resolveMethodCapExpireAt(booking, method);
     return methodCapExpireAt == null || !expireAt.isAfter(methodCapExpireAt);
   }
 
