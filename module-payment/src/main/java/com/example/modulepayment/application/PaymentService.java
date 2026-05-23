@@ -26,11 +26,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -48,6 +52,12 @@ public class PaymentService {
   private static final String METHOD_STRIPE_CARD = "STRIPE_CARD";
   private static final String METHOD_VNPAY = "VNPAY";
   private static final String METHOD_MOMO = "MOMO";
+
+  private static final List<String> ACTIVE_FARE_HOLD_STATUSES = List.of("HELD", "CONFIRMED");
+
+  private static final List<String> ACTIVE_SEAT_ASSIGNMENT_STATUSES = List.of("RESERVED", "BOOKED");
+
+  private static final BigDecimal ZERO_MONEY = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
   private static final String METHOD_PAY_LATER = "PAY_LATER";
   private static final String PAYMENT_STATUS_FAILED = "FAILED";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
@@ -55,7 +65,6 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_QR = "QR";
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
-  private static final long BOOKING_PNR_EXPIRATION_MINUTES = 15;
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
   private static final long PAYOS_PAYMENT_WINDOW_BUFFER_SECONDS = 20;
 
@@ -117,6 +126,18 @@ public class PaymentService {
     return buildPaymentMethodsForBooking(booking, onlySupported);
   }
 
+  @Transactional(readOnly = true)
+  public Optional<ActivePayLaterSessionView> findActivePayLaterSession(Long bookingId, Long userId) {
+    BookingEntity booking = requirePayableBooking(bookingId, userId);
+    return findActivePayLaterSessionForBooking(booking);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<ActivePayLaterSessionView> findActivePayLaterSessionPublic(Long bookingId) {
+    BookingEntity booking = requirePayableBookingPublic(bookingId);
+    return findActivePayLaterSessionForBooking(booking);
+  }
+
   private List<PaymentMethodView> buildPaymentMethodsForBooking(
       BookingEntity booking, boolean onlySupported) {
     OffsetDateTime now = OffsetDateTime.now();
@@ -140,11 +161,11 @@ public class PaymentService {
         List.of(
             new PaymentMethodView(
                 "CARD",
-                "Thẻ & ngân hàng",
+                "Cards & banking",
                 List.of(
                     new PaymentMethodView.PaymentMethodItemView(
                         METHOD_STRIPE_CARD,
-                        "Thẻ tín dụng / ghi nợ quốc tế",
+                        "International credit or debit card",
                         "STRIPE",
                         stripeIcon,
                         stripeSupported,
@@ -157,20 +178,20 @@ public class PaymentService {
                         payosSupported,
                         null),
                     new PaymentMethodView.PaymentMethodItemView(
-                        METHOD_VNPAY, "Thanh toán VNPay", "VNPAY", vnpayIcon, false, null))),
+                        METHOD_VNPAY, "VNPAY payment", "VNPAY", vnpayIcon, false, null))),
             new PaymentMethodView(
                 "EWALLET",
-                "Ví điện tử",
+                "E-wallets",
                 List.of(
                     new PaymentMethodView.PaymentMethodItemView(
-                        METHOD_MOMO, "Ví MoMo", "MOMO", momoIcon, false, null))),
+                        METHOD_MOMO, "MoMo wallet", "MOMO", momoIcon, false, null))),
             new PaymentMethodView(
                 "PAY_LATER",
-                "Thanh toán sau",
+                "Pay later",
                 List.of(
                     new PaymentMethodView.PaymentMethodItemView(
                         METHOD_PAY_LATER,
-                        "Giữ chỗ, thanh toán sau",
+                        "Hold booking, pay later",
                         "PAYOS",
                         vietqrIcon,
                         payLaterSupported,
@@ -373,6 +394,22 @@ public class PaymentService {
     boolean shouldReusePending =
         reusablePending != null && Objects.equals(booking.getPnrExpiresAt(), expireAt);
 
+    if (METHOD_PAY_LATER.equals(normalizedMethod)) {
+      PaymentEntity existingPayLater = findLatestPayLaterPending(previousPending);
+      if (existingPayLater != null && hasActiveBookingHold(booking, now)) {
+        applyEffectiveExpireAt(booking, expireAt, now);
+        resolvePendingPaymentsOnMethodChange(
+            previousPending, normalizedMethod, now, existingPayLater.getId());
+        refreshPayLaterProviderLink(existingPayLater, booking, expireAt, now);
+        ensureBookingPendingPayment(booking, now);
+        log.info(
+            "Reusing pay-later payment: bookingId={}, paymentId={}",
+            booking.getId(),
+            existingPayLater.getId());
+        return buildCreatePaymentResult(existingPayLater, booking, expireAt);
+      }
+    }
+
     if (shouldReusePending) {
       log.info(
           "Reusing pending payment: bookingId={}, paymentId={}, requestedMethod={}, paymentMethod={}",
@@ -388,28 +425,7 @@ public class PaymentService {
 
     assertPaymentCreationAllowed(booking, normalizedMethod, now);
 
-    for (PaymentEntity existing : previousPending) {
-      if (isSamePaymentMethod(existing, normalizedMethod)) {
-        if (isReusablePending(existing)) {
-          cancelWithProvider(existing, "Payment refreshed");
-          existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
-        } else {
-          existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
-        }
-      } else if (isReusablePending(existing)) {
-        log.info(
-            "Cancelling previous pending payment because payment method changed: bookingId={}, oldPaymentId={}, oldMethod={}, newMethod={}",
-            booking.getId(),
-            existing.getId(),
-            existing.getPaymentMethod(),
-            normalizedMethod);
-        cancelWithProvider(existing, "Payment method changed");
-        existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
-      } else {
-        existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
-      }
-      existing.setUpdatedAt(now);
-    }
+    resolvePendingPaymentsOnMethodChange(previousPending, normalizedMethod, now, null);
 
     PaymentEntity payment = new PaymentEntity();
     payment.setBooking(booking);
@@ -542,57 +558,39 @@ public class PaymentService {
   }
 
   /**
-   * PayOS/VietQR window: never shorten an active hold. When <= 5 minutes remain, extend from the
-   * current deadline (+5 minutes) instead of resetting from now.
+   * PayOS/VietQR: keep the booking hold when >= 5 minutes remain; otherwise extend the current
+   * deadline by 5 minutes. Requires an active booking hold (pay-later logic is unchanged).
    */
   private OffsetDateTime resolvePayosTargetExpireAt(BookingEntity booking, OffsetDateTime now) {
     OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
-    if (currentExpireAt != null && currentExpireAt.isAfter(now)) {
-      long remainingSeconds = Duration.between(now, currentExpireAt).getSeconds();
-      if (remainingSeconds <= PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
-        return currentExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
-      }
-      return currentExpireAt;
+    if (currentExpireAt == null || !currentExpireAt.isAfter(now)) {
+      throw new AppException("BOOKING_EXPIRED", "Booking payment window has expired", 410);
     }
-    return now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+    long remainingSeconds = Duration.between(now, currentExpireAt).getSeconds();
+    if (remainingSeconds < PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
+      return currentExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+    }
+    return currentExpireAt;
   }
 
   private OffsetDateTime resolvePayosExpireAt(
       BookingEntity booking, OffsetDateTime now, boolean preserveLongerCurrentWindow) {
     OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
     OffsetDateTime targetExpireAt = resolvePayosTargetExpireAt(booking, now);
-    OffsetDateTime maxExpireAt = resolvePayosMaxExpireAt(booking);
-    OffsetDateTime cappedExpireAt =
-        maxExpireAt == null || !targetExpireAt.isAfter(maxExpireAt) ? targetExpireAt : maxExpireAt;
-    if (currentExpireAt != null
-        && currentExpireAt.equals(targetExpireAt)
-        && cappedExpireAt.isBefore(currentExpireAt)) {
-      cappedExpireAt = currentExpireAt;
-    }
 
     if (preserveLongerCurrentWindow
         && currentExpireAt != null
-        && !currentExpireAt.isBefore(targetExpireAt)
-        && withinMethodCap(booking, METHOD_PAYOS, currentExpireAt)) {
+        && !currentExpireAt.isBefore(targetExpireAt)) {
       return currentExpireAt;
     }
 
     if (booking.getPaymentWindowExtendedAt() != null
         && currentExpireAt != null
-        && cappedExpireAt.isAfter(currentExpireAt)) {
+        && targetExpireAt.isAfter(currentExpireAt)) {
       return currentExpireAt;
     }
 
-    return cappedExpireAt;
-  }
-
-  private OffsetDateTime resolvePayosMaxExpireAt(BookingEntity booking) {
-    if (booking == null || booking.getCreatedAt() == null) {
-      return booking == null ? null : booking.getPnrExpiresAt();
-    }
-    return booking
-        .getCreatedAt()
-        .plusMinutes(BOOKING_PNR_EXPIRATION_MINUTES + PAYOS_PAYMENT_WINDOW_MINUTES);
+    return targetExpireAt;
   }
 
   private OffsetDateTime resolveTargetExpireAt(String method, OffsetDateTime now) {
@@ -628,10 +626,7 @@ public class PaymentService {
     if (expireAt == null) {
       return true;
     }
-    OffsetDateTime methodCapExpireAt =
-        METHOD_PAYOS.equals(method)
-            ? resolvePayosMaxExpireAt(booking)
-            : resolveMethodCapExpireAt(booking, method);
+    OffsetDateTime methodCapExpireAt = resolveMethodCapExpireAt(booking, method);
     return methodCapExpireAt == null || !expireAt.isAfter(methodCapExpireAt);
   }
 
@@ -675,8 +670,19 @@ public class PaymentService {
 
   private boolean hasValidEffectivePaymentWindow(
       BookingEntity booking, String method, OffsetDateTime now) {
+    if (METHOD_PAYOS.equals(method) && !hasActiveBookingHold(booking, now)) {
+      return false;
+    }
     return hasValidEffectivePaymentWindow(
         booking, method, now, resolveEffectiveExpireAt(booking, method, now, false));
+  }
+
+  private boolean hasActiveBookingHold(BookingEntity booking, OffsetDateTime now) {
+    if (booking == null) {
+      return false;
+    }
+    OffsetDateTime expireAt = booking.getPnrExpiresAt();
+    return expireAt != null && expireAt.isAfter(now);
   }
 
   private boolean hasValidEffectivePaymentWindow(
@@ -888,6 +894,139 @@ public class PaymentService {
     return METHOD_STRIPE_CARD.equals(method) ? METHOD_STRIPE : METHOD_PAYOS;
   }
 
+  private Optional<ActivePayLaterSessionView> findActivePayLaterSessionForBooking(
+      BookingEntity booking) {
+    OffsetDateTime now = OffsetDateTime.now();
+    if (!hasActiveBookingHold(booking, now)) {
+      return Optional.empty();
+    }
+    List<PaymentEntity> pending =
+        paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(
+            booking.getId(), List.of(PAYMENT_STATUS_PENDING));
+    return pending.stream()
+        .filter(this::isPayLaterPayment)
+        .filter(this::isReusablePending)
+        .findFirst()
+        .map(payment -> new ActivePayLaterSessionView(payment.getId(), booking.getPnrExpiresAt()));
+  }
+
+  private PaymentEntity findLatestPayLaterPending(List<PaymentEntity> previousPending) {
+    if (previousPending == null || previousPending.isEmpty()) {
+      return null;
+    }
+    return previousPending.stream()
+        .filter(this::isPayLaterPayment)
+        .max(Comparator.comparing(PaymentEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(PaymentEntity::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+        .orElse(null);
+  }
+
+  private boolean isPayLaterPayment(PaymentEntity payment) {
+    return payment != null
+        && METHOD_PAY_LATER.equalsIgnoreCase(nullToBlank(payment.getPaymentMethod()));
+  }
+
+  private void resolvePendingPaymentsOnMethodChange(
+      List<PaymentEntity> previousPending,
+      String normalizedMethod,
+      OffsetDateTime now,
+      Long retainPaymentId) {
+    if (previousPending == null || previousPending.isEmpty()) {
+      return;
+    }
+    for (PaymentEntity existing : previousPending) {
+      if (retainPaymentId != null && retainPaymentId.equals(existing.getId())) {
+        continue;
+      }
+      if (isSamePaymentMethod(existing, normalizedMethod)) {
+        if (METHOD_PAY_LATER.equals(normalizedMethod)) {
+          continue;
+        }
+        if (isReusablePending(existing)) {
+          cancelWithProvider(existing, "Payment refreshed");
+          existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+        } else {
+          existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        }
+      } else if (isReusablePending(existing)) {
+        log.info(
+            "Cancelling previous pending payment because payment method changed: bookingId={}, oldPaymentId={}, oldMethod={}, newMethod={}",
+            existing.getBooking() == null ? null : existing.getBooking().getId(),
+            existing.getId(),
+            existing.getPaymentMethod(),
+            normalizedMethod);
+        if (isPayLaterPayment(existing)) {
+          suspendPayLaterProviderLink(existing, "Payment method changed");
+        } else {
+          cancelWithProvider(existing, "Payment method changed");
+          existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+        }
+      } else {
+        existing.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      }
+      existing.setUpdatedAt(now);
+    }
+  }
+
+  private void suspendPayLaterProviderLink(PaymentEntity payment, String reason) {
+    if (!isReusablePending(payment)) {
+      return;
+    }
+    payosPaymentGateway.cancelPaymentLink(
+        new PaymentGateway.CancelPaymentLinkRequest(
+            payment.getId(), payment.getId(), reason));
+  }
+
+  private void refreshPayLaterProviderLink(
+      PaymentEntity payment, BookingEntity booking, OffsetDateTime expireAt, OffsetDateTime now) {
+    if (isReusablePending(payment)) {
+      try {
+        suspendPayLaterProviderLink(payment, "Payment refreshed");
+      } catch (RuntimeException exception) {
+        log.warn(
+            "Unable to suspend previous pay-later provider link before refresh: paymentId={}, message={}",
+            payment.getId(),
+            exception.getMessage());
+      }
+    }
+    PaymentGatewayResult gatewayResult;
+    try {
+      gatewayResult =
+          payosPaymentGateway.createPaymentLink(
+              new PaymentGatewayRequest(
+                  payment.getId(),
+                  payment.getId(),
+                  payment.getAmount(),
+                  payment.getCurrency(),
+                  buildDescription(payment.getId()),
+                  appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
+                  appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
+                  booking.getPnrCode(),
+                  booking.getContactEmail(),
+                  booking.getContactPhone(),
+                  expireAt,
+                  booking.getId(),
+                  providerForMethod(METHOD_PAY_LATER),
+                  buildProductName(booking),
+                  buildProductDescription(booking),
+                  buildStripeLineItems(booking),
+                  buildStripeMetadata(booking)));
+    } catch (RuntimeException exception) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      payment.setUpdatedAt(now);
+      paymentRepository.save(payment);
+      throw exception;
+    }
+    payment.setTransactionId(gatewayResult.paymentLinkId());
+    payment.setQrData(gatewayResult.qrCode());
+    payment.setType(gatewayResult.actionType());
+    payment.setCheckoutUrl(gatewayResult.checkoutUrl());
+    payment.setPaymentMethod(METHOD_PAY_LATER);
+    payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
+    payment.setUpdatedAt(now);
+    paymentRepository.save(payment);
+  }
+
   private void cancelWithProvider(PaymentEntity payment, String cancellationReason) {
     if (METHOD_STRIPE_CARD.equalsIgnoreCase(payment.getPaymentMethod())) {
       stripePaymentGateway.expireCheckoutSession(payment.getTransactionId());
@@ -898,15 +1037,32 @@ public class PaymentService {
             payment.getId(), payment.getId(), cancellationReason));
   }
 
+  private List<BookingFareHoldEntity> activeFareHolds(Long bookingId) {
+    return bookingFareHoldRepository.findByBookingIdOrderByIdAsc(bookingId).stream()
+        .filter(
+            hold -> ACTIVE_FARE_HOLD_STATUSES.contains(nullToBlank(hold.getStatus()).toUpperCase(Locale.ROOT)))
+        .sorted(
+            Comparator.comparing(
+                    (BookingFareHoldEntity hold) -> hold.getFlightFare().getFlight().getDepartureTime(),
+                    Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(
+                    hold -> hold.getFlightFare().getFlight().getId(),
+                    Comparator.nullsLast(Comparator.naturalOrder())))
+        .toList();
+  }
+
   private PaymentDetailsView buildPaymentDetails(BookingEntity booking) {
-    Optional<BookingFareHoldEntity> holdResult =
-        bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(
-            booking.getId(), List.of("HELD", "CONFIRMED"));
-    BookingFareHoldEntity hold = holdResult == null ? null : holdResult.orElse(null);
-    FlightFareEntity fare = hold == null ? null : hold.getFlightFare();
-    FlightEntity flight = fare == null ? null : fare.getFlight();
-    BigDecimal baseFare = multiply(nonNullMoney(fare == null ? null : fare.getBasePrice()), hold);
-    BigDecimal tax = multiply(nonNullMoney(fare == null ? null : fare.getTotalTaxAmount()), hold);
+    List<BookingFareHoldEntity> holds = activeFareHolds(booking.getId());
+    FlightEntity primaryFlight =
+        holds.isEmpty() ? null : holds.getFirst().getFlightFare().getFlight();
+    BigDecimal baseFare =
+        holds.stream()
+            .map(hold -> multiply(nonNullMoney(hold.getFlightFare().getBasePrice()), hold))
+            .reduce(ZERO_MONEY, BigDecimal::add);
+    BigDecimal tax =
+        holds.stream()
+            .map(hold -> multiply(nonNullMoney(hold.getFlightFare().getTotalTaxAmount()), hold))
+            .reduce(ZERO_MONEY, BigDecimal::add);
     BigDecimal discount = nonNullMoney(booking.getDiscountAmount());
     BigDecimal serviceFee =
         nonNullMoney(bookingServiceRepository.sumPriceByBookingId(booking.getId()));
@@ -916,7 +1072,7 @@ public class PaymentService {
     BigDecimal total = nonNullMoney(booking.getTotalAmount());
 
     return new PaymentDetailsView(
-        buildFlightView(flight),
+        buildFlightView(primaryFlight),
         new PaymentDetailsView.PriceBreakdownView(
             baseFare, discount, tax, serviceFee, seatFee, total, booking.getCurrency()));
   }
@@ -951,24 +1107,42 @@ public class PaymentService {
   }
 
   private String buildProductName(BookingEntity booking) {
-    PaymentDetailsView.FlightView flight = buildPaymentDetails(booking).flight();
-    if (flight == null || flight.flightName() == null || flight.flightName().isBlank()) {
+    List<BookingFareHoldEntity> holds = activeFareHolds(booking.getId());
+    if (holds.isEmpty()) {
       return "Airline booking";
     }
-    return "Flight " + flight.flightName();
+    if (holds.size() == 1) {
+      PaymentDetailsView.FlightView flight =
+          buildFlightView(holds.getFirst().getFlightFare().getFlight());
+      if (flight == null || flight.flightName().isBlank()) {
+        return "Airline booking";
+      }
+      return "Flight " + flight.flightName();
+    }
+    return "Round-trip booking";
   }
 
   private String buildProductDescription(BookingEntity booking) {
-    PaymentDetailsView details = buildPaymentDetails(booking);
-    PaymentDetailsView.FlightView flight = details.flight();
-    if (flight == null) {
-      return "PNR " + booking.getPnrCode();
+    List<BookingFareHoldEntity> holds = activeFareHolds(booking.getId());
+    String pnr = "PNR " + booking.getPnrCode();
+    if (holds.isEmpty()) {
+      return pnr;
     }
-    String route = buildRouteLabel(flight);
-    if (route.isBlank()) {
-      return "PNR " + booking.getPnrCode();
+    if (holds.size() == 1) {
+      PaymentDetailsView.FlightView flight =
+          buildFlightView(holds.getFirst().getFlightFare().getFlight());
+      if (flight == null) {
+        return pnr;
+      }
+      String route = buildRouteLabel(flight);
+      return route.isBlank() ? pnr : route + " | " + pnr;
     }
-    return route + " | PNR " + booking.getPnrCode();
+    String routes =
+        holds.stream()
+            .map(hold -> buildRouteLabel(buildFlightView(hold.getFlightFare().getFlight())))
+            .filter(route -> !route.isBlank())
+            .collect(Collectors.joining(" | "));
+    return routes.isBlank() ? pnr : routes + " | " + pnr;
   }
 
   private String buildRouteLabel(PaymentDetailsView.FlightView flight) {
@@ -982,29 +1156,151 @@ public class PaymentService {
 
   private List<PaymentLineItem> buildStripeLineItems(BookingEntity booking) {
     PaymentDetailsView details = buildPaymentDetails(booking);
+    PaymentDetailsView.PriceBreakdownView price = details.price();
+    List<BookingFareHoldEntity> holds = activeFareHolds(booking.getId());
+    if (holds.size() <= 1) {
+      return buildSingleLegStripeLineItems(booking, details, holds);
+    }
+    return buildRoundTripStripeLineItems(booking, price, holds);
+  }
+
+  private List<PaymentLineItem> buildSingleLegStripeLineItems(
+      BookingEntity booking, PaymentDetailsView details, List<BookingFareHoldEntity> holds) {
     PaymentDetailsView.FlightView flight = details.flight();
     PaymentDetailsView.PriceBreakdownView price = details.price();
     String route = flight == null ? "" : buildRouteLabel(flight);
     String pnr = "PNR " + booking.getPnrCode();
     String flightDescription = route.isBlank() ? pnr : route + " | " + pnr;
     BigDecimal fareAfterDiscount = price.baseFare().subtract(price.discount());
-    if (fareAfterDiscount.compareTo(BigDecimal.ZERO) < 0) {
-      fareAfterDiscount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    if (fareAfterDiscount.compareTo(ZERO_MONEY) < 0) {
+      fareAfterDiscount = ZERO_MONEY;
     }
     BigDecimal itemizedTotal =
         fareAfterDiscount.add(price.tax()).add(price.serviceFee()).add(price.seatFee());
-    if (itemizedTotal.compareTo(BigDecimal.ZERO) == 0
-        && price.total().compareTo(BigDecimal.ZERO) > 0) {
+    if (itemizedTotal.compareTo(ZERO_MONEY) == 0 && price.total().compareTo(ZERO_MONEY) > 0) {
       fareAfterDiscount = price.total();
     }
+    String flightLineName =
+        holds.isEmpty() ? buildProductName(booking) : buildFlightLineItemName(buildFlightView(
+            holds.getFirst().getFlightFare().getFlight()));
     return List.of(
         new PaymentLineItem(
-            buildProductName(booking),
-            buildFareDescription(flightDescription, price),
-            fareAfterDiscount),
+            flightLineName, buildFareDescription(flightDescription, price), fareAfterDiscount),
         new PaymentLineItem("Taxes", "Government taxes and fees", price.tax()),
         new PaymentLineItem("Services", "Selected add-on services", price.serviceFee()),
         new PaymentLineItem("Seats", "Seat selection fees", price.seatFee()));
+  }
+
+  private List<PaymentLineItem> buildRoundTripStripeLineItems(
+      BookingEntity booking,
+      PaymentDetailsView.PriceBreakdownView price,
+      List<BookingFareHoldEntity> holds) {
+    String pnr = "PNR " + booking.getPnrCode();
+    Map<Long, BigDecimal> seatFeeByFlightId = seatSurchargeByFlightId(booking.getId());
+    List<PaymentLineItem> items = new ArrayList<>();
+    BigDecimal totalBase = price.baseFare();
+    BigDecimal remainingDiscount = price.discount();
+    BigDecimal allocatedSeatFees = ZERO_MONEY;
+
+    for (int index = 0; index < holds.size(); index++) {
+      BookingFareHoldEntity hold = holds.get(index);
+      FlightEntity flight = hold.getFlightFare().getFlight();
+      PaymentDetailsView.FlightView flightView = buildFlightView(flight);
+      String route = buildRouteLabel(flightView);
+      String segmentDescription = route.isBlank() ? pnr : route + " | " + pnr;
+      BigDecimal holdBase = multiply(nonNullMoney(hold.getFlightFare().getBasePrice()), hold);
+      BigDecimal holdTax = multiply(nonNullMoney(hold.getFlightFare().getTotalTaxAmount()), hold);
+      BigDecimal holdDiscount =
+          allocateDiscountShare(
+              holdBase, totalBase, remainingDiscount, index == holds.size() - 1);
+      remainingDiscount = remainingDiscount.subtract(holdDiscount).max(ZERO_MONEY);
+      BigDecimal fareAfterDiscount = holdBase.subtract(holdDiscount);
+      if (fareAfterDiscount.compareTo(ZERO_MONEY) < 0) {
+        fareAfterDiscount = ZERO_MONEY;
+      }
+
+      if (fareAfterDiscount.compareTo(ZERO_MONEY) > 0) {
+        items.add(
+            new PaymentLineItem(
+                buildFlightLineItemName(flightView), segmentDescription, fareAfterDiscount));
+      }
+      if (holdTax.compareTo(ZERO_MONEY) > 0) {
+        items.add(
+            new PaymentLineItem(
+                route.isBlank() ? "Taxes" : "Taxes (" + route + ")",
+                route.isBlank()
+                    ? "Government taxes and fees"
+                    : "Government taxes and fees — " + route,
+                holdTax));
+      }
+      BigDecimal segmentSeatFee =
+          seatFeeByFlightId.getOrDefault(flight.getId(), ZERO_MONEY);
+      if (segmentSeatFee.compareTo(ZERO_MONEY) > 0) {
+        allocatedSeatFees = allocatedSeatFees.add(segmentSeatFee);
+        items.add(
+            new PaymentLineItem(
+                route.isBlank() ? "Seats" : "Seats (" + route + ")",
+                route.isBlank() ? "Seat selection fees" : "Seat selection fees — " + route,
+                segmentSeatFee));
+      }
+    }
+
+    BigDecimal unallocatedSeatFees = price.seatFee().subtract(allocatedSeatFees);
+    if (unallocatedSeatFees.compareTo(ZERO_MONEY) > 0) {
+      items.add(
+          new PaymentLineItem("Seats", "Seat selection fees", unallocatedSeatFees));
+    }
+
+    if (price.serviceFee().compareTo(ZERO_MONEY) > 0) {
+      items.add(
+          new PaymentLineItem("Services", "Selected add-on services", price.serviceFee()));
+    }
+
+    if (items.isEmpty() && price.total().compareTo(ZERO_MONEY) > 0) {
+      items.add(
+          new PaymentLineItem(
+              buildProductName(booking), buildProductDescription(booking), price.total()));
+    }
+    return items;
+  }
+
+  private Map<Long, BigDecimal> seatSurchargeByFlightId(Long bookingId) {
+    return passengerSeatAssignmentRepository
+        .findByBookingIdAndStatusIn(bookingId, ACTIVE_SEAT_ASSIGNMENT_STATUSES)
+        .stream()
+        .collect(
+            Collectors.toMap(
+                assignment -> assignment.getFlightSeat().getFlight().getId(),
+                assignment -> nonNullMoney(assignment.getSurchargeAmount()),
+                BigDecimal::add,
+                LinkedHashMap::new));
+  }
+
+  private BigDecimal allocateDiscountShare(
+      BigDecimal holdBase,
+      BigDecimal totalBase,
+      BigDecimal remainingDiscount,
+      boolean lastSegment) {
+    if (remainingDiscount.compareTo(ZERO_MONEY) <= 0 || holdBase.compareTo(ZERO_MONEY) <= 0) {
+      return ZERO_MONEY;
+    }
+    if (totalBase.compareTo(ZERO_MONEY) <= 0) {
+      return lastSegment ? remainingDiscount.min(holdBase) : ZERO_MONEY;
+    }
+    if (lastSegment) {
+      return remainingDiscount.min(holdBase);
+    }
+    return holdBase
+        .multiply(remainingDiscount)
+        .divide(totalBase, 2, RoundingMode.HALF_UP)
+        .min(holdBase);
+  }
+
+  private String buildFlightLineItemName(PaymentDetailsView.FlightView flight) {
+    if (flight == null || flight.flightName().isBlank()) {
+      return "Flight";
+    }
+    return "Flight " + flight.flightName();
   }
 
   private String buildFareDescription(
@@ -1027,8 +1323,18 @@ public class PaymentService {
     PaymentDetailsView details = buildPaymentDetails(booking);
     PaymentDetailsView.FlightView flight = details.flight();
     PaymentDetailsView.PriceBreakdownView price = details.price();
+    List<BookingFareHoldEntity> holds = activeFareHolds(booking.getId());
+    String tripType = holds.size() > 1 ? "ROUND_TRIP" : "ONE_WAY";
+    String routeSummary =
+        holds.stream()
+            .map(hold -> buildRouteLabel(buildFlightView(hold.getFlightFare().getFlight())))
+            .filter(route -> !route.isBlank())
+            .collect(Collectors.joining(" | "));
     return Map.ofEntries(
         Map.entry("pnrCode", nullToBlank(booking.getPnrCode())),
+        Map.entry("tripType", tripType),
+        Map.entry("segmentCount", String.valueOf(holds.size())),
+        Map.entry("routeSummary", routeSummary),
         Map.entry("flightNumber", nullToBlank(flight == null ? null : flight.flightNumber())),
         Map.entry("flightName", nullToBlank(flight == null ? null : flight.flightName())),
         Map.entry("airline", nullToBlank(flight == null ? null : flight.airline())),

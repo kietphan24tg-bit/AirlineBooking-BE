@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
+import java.util.Optional;
 
 import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
@@ -12,6 +13,7 @@ import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
+import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentResultService;
@@ -52,7 +54,7 @@ class PaymentsControllerTest {
             List.of(
                 new PaymentMethodView(
                     "CARD",
-                    "Thẻ & ngân hàng",
+                    "Cards & banking",
                     List.of(
                         new PaymentMethodView.PaymentMethodItemView(
                             "PAYOS_QR",
@@ -63,15 +65,19 @@ class PaymentsControllerTest {
                             null))),
                 new PaymentMethodView(
                     "PAY_LATER",
-                    "Thanh toán sau",
+                    "Pay later",
                     List.of(
                         new PaymentMethodView.PaymentMethodItemView(
                             "PAY_LATER",
-                            "Giữ chỗ, thanh toán sau",
+                            "Hold booking, pay later",
                             "PAYOS",
                             "http://localhost:8080/assets/payment-icons/vietqr.svg",
                             true,
                             new PaymentMethodView.PaymentMethodMetaView(60, 0))))));
+    when(paymentService.findActivePayLaterSession(10L, 7L))
+        .thenReturn(
+            Optional.of(
+                new ActivePayLaterSessionView(91L, OffsetDateTime.parse("2026-05-23T11:00:00+07:00"))));
 
     PaymentMethodsResponse response = controller.getPaymentMethods(principal(), 10L, false);
 
@@ -83,6 +89,7 @@ class PaymentsControllerTest {
         response.groups().getFirst().methods().getFirst().icon());
     assertEquals(true, response.groups().getFirst().methods().getFirst().supported());
     assertEquals(60, response.groups().get(1).methods().getFirst().meta().holdDurationMinutes());
+    assertEquals(91L, response.activePayLater().paymentId());
   }
 
   @Test
@@ -92,7 +99,7 @@ class PaymentsControllerTest {
             List.of(
                 new PaymentMethodView(
                     "CARD",
-                    "Thẻ & ngân hàng",
+                    "Cards & banking",
                     List.of(
                         new PaymentMethodView.PaymentMethodItemView(
                             "PAYOS_QR",
@@ -101,6 +108,7 @@ class PaymentsControllerTest {
                             "vietqr.png",
                             true,
                             null)))));
+    when(paymentService.findActivePayLaterSessionPublic(10L)).thenReturn(Optional.empty());
 
     PaymentMethodsResponse response = controller.getPaymentMethods(null, 10L, true);
 
@@ -115,7 +123,7 @@ class PaymentsControllerTest {
             List.of(
                 new PaymentMethodView(
                     "CARD",
-                    "Thẻ & ngân hàng",
+                    "Cards & banking",
                     List.of(
                         new PaymentMethodView.PaymentMethodItemView(
                             "PAYOS_QR",
@@ -124,6 +132,7 @@ class PaymentsControllerTest {
                             "http://localhost:8080/assets/payment-icons/vietqr.svg",
                             true,
                             null)))));
+    when(paymentService.findActivePayLaterSession(10L, 7L)).thenReturn(Optional.empty());
 
     PaymentMethodsResponse response = controller.getPaymentMethods(principal(), 10L, true);
 

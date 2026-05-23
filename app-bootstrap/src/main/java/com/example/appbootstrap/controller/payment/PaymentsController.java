@@ -9,6 +9,7 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.CreatePaymentCommand;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentDetailsView;
+import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentResultService;
 import com.example.modulepayment.application.PaymentResultStatusView;
@@ -75,6 +76,10 @@ public class PaymentsController {
         principal == null
             ? paymentService.getPaymentMethodsPublic(bookingId, onlySupported)
             : paymentService.getPaymentMethods(bookingId, principal.getUserId(), onlySupported);
+    ActivePayLaterSessionView activePayLaterSession =
+        principal == null
+            ? paymentService.findActivePayLaterSessionPublic(bookingId).orElse(null)
+            : paymentService.findActivePayLaterSession(bookingId, principal.getUserId()).orElse(null);
     return new PaymentMethodsResponse(
         groups.stream()
             .map(
@@ -97,7 +102,11 @@ public class PaymentsController {
                                                 method.meta().holdDurationMinutes(),
                                                 method.meta().fee())))
                             .toList()))
-            .toList());
+            .toList(),
+        activePayLaterSession == null
+            ? null
+            : new PaymentMethodsResponse.ActivePayLaterResponse(
+                activePayLaterSession.paymentId(), activePayLaterSession.expireAt()));
   }
 
   @GetMapping("/payments/{paymentId}")

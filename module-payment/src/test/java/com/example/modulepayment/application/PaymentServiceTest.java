@@ -3,6 +3,7 @@ package com.example.modulepayment.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -104,6 +105,39 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldRejectPayosWhenBookingHoldIsMissing() {
+    BookingEntity booking = booking("PENDING", null);
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    assertEquals("BOOKING_EXPIRED", exception.getCode());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+    verify(paymentGateway, never()).createPaymentLink(any());
+  }
+
+  @Test
+  void shouldHidePayosWhenBookingHoldIsMissing() {
+    when(bookingRepository.findByIdAndUserId(10L, 7L))
+        .thenReturn(Optional.of(booking("PENDING", null)));
+
+    List<PaymentMethodView> groups =
+        paymentService.getPaymentMethods(10L, 7L, true);
+
+    assertEquals(1, groups.size());
+    assertEquals("PAY_LATER", groups.getFirst().type());
+    assertEquals(
+        0,
+        groups.stream()
+            .flatMap(group -> group.methods().stream())
+            .filter(method -> "PAYOS_QR".equals(method.code()))
+            .count());
+  }
+
+  @Test
   void shouldRejectBookingWithNonPayableStatus() {
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L))
         .thenReturn(Optional.of(booking("CONFIRMED", OffsetDateTime.now().plusMinutes(10))));
@@ -198,6 +232,95 @@ class PaymentServiceTest {
         0,
         new BigDecimal("1200000.00")
             .compareTo(requestCaptor.getValue().lineItems().getFirst().amount()));
+  }
+
+  @Test
+  void shouldCreateStripeCheckoutPaymentForRoundTrip() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    OffsetDateTime start = OffsetDateTime.now();
+    BookingEntity booking = booking("PENDING", start.plusMinutes(35));
+    booking.setTotalAmount(new BigDecimal("2115440"));
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
+
+    BookingFareHoldEntity outboundHold = fareHold(booking);
+    outboundHold.getFlightFare().setBasePrice(new BigDecimal("880400"));
+    outboundHold.getFlightFare().setTotalTaxAmount(new BigDecimal("168040"));
+
+    BookingFareHoldEntity returnHold = fareHold(booking);
+    returnHold.getFlightFare().getFlight().setFlightNumber("VN456");
+    returnHold.getFlightFare().getFlight().getDepartureAirport().setCode("DAD");
+    returnHold.getFlightFare().getFlight().getDepartureAirport().setCity("Da Nang");
+    returnHold.getFlightFare().getFlight().getArrivalAirport().setCode("HAN");
+    returnHold.getFlightFare().getFlight().getArrivalAirport().setCity("Hanoi");
+    returnHold.getFlightFare().setBasePrice(new BigDecimal("620000"));
+    returnHold.getFlightFare().setTotalTaxAmount(new BigDecimal("142000"));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+    when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L))
+        .thenReturn(List.of(outboundHold, returnHold));
+    when(bookingServiceRepository.sumPriceByBookingId(10L))
+        .thenReturn(new BigDecimal("265000"));
+    when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
+        .thenReturn(new BigDecimal("40000"));
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+            eq(10L), eq(List.of("RESERVED", "BOOKED"))))
+        .thenReturn(List.of());
+    when(stripePaymentGateway.createCheckoutSession(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "cs_test_rt",
+                "https://checkout.stripe.com/c/pay/cs_test_rt",
+                null,
+                "open",
+                "CHECKOUT",
+                booking.getPnrExpiresAt()));
+
+    stripeService.createPayment(new CreatePaymentCommand(10L, 7L, "STRIPE_CARD"));
+
+    ArgumentCaptor<PaymentGateway.PaymentGatewayRequest> requestCaptor =
+        ArgumentCaptor.forClass(PaymentGateway.PaymentGatewayRequest.class);
+    verify(stripePaymentGateway).createCheckoutSession(requestCaptor.capture());
+    assertEquals("Round-trip booking", requestCaptor.getValue().productName());
+    assertEquals(
+        "HAN to SGN | DAD to HAN | PNR ABC123", requestCaptor.getValue().productDescription());
+    assertEquals(6, requestCaptor.getValue().lineItems().size());
+    assertEquals(
+        0,
+        new BigDecimal("880400.00")
+            .compareTo(requestCaptor.getValue().lineItems().get(0).amount()));
+    assertEquals(
+        0,
+        new BigDecimal("168040.00")
+            .compareTo(requestCaptor.getValue().lineItems().get(1).amount()));
+    assertEquals(
+        0,
+        new BigDecimal("620000.00")
+            .compareTo(requestCaptor.getValue().lineItems().get(2).amount()));
+    assertEquals(
+        0,
+        new BigDecimal("142000.00")
+            .compareTo(requestCaptor.getValue().lineItems().get(3).amount()));
+    assertEquals(
+        0,
+        new BigDecimal("40000.00")
+            .compareTo(requestCaptor.getValue().lineItems().get(4).amount()));
+    assertEquals(
+        0,
+        new BigDecimal("265000.00")
+            .compareTo(requestCaptor.getValue().lineItems().get(5).amount()));
+    assertEquals("ROUND_TRIP", requestCaptor.getValue().metadata().get("tripType"));
   }
 
   @Test
@@ -430,7 +553,7 @@ class PaymentServiceTest {
   }
 
   @Test
-  void shouldPreserveLongerPayosWindowWhenMoreThanFiveMinutesRemain() {
+  void shouldPreserveBookingWindowWhenMoreThanFiveMinutesRemainForPayos() {
     OffsetDateTime now = OffsetDateTime.now();
     OffsetDateTime currentExpireAt = now.plusMinutes(12);
     BookingEntity booking = booking("PENDING", currentExpireAt);
@@ -579,13 +702,6 @@ class PaymentServiceTest {
     when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
         .thenReturn(List.of(existing));
     doNothing().when(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
-    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
-        .thenAnswer(
-            invocation -> {
-              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
-              payment.setId(789L);
-              return payment;
-            });
     when(paymentGateway.createPaymentLink(any()))
         .thenReturn(
             new PaymentGatewayResult(
@@ -601,11 +717,14 @@ class PaymentServiceTest {
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAY_LATER"));
 
-    assertEquals(789L, result.payment().id());
+    assertEquals(456L, result.payment().id());
     assertEquals("PAY_LATER", result.payment().method());
     assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
-    assertEquals("CANCELLED", existing.getPaymentStatus());
+    assertEquals("PENDING", existing.getPaymentStatus());
+    assertEquals("plink_789", existing.getTransactionId());
     verify(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+    verify(paymentGateway).createPaymentLink(any());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
     verify(bookingFareHoldRepository).extendHeldExpiryByBookingId(any(), any(), any());
     verify(flightSeatRepository).extendReservedUntilForBooking(any(), any());
   }
@@ -929,8 +1048,8 @@ class PaymentServiceTest {
 
   @Test
   void shouldPreserveBookingWindowWhenSwitchingFromStripeToPayos() {
-    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(15);
-    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    OffsetDateTime bookingExpireAt = OffsetDateTime.now().plusMinutes(15);
+    BookingEntity booking = booking("PENDING_PAYMENT", bookingExpireAt);
     PaymentEntity existing = paymentForBooking(5L, booking, "PENDING");
     existing.setPaymentMethod("STRIPE_CARD");
     existing.setTransactionId("cs_old_123");
@@ -957,7 +1076,7 @@ class PaymentServiceTest {
                 "000201PAYOSQR",
                 "PENDING",
                 "QR",
-                expireAt));
+                booking.getPnrExpiresAt()));
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
@@ -967,8 +1086,8 @@ class PaymentServiceTest {
     assertEquals("CANCELLED", existing.getPaymentStatus());
     assertEquals("PAYOS", result.payment().method());
     assertEquals(123L, result.payment().id());
-    assertEquals(expireAt, booking.getPnrExpiresAt());
-    assertEquals(expireAt, result.payment().expireAt());
+    assertEquals(bookingExpireAt, booking.getPnrExpiresAt());
+    assertEquals(bookingExpireAt, result.payment().expireAt());
     verify(stripePaymentGateway).expireCheckoutSession("cs_old_123");
     verify(paymentGateway).createPaymentLink(any());
     verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
@@ -1013,12 +1132,78 @@ class PaymentServiceTest {
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
 
-    assertEquals("CANCELLED", existing.getPaymentStatus());
+    assertEquals("PENDING", existing.getPaymentStatus());
     assertEquals("PAYOS", result.payment().method());
     assertEquals(payLaterExpireAt, booking.getPnrExpiresAt());
     assertEquals(payLaterExpireAt, result.payment().expireAt());
+    verify(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
     verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
     verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
+  }
+
+  @Test
+  void shouldReusePayLaterAfterPayosAttempt() {
+    OffsetDateTime payLaterExpireAt = OffsetDateTime.now().plusMinutes(60);
+    BookingEntity booking = booking("PENDING_PAYMENT", payLaterExpireAt);
+    PaymentEntity payLater = paymentForBooking(91L, booking, "PENDING");
+    payLater.setPaymentMethod("PAY_LATER");
+    payLater.setTransactionId("plink_91");
+    payLater.setType("QR");
+    payLater.setCheckoutUrl("https://pay.payos.vn/web/91");
+    payLater.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
+
+    PaymentEntity payos = paymentForBooking(92L, booking, "PENDING");
+    payos.setPaymentMethod("PAYOS");
+    payos.setTransactionId("plink_92");
+    payos.setType("QR");
+    payos.setCheckoutUrl("https://pay.payos.vn/web/92");
+    payos.setCreatedAt(OffsetDateTime.now().minusMinutes(2));
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of(payos, payLater));
+    doNothing().when(paymentGateway).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_91b",
+                "https://pay.payos.vn/web/91b",
+                "000201PAYLATERQR",
+                "PENDING",
+                "QR",
+                booking.getPnrExpiresAt()));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAY_LATER"));
+
+    assertEquals(91L, result.payment().id());
+    assertEquals("PAY_LATER", result.payment().method());
+    assertEquals("PENDING", payLater.getPaymentStatus());
+    assertEquals("CANCELLED", payos.getPaymentStatus());
+    verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+  }
+
+  @Test
+  void shouldExposeActivePayLaterSessionWhileHoldRemains() {
+    OffsetDateTime expireAt = OffsetDateTime.now().plusMinutes(40);
+    BookingEntity booking = booking("PENDING_PAYMENT", expireAt);
+    PaymentEntity payLater = paymentForBooking(91L, booking, "PENDING");
+    payLater.setPaymentMethod("PAY_LATER");
+    payLater.setTransactionId("plink_91");
+    payLater.setCheckoutUrl("https://pay.payos.vn/web/91");
+
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), eq(List.of("PENDING"))))
+        .thenReturn(List.of(payLater));
+
+    ActivePayLaterSessionView session =
+        paymentService.findActivePayLaterSession(10L, 7L).orElseThrow();
+
+    assertEquals(91L, session.paymentId());
+    assertEquals(expireAt, session.expireAt());
   }
 
   @Test
@@ -1141,9 +1326,7 @@ class PaymentServiceTest {
     BookingFareHoldEntity hold = fareHold(booking);
 
     when(paymentRepository.findByIdAndBookingUserId(5L, 7L)).thenReturn(Optional.of(payment));
-    when(bookingFareHoldRepository.findFirstByBookingIdAndStatusIn(
-            10L, List.of("HELD", "CONFIRMED")))
-        .thenReturn(Optional.of(hold));
+    when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L)).thenReturn(List.of(hold));
     when(bookingServiceRepository.sumPriceByBookingId(10L)).thenReturn(new BigDecimal("100000"));
     when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
         .thenReturn(new BigDecimal("50000"));
