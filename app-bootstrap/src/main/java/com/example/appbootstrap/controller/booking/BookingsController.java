@@ -414,11 +414,22 @@ public class BookingsController {
   }
 
   private BookingCancellationResponse toCancellationResponse(BookingCancellationResultView view) {
+    BookingCancellationResultView.RefundMethodView refundMethod = view.refundMethod();
+    BookingCancellationResponse.RefundMethodResponse refundMethodResponse =
+        refundMethod == null
+            ? null
+            : new BookingCancellationResponse.RefundMethodResponse(
+                refundMethod.type(),
+                refundMethod.label(),
+                refundMethod.maskedAccount(),
+                refundMethod.estimatedDays());
     return new BookingCancellationResponse(
         view.bookingId(),
         view.pnrCode(),
         view.contactEmail(),
         view.cancellationId(),
+        view.cancellationCode(),
+        view.cancelledAt(),
         view.refundStatus(),
         view.provider(),
         view.providerRefundId(),
@@ -428,6 +439,7 @@ public class BookingsController {
         view.refundEstimateTitle(),
         view.refundEstimateMessage(),
         view.refundEstimateNote(),
+        refundMethodResponse,
         view.items().stream()
             .map(
                 item ->

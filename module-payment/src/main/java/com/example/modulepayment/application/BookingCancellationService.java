@@ -640,6 +640,8 @@ public class BookingCancellationService {
         booking.getPnrCode(),
         booking.getContactEmail(),
         cancellation.getId(),
+        buildCancellationCode(cancellation.getId()),
+        resolveCancelledAt(cancellation),
         cancellation.getRefundStatus(),
         cancellation.getProvider(),
         cancellation.getProviderRefundId(),
@@ -649,6 +651,7 @@ public class BookingCancellationService {
         refundEstimate.title(),
         refundEstimate.message(),
         refundEstimate.note(),
+        buildRefundMethod(payment, cancellation.getProvider()),
         items,
         new BookingCancellationResultView.SummaryView(
             cancellation.getFareGrossTotal(),
@@ -658,6 +661,64 @@ public class BookingCancellationService {
             cancellation.getServiceRefundTotal(),
             cancellation.getRefundFeeTotal(),
             cancellation.getNetRefundTotal()));
+  }
+
+  private static String buildCancellationCode(Long cancellationId) {
+    if (cancellationId == null) {
+      return null;
+    }
+    return String.format(Locale.ROOT, "CAN%09d", cancellationId);
+  }
+
+  private static OffsetDateTime resolveCancelledAt(BookingCancellationEntity cancellation) {
+    OffsetDateTime processed = cancellation.getProcessedAt();
+    return processed != null ? processed : cancellation.getUpdatedAt();
+  }
+
+  private static BookingCancellationResultView.RefundMethodView buildRefundMethod(
+      PaymentEntity payment, String provider) {
+    if (payment == null) {
+      return null;
+    }
+    String rawMethod = payment.getPaymentMethod();
+    String type = rawMethod == null ? "" : rawMethod.trim().toUpperCase(Locale.ROOT);
+    String label =
+        switch (type) {
+          case "CREDIT_CARD", "CARD" -> "Thẻ tín dụng";
+          case "DEBIT_CARD" -> "Thẻ ghi nợ";
+          case "BANK_TRANSFER", "BANK" -> "Chuyển khoản ngân hàng";
+          case "EWALLET", "E_WALLET", "WALLET" -> "Ví điện tử";
+          case "QR", "QR_CODE" -> "QR Code";
+          default -> type.isEmpty() ? "Hoàn tiền" : rawMethod;
+        };
+    String maskedAccount = buildMaskedAccount(payment);
+    String estimatedDays = resolveEstimatedDays(provider);
+    return new BookingCancellationResultView.RefundMethodView(
+        type.isEmpty() ? null : type, label, maskedAccount, estimatedDays);
+  }
+
+  private static String buildMaskedAccount(PaymentEntity payment) {
+    String accountNumber = payment.getRefundCounterAccountNumber();
+    String bankName = payment.getRefundCounterAccountBankName();
+    if (accountNumber != null && !accountNumber.isBlank()) {
+      String trimmed = accountNumber.trim();
+      String tail = trimmed.length() <= 4 ? trimmed : trimmed.substring(trimmed.length() - 4);
+      String masked = "**** " + tail;
+      return bankName != null && !bankName.isBlank() ? bankName + " " + masked : masked;
+    }
+    if (bankName != null && !bankName.isBlank()) {
+      return bankName;
+    }
+    return null;
+  }
+
+  private static String resolveEstimatedDays(String provider) {
+    String normalized = provider == null ? "" : provider.trim().toUpperCase(Locale.ROOT);
+    return switch (normalized) {
+      case "STRIPE" -> "5-10 ngày làm việc";
+      case "PAYOS" -> "Xử lý 24/7";
+      default -> "3-7 ngày làm việc";
+    };
   }
 
   private void registerSuccessNotification(Long cancellationId) {
