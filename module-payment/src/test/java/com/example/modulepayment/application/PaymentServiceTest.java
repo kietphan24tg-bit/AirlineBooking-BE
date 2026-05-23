@@ -921,8 +921,7 @@ class PaymentServiceTest {
     assertEquals(expireAt, result.payment().expireAt());
     verify(stripePaymentGateway).expireCheckoutSession("cs_old_123");
     verify(paymentGateway).createPaymentLink(any());
-    verify(bookingFareHoldRepository, never())
-        .extendHeldExpiryByBookingId(any(), any(), any());
+    verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
     verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
   }
 
@@ -968,8 +967,7 @@ class PaymentServiceTest {
     assertEquals("PAYOS", result.payment().method());
     assertEquals(payLaterExpireAt, booking.getPnrExpiresAt());
     assertEquals(payLaterExpireAt, result.payment().expireAt());
-    verify(bookingFareHoldRepository, never())
-        .extendHeldExpiryByBookingId(any(), any(), any());
+    verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
     verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
   }
 
