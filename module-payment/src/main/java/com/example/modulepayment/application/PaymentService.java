@@ -11,7 +11,6 @@ import com.example.modulebooking.repository.PassengerSeatAssignmentRepository;
 import com.example.moduleflight.entity.AirlineEntity;
 import com.example.moduleflight.entity.AirportEntity;
 import com.example.moduleflight.entity.FlightEntity;
-import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
@@ -127,7 +126,8 @@ public class PaymentService {
   }
 
   @Transactional(readOnly = true)
-  public Optional<ActivePayLaterSessionView> findActivePayLaterSession(Long bookingId, Long userId) {
+  public Optional<ActivePayLaterSessionView> findActivePayLaterSession(
+      Long bookingId, Long userId) {
     BookingEntity booking = requirePayableBooking(bookingId, userId);
     return findActivePayLaterSessionForBooking(booking);
   }
@@ -916,8 +916,11 @@ public class PaymentService {
     }
     return previousPending.stream()
         .filter(this::isPayLaterPayment)
-        .max(Comparator.comparing(PaymentEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
-            .thenComparing(PaymentEntity::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+        .max(
+            Comparator.comparing(
+                    PaymentEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(
+                    PaymentEntity::getId, Comparator.nullsLast(Comparator.naturalOrder())))
         .orElse(null);
   }
 
@@ -973,8 +976,7 @@ public class PaymentService {
       return;
     }
     payosPaymentGateway.cancelPaymentLink(
-        new PaymentGateway.CancelPaymentLinkRequest(
-            payment.getId(), payment.getId(), reason));
+        new PaymentGateway.CancelPaymentLinkRequest(payment.getId(), payment.getId(), reason));
   }
 
   private void refreshPayLaterProviderLink(
@@ -1040,10 +1042,13 @@ public class PaymentService {
   private List<BookingFareHoldEntity> activeFareHolds(Long bookingId) {
     return bookingFareHoldRepository.findByBookingIdOrderByIdAsc(bookingId).stream()
         .filter(
-            hold -> ACTIVE_FARE_HOLD_STATUSES.contains(nullToBlank(hold.getStatus()).toUpperCase(Locale.ROOT)))
+            hold ->
+                ACTIVE_FARE_HOLD_STATUSES.contains(
+                    nullToBlank(hold.getStatus()).toUpperCase(Locale.ROOT)))
         .sorted(
             Comparator.comparing(
-                    (BookingFareHoldEntity hold) -> hold.getFlightFare().getFlight().getDepartureTime(),
+                    (BookingFareHoldEntity hold) ->
+                        hold.getFlightFare().getFlight().getDepartureTime(),
                     Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(
                     hold -> hold.getFlightFare().getFlight().getId(),
@@ -1181,8 +1186,10 @@ public class PaymentService {
       fareAfterDiscount = price.total();
     }
     String flightLineName =
-        holds.isEmpty() ? buildProductName(booking) : buildFlightLineItemName(buildFlightView(
-            holds.getFirst().getFlightFare().getFlight()));
+        holds.isEmpty()
+            ? buildProductName(booking)
+            : buildFlightLineItemName(
+                buildFlightView(holds.getFirst().getFlightFare().getFlight()));
     return List.of(
         new PaymentLineItem(
             flightLineName, buildFareDescription(flightDescription, price), fareAfterDiscount),
@@ -1211,8 +1218,7 @@ public class PaymentService {
       BigDecimal holdBase = multiply(nonNullMoney(hold.getFlightFare().getBasePrice()), hold);
       BigDecimal holdTax = multiply(nonNullMoney(hold.getFlightFare().getTotalTaxAmount()), hold);
       BigDecimal holdDiscount =
-          allocateDiscountShare(
-              holdBase, totalBase, remainingDiscount, index == holds.size() - 1);
+          allocateDiscountShare(holdBase, totalBase, remainingDiscount, index == holds.size() - 1);
       remainingDiscount = remainingDiscount.subtract(holdDiscount).max(ZERO_MONEY);
       BigDecimal fareAfterDiscount = holdBase.subtract(holdDiscount);
       if (fareAfterDiscount.compareTo(ZERO_MONEY) < 0) {
@@ -1233,8 +1239,7 @@ public class PaymentService {
                     : "Government taxes and fees — " + route,
                 holdTax));
       }
-      BigDecimal segmentSeatFee =
-          seatFeeByFlightId.getOrDefault(flight.getId(), ZERO_MONEY);
+      BigDecimal segmentSeatFee = seatFeeByFlightId.getOrDefault(flight.getId(), ZERO_MONEY);
       if (segmentSeatFee.compareTo(ZERO_MONEY) > 0) {
         allocatedSeatFees = allocatedSeatFees.add(segmentSeatFee);
         items.add(
@@ -1247,13 +1252,11 @@ public class PaymentService {
 
     BigDecimal unallocatedSeatFees = price.seatFee().subtract(allocatedSeatFees);
     if (unallocatedSeatFees.compareTo(ZERO_MONEY) > 0) {
-      items.add(
-          new PaymentLineItem("Seats", "Seat selection fees", unallocatedSeatFees));
+      items.add(new PaymentLineItem("Seats", "Seat selection fees", unallocatedSeatFees));
     }
 
     if (price.serviceFee().compareTo(ZERO_MONEY) > 0) {
-      items.add(
-          new PaymentLineItem("Services", "Selected add-on services", price.serviceFee()));
+      items.add(new PaymentLineItem("Services", "Selected add-on services", price.serviceFee()));
     }
 
     if (items.isEmpty() && price.total().compareTo(ZERO_MONEY) > 0) {

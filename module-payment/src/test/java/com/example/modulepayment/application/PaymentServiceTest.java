@@ -124,8 +124,7 @@ class PaymentServiceTest {
     when(bookingRepository.findByIdAndUserId(10L, 7L))
         .thenReturn(Optional.of(booking("PENDING", null)));
 
-    List<PaymentMethodView> groups =
-        paymentService.getPaymentMethods(10L, 7L, true);
+    List<PaymentMethodView> groups = paymentService.getPaymentMethods(10L, 7L, true);
 
     assertEquals(1, groups.size());
     assertEquals("PAY_LATER", groups.getFirst().type());
@@ -270,8 +269,7 @@ class PaymentServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
     when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L))
         .thenReturn(List.of(outboundHold, returnHold));
-    when(bookingServiceRepository.sumPriceByBookingId(10L))
-        .thenReturn(new BigDecimal("265000"));
+    when(bookingServiceRepository.sumPriceByBookingId(10L)).thenReturn(new BigDecimal("265000"));
     when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
         .thenReturn(new BigDecimal("40000"));
     when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
@@ -314,8 +312,7 @@ class PaymentServiceTest {
             .compareTo(requestCaptor.getValue().lineItems().get(3).amount()));
     assertEquals(
         0,
-        new BigDecimal("40000.00")
-            .compareTo(requestCaptor.getValue().lineItems().get(4).amount()));
+        new BigDecimal("40000.00").compareTo(requestCaptor.getValue().lineItems().get(4).amount()));
     assertEquals(
         0,
         new BigDecimal("265000.00")
