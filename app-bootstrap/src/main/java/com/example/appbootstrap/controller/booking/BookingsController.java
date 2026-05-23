@@ -436,6 +436,8 @@ public class BookingsController {
         view.bookingStatus(),
         view.paymentStatus(),
         view.currency(),
+        view.errorCode(),
+        view.errorMessage(),
         view.refundEstimateTitle(),
         view.refundEstimateMessage(),
         view.refundEstimateNote(),

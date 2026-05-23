@@ -17,6 +17,8 @@ public record BookingCancellationResponse(
     String bookingStatus,
     String paymentStatus,
     String currency,
+    String errorCode,
+    String errorMessage,
     String refundEstimateTitle,
     String refundEstimateMessage,
     String refundEstimateNote,

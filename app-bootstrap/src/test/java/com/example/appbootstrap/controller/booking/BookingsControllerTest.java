@@ -188,6 +188,8 @@ class BookingsControllerTest {
                 "CONFIRMED",
                 "PARTIALLY_REFUNDED",
                 "VND",
+                null,
+                null,
                 "Tr\u1ea1ng th\u00e1i ho\u00e0n ti\u1ec1n",
                 "L\u1ec7nh ho\u00e0n ti\u1ec1n \u0111\u00e3 \u0111\u01b0\u1ee3c ti\u1ebfp nh\u1eadn v\u00e0 x\u1eed l\u00fd 24/7.",
                 "Th\u1eddi gian nh\u1eadn ti\u1ec1n th\u1ef1c t\u1ebf ph\u1ee5 thu\u1ed9c v\u00e0o ng\u00e2n h\u00e0ng nh\u1eadn.",

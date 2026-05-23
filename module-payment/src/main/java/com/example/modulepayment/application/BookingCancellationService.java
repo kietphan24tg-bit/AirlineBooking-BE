@@ -648,6 +648,8 @@ public class BookingCancellationService {
         booking.getStatus(),
         payment.getPaymentStatus(),
         cancellation.getCurrency(),
+        cancellation.getErrorCode(),
+        cancellation.getErrorMessage(),
         refundEstimate.title(),
         refundEstimate.message(),
         refundEstimate.note(),
