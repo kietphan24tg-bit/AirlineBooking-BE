@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
-import java.util.Optional;
 
 import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
@@ -26,6 +25,7 @@ import jakarta.validation.Validator;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -77,7 +77,8 @@ class PaymentsControllerTest {
     when(paymentService.findActivePayLaterSession(10L, 7L))
         .thenReturn(
             Optional.of(
-                new ActivePayLaterSessionView(91L, OffsetDateTime.parse("2026-05-23T11:00:00+07:00"))));
+                new ActivePayLaterSessionView(
+                    91L, OffsetDateTime.parse("2026-05-23T11:00:00+07:00"))));
 
     PaymentMethodsResponse response = controller.getPaymentMethods(principal(), 10L, false);
 

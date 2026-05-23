@@ -6,10 +6,10 @@ import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
+import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.CreatePaymentCommand;
 import com.example.modulepayment.application.CreatePaymentResult;
 import com.example.modulepayment.application.PaymentDetailsView;
-import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentResultService;
 import com.example.modulepayment.application.PaymentResultStatusView;
@@ -79,7 +79,9 @@ public class PaymentsController {
     ActivePayLaterSessionView activePayLaterSession =
         principal == null
             ? paymentService.findActivePayLaterSessionPublic(bookingId).orElse(null)
-            : paymentService.findActivePayLaterSession(bookingId, principal.getUserId()).orElse(null);
+            : paymentService
+                .findActivePayLaterSession(bookingId, principal.getUserId())
+                .orElse(null);
     return new PaymentMethodsResponse(
         groups.stream()
             .map(
