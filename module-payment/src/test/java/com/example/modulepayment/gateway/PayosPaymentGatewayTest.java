@@ -166,6 +166,8 @@ class PayosPaymentGatewayTest {
                         OffsetDateTime.parse("2026-04-08T15:30:00Z"))));
 
     assertEquals("PAYMENT_PROVIDER_ERROR", ex.getCode());
+    assertEquals(
+        "PayOS failed to create payment link (code 231): Invalid account", ex.getMessage());
   }
 
   @Test

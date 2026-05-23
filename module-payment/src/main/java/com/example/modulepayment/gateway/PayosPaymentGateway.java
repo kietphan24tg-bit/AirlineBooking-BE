@@ -93,14 +93,19 @@ public class PayosPaymentGateway implements PaymentGateway {
       HttpResponse<String> response =
           httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
       if (response.statusCode() >= 400) {
-        throw new AppException("PAYMENT_PROVIDER_ERROR", "PayOS rejected payment request", 502);
+        throw new AppException(
+            "PAYMENT_PROVIDER_ERROR",
+            formatHttpFailure("create payment link", response.statusCode(), response.body()),
+            502);
       }
 
       PayosCreatePaymentResponse paymentResponse =
           objectMapper.readValue(response.body(), PayosCreatePaymentResponse.class);
       if (paymentResponse.code() == null || !PAYOS_SUCCESS_CODE.equals(paymentResponse.code())) {
         throw new AppException(
-            "PAYMENT_PROVIDER_ERROR", "PayOS returned a non-success response", 502);
+            "PAYMENT_PROVIDER_ERROR",
+            formatApiFailure("create payment link", paymentResponse.code(), paymentResponse.desc()),
+            502);
       }
       if (paymentResponse.data() == null || paymentResponse.data().paymentLinkId() == null) {
         throw new AppException(
@@ -154,14 +159,19 @@ public class PayosPaymentGateway implements PaymentGateway {
       HttpResponse<String> response =
           httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
       if (response.statusCode() >= 400) {
-        throw new AppException("PAYMENT_PROVIDER_ERROR", "PayOS rejected cancel request", 502);
+        throw new AppException(
+            "PAYMENT_PROVIDER_ERROR",
+            formatHttpFailure("cancel payment link", response.statusCode(), response.body()),
+            502);
       }
 
       PayosCancelPaymentResponse cancelResponse =
           objectMapper.readValue(response.body(), PayosCancelPaymentResponse.class);
       if (cancelResponse.code() == null || !PAYOS_SUCCESS_CODE.equals(cancelResponse.code())) {
         throw new AppException(
-            "PAYMENT_PROVIDER_ERROR", "PayOS returned a non-success cancel response", 502);
+            "PAYMENT_PROVIDER_ERROR",
+            formatApiFailure("cancel payment link", cancelResponse.code(), cancelResponse.desc()),
+            502);
       }
     } catch (IOException exception) {
       throw new AppException("PAYMENT_PROVIDER_ERROR", "Unable to parse PayOS response", 502);
@@ -211,6 +221,23 @@ public class PayosPaymentGateway implements PaymentGateway {
     String configured =
         paymentProperties.payos() == null ? null : paymentProperties.payos().baseUrl();
     return configured == null || configured.isBlank() ? DEFAULT_BASE_URL : configured;
+  }
+
+  static String formatApiFailure(String operation, String code, String desc) {
+    String safeCode = code == null || code.isBlank() ? "unknown" : code.trim();
+    String safeDesc = desc == null || desc.isBlank() ? "No description from PayOS" : desc.trim();
+    return "PayOS failed to " + operation + " (code " + safeCode + "): " + safeDesc;
+  }
+
+  static String formatHttpFailure(String operation, int statusCode, String body) {
+    String snippet = body == null ? "" : body.trim();
+    if (snippet.length() > 240) {
+      snippet = snippet.substring(0, 240) + "...";
+    }
+    if (snippet.isBlank()) {
+      return "PayOS rejected request to " + operation + " (HTTP " + statusCode + ")";
+    }
+    return "PayOS rejected request to " + operation + " (HTTP " + statusCode + "): " + snippet;
   }
 
   record CreatePaymentLinkPayload(

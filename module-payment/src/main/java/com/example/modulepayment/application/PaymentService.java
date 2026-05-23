@@ -385,28 +385,31 @@ public class PaymentService {
             booking.getId(), PAYMENT_STATUS_PENDING);
     PaymentEntity latestReusablePending =
         findLatestReusablePending(previousPending, normalizedMethod);
-    OffsetDateTime expireAt =
+    OffsetDateTime bookingExpireAt =
         resolveEffectiveExpireAt(booking, normalizedMethod, now, latestReusablePending != null);
-    assertSufficientPaymentWindow(booking, normalizedMethod, expireAt, now);
+    OffsetDateTime paymentResponseExpireAt =
+        resolvePaymentResponseExpireAt(normalizedMethod, bookingExpireAt, now);
+    assertSufficientPaymentWindow(booking, normalizedMethod, bookingExpireAt, now);
 
     PaymentEntity reusablePending =
-        findReusablePending(previousPending, normalizedMethod, booking.getPnrExpiresAt(), expireAt);
+        findReusablePending(
+            previousPending, normalizedMethod, booking.getPnrExpiresAt(), bookingExpireAt);
     boolean shouldReusePending =
-        reusablePending != null && Objects.equals(booking.getPnrExpiresAt(), expireAt);
+        reusablePending != null && Objects.equals(booking.getPnrExpiresAt(), bookingExpireAt);
 
     if (METHOD_PAY_LATER.equals(normalizedMethod)) {
       PaymentEntity existingPayLater = findLatestPayLaterPending(previousPending);
       if (existingPayLater != null && hasActiveBookingHold(booking, now)) {
-        applyEffectiveExpireAt(booking, expireAt, now);
+        applyEffectiveExpireAt(booking, bookingExpireAt, now);
         resolvePendingPaymentsOnMethodChange(
             previousPending, normalizedMethod, now, existingPayLater.getId());
-        refreshPayLaterProviderLink(existingPayLater, booking, expireAt, now);
+        refreshPayLaterProviderLink(existingPayLater, booking, bookingExpireAt, now);
         ensureBookingPendingPayment(booking, now);
         log.info(
             "Reusing pay-later payment: bookingId={}, paymentId={}",
             booking.getId(),
             existingPayLater.getId());
-        return buildCreatePaymentResult(existingPayLater, booking, expireAt);
+        return buildCreatePaymentResult(existingPayLater, booking, bookingExpireAt);
       }
     }
 
@@ -418,10 +421,10 @@ public class PaymentService {
           normalizedMethod,
           reusablePending.getPaymentMethod());
       ensureBookingPendingPayment(booking, now);
-      return buildCreatePaymentResult(reusablePending, booking, expireAt);
+      return buildCreatePaymentResult(reusablePending, booking, paymentResponseExpireAt);
     }
 
-    applyEffectiveExpireAt(booking, expireAt, now);
+    applyEffectiveExpireAt(booking, bookingExpireAt, now);
 
     assertPaymentCreationAllowed(booking, normalizedMethod, now);
 
@@ -461,7 +464,7 @@ public class PaymentService {
                       booking.getPnrCode(),
                       booking.getContactEmail(),
                       booking.getContactPhone(),
-                      expireAt,
+                      paymentResponseExpireAt,
                       booking.getId(),
                       providerForMethod(normalizedMethod),
                       buildProductName(booking),
@@ -483,7 +486,7 @@ public class PaymentService {
     paymentRepository.save(payment);
 
     ensureBookingPendingPayment(booking, OffsetDateTime.now());
-    return buildCreatePaymentResult(payment, booking, expireAt);
+    return buildCreatePaymentResult(payment, booking, paymentResponseExpireAt);
   }
 
   private void assertPaymentCreationAllowed(
@@ -591,6 +594,29 @@ public class PaymentService {
     }
 
     return targetExpireAt;
+  }
+
+  /**
+   * VietQR uses a short QR session window for API responses and PayOS, separate from a longer
+   * pay-later booking hold on {@code pnrExpiresAt}.
+   */
+  private OffsetDateTime resolvePaymentResponseExpireAt(
+      String method, OffsetDateTime bookingExpireAt, OffsetDateTime now) {
+    if (!METHOD_PAYOS.equals(method)) {
+      return bookingExpireAt;
+    }
+    return resolvePayosPaymentSessionExpireAt(bookingExpireAt, now);
+  }
+
+  private OffsetDateTime resolvePayosPaymentSessionExpireAt(
+      OffsetDateTime bookingExpireAt, OffsetDateTime now) {
+    OffsetDateTime sessionDeadline =
+        now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES)
+            .plusSeconds(PAYOS_PAYMENT_WINDOW_BUFFER_SECONDS);
+    if (bookingExpireAt == null || !bookingExpireAt.isAfter(sessionDeadline)) {
+      return bookingExpireAt;
+    }
+    return sessionDeadline;
   }
 
   private OffsetDateTime resolveTargetExpireAt(String method, OffsetDateTime now) {
