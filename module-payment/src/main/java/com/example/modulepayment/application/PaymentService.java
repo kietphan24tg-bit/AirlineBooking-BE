@@ -24,6 +24,7 @@ import com.example.modulepayment.repository.BookingRepository;
 import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -55,6 +56,7 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
+  private static final long BOOKING_PNR_EXPIRATION_MINUTES = 15;
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
   private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
@@ -513,6 +515,9 @@ public class PaymentService {
     if (booking == null) {
       return null;
     }
+    if (METHOD_PAYOS.equals(method)) {
+      return resolvePayosExpireAt(booking, now, preserveLongerCurrentWindow);
+    }
     OffsetDateTime targetExpireAt = resolveTargetExpireAt(method, now);
     OffsetDateTime cappedExpireAt = capExpireAt(booking, method, targetExpireAt);
     if (cappedExpireAt == null) {
@@ -520,10 +525,64 @@ public class PaymentService {
     }
     if (preserveLongerCurrentWindow
         && booking.getPnrExpiresAt() != null
-        && booking.getPnrExpiresAt().isAfter(cappedExpireAt)) {
+        && booking.getPnrExpiresAt().isAfter(cappedExpireAt)
+        && withinMethodCap(booking, method, booking.getPnrExpiresAt())) {
       return booking.getPnrExpiresAt();
     }
     return cappedExpireAt;
+  }
+
+  /**
+   * PayOS/VietQR window: never shorten an active hold. When <= 5 minutes remain, extend from the
+   * current deadline (+5 minutes) instead of resetting from now.
+   */
+  private OffsetDateTime resolvePayosTargetExpireAt(BookingEntity booking, OffsetDateTime now) {
+    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
+    if (currentExpireAt != null && currentExpireAt.isAfter(now)) {
+      long remainingSeconds = Duration.between(now, currentExpireAt).getSeconds();
+      if (remainingSeconds <= PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
+        return currentExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+      }
+      return currentExpireAt;
+    }
+    return now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+  }
+
+  private OffsetDateTime resolvePayosExpireAt(
+      BookingEntity booking, OffsetDateTime now, boolean preserveLongerCurrentWindow) {
+    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
+    OffsetDateTime targetExpireAt = resolvePayosTargetExpireAt(booking, now);
+    OffsetDateTime maxExpireAt = resolvePayosMaxExpireAt(booking);
+    OffsetDateTime cappedExpireAt =
+        maxExpireAt == null || !targetExpireAt.isAfter(maxExpireAt) ? targetExpireAt : maxExpireAt;
+    if (currentExpireAt != null
+        && currentExpireAt.equals(targetExpireAt)
+        && cappedExpireAt.isBefore(currentExpireAt)) {
+      cappedExpireAt = currentExpireAt;
+    }
+
+    if (preserveLongerCurrentWindow
+        && currentExpireAt != null
+        && !currentExpireAt.isBefore(targetExpireAt)
+        && withinMethodCap(booking, METHOD_PAYOS, currentExpireAt)) {
+      return currentExpireAt;
+    }
+
+    if (booking.getPaymentWindowExtendedAt() != null
+        && currentExpireAt != null
+        && cappedExpireAt.isAfter(currentExpireAt)) {
+      return currentExpireAt;
+    }
+
+    return cappedExpireAt;
+  }
+
+  private OffsetDateTime resolvePayosMaxExpireAt(BookingEntity booking) {
+    if (booking == null || booking.getCreatedAt() == null) {
+      return booking == null ? null : booking.getPnrExpiresAt();
+    }
+    return booking.getCreatedAt()
+        .plusMinutes(BOOKING_PNR_EXPIRATION_MINUTES + PAYOS_PAYMENT_WINDOW_MINUTES);
   }
 
   private OffsetDateTime resolveTargetExpireAt(String method, OffsetDateTime now) {
@@ -552,10 +611,16 @@ public class PaymentService {
     if (METHOD_STRIPE_CARD.equals(method)) {
       return booking.getCreatedAt().plusMinutes(STRIPE_PAYMENT_WINDOW_MINUTES);
     }
-    if (METHOD_PAY_LATER.equals(method)) {
-      return booking.getCreatedAt().plusMinutes(PAY_LATER_HOLD_MINUTES);
-    }
     return null;
+  }
+
+  private boolean withinMethodCap(BookingEntity booking, String method, OffsetDateTime expireAt) {
+    if (expireAt == null) {
+      return true;
+    }
+    OffsetDateTime methodCapExpireAt =
+        METHOD_PAYOS.equals(method) ? resolvePayosMaxExpireAt(booking) : resolveMethodCapExpireAt(booking, method);
+    return methodCapExpireAt == null || !expireAt.isAfter(methodCapExpireAt);
   }
 
   private void applyEffectiveExpireAt(
