@@ -88,7 +88,7 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
               updated_at = :now
           from bookings b
           where p.booking_id = b.id
-            and p.payment_status = 'PENDING'
+            and p.payment_status in ('PENDING', 'SUSPENDED')
             and (b.status = 'EXPIRED'
               or (b.pnr_expires_at is not null and b.pnr_expires_at < :now))
           """,

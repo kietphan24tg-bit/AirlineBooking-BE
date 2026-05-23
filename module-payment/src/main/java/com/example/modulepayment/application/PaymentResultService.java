@@ -127,7 +127,7 @@ public class PaymentResultService {
         paymentStatus,
         bookingStatus,
         resultPage,
-        booking == null ? null : booking.getPnrExpiresAt(),
+        resolvePaymentExpireAt(payment),
         payment.getAmount(),
         payment.getCurrency(),
         payment.getPaymentMethod(),
@@ -140,6 +140,17 @@ public class PaymentResultService {
             "PENDING".equals(resultPage),
             "PENDING".equals(resultPage) ? NEXT_POLL_AFTER_SECONDS : null),
         failure);
+  }
+
+  private OffsetDateTime resolvePaymentExpireAt(PaymentEntity payment) {
+    if (payment == null) {
+      return null;
+    }
+    if (payment.getSessionExpiresAt() != null) {
+      return payment.getSessionExpiresAt();
+    }
+    BookingEntity booking = payment.getBooking();
+    return booking == null ? null : booking.getPnrExpiresAt();
   }
 
   private PaymentResultSummaryView buildSummary(PaymentEntity payment) {

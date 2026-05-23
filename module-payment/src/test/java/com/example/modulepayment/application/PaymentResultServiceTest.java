@@ -133,6 +133,7 @@ class PaymentResultServiceTest {
     payment.setPaymentStatus(status);
     payment.setTransactionId("txn_pending_5");
     payment.setCheckoutUrl("https://pay.example/5");
+    payment.setSessionExpiresAt(booking.getPnrExpiresAt());
     payment.setCreatedAt(OffsetDateTime.parse("2026-05-17T08:00:00Z"));
     payment.setPaidAt(null);
     return payment;

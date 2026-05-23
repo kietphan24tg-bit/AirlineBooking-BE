@@ -73,6 +73,9 @@ public class PaymentEntity {
   @Column(length = 30)
   private String type;
 
+  @Column(name = "session_expires_at")
+  private OffsetDateTime sessionExpiresAt;
+
   @Column(name = "paid_at")
   private OffsetDateTime paidAt;
 

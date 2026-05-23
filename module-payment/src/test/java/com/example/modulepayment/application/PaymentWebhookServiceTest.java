@@ -113,6 +113,43 @@ class PaymentWebhookServiceTest {
   }
 
   @Test
+  void shouldAcceptSuspendedPayLaterWebhookAndConfirmBooking() {
+    NormalizedPayosWebhookEvent event =
+        new NormalizedPayosWebhookEvent(
+            "PAYOS",
+            "PAYMENT_SUCCEEDED",
+            123L,
+            "plink_123",
+            1200000L,
+            "VND",
+            null,
+            null,
+            null,
+            null,
+            OffsetDateTime.parse("2025-08-10T03:03:09Z"),
+            "signature",
+            "{\"code\":\"00\"}");
+    PaymentEntity payment = payment("SUSPENDED", "PENDING_PAYMENT");
+    payment.setPaymentMethod("PAY_LATER");
+
+    when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
+        .thenReturn(false);
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentWebhookService.handlePayosWebhook("payload");
+
+    assertEquals("SUCCESS", payment.getPaymentStatus());
+    assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+  }
+
+  @Test
   void shouldSkipDuplicateWebhook() {
     NormalizedPayosWebhookEvent event =
         new NormalizedPayosWebhookEvent(
@@ -267,6 +304,51 @@ class PaymentWebhookServiceTest {
     assertEquals("EXPIRED", payment.getBooking().getStatus());
     verify(ticketIssuanceService, never()).issueTicketsForConfirmedBooking(any());
     verify(bookingConfirmationNotifier, never()).sendIfNeeded(any());
+  }
+
+  @Test
+  void shouldRefundLatePayosSuccessWhenBookingAlreadySettledByAnotherPayment() {
+    NormalizedPayosWebhookEvent event =
+        new NormalizedPayosWebhookEvent(
+            "PAYOS",
+            "PAYMENT_SUCCEEDED",
+            123L,
+            "plink_123",
+            1200000L,
+            "VND",
+            "970415",
+            "VietinBank",
+            "NGUYEN VAN A",
+            "0123456789",
+            OffsetDateTime.parse("2025-08-10T03:03:09Z"),
+            "signature",
+            "{\"code\":\"00\"}");
+    PaymentEntity payment = payment("SUSPENDED", "CONFIRMED");
+    payment.setPaymentMethod("PAY_LATER");
+
+    when(payosWebhookSupport.parseAndVerify("payload")).thenReturn(event);
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey(
+            "PAYOS", event.idempotencyKey()))
+        .thenReturn(false);
+    when(paymentRepository.findByTransactionIdForUpdate("plink_123"))
+        .thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+    when(paymentRefundService.refund(any(), any(), any(), any(), any()))
+        .thenReturn(new PaymentRefundResult("refund_123", "SUCCEEDED"));
+
+    paymentWebhookService.handlePayosWebhook("payload");
+
+    assertEquals("FAILED", payment.getPaymentStatus());
+    assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    verify(paymentRefundService).preparePaymentForRefund(payment);
+    verify(paymentRefundService).refund(any(), any(), any(), any(), any());
+    ArgumentCaptor<PaymentWebhookEventEntity> captor =
+        ArgumentCaptor.forClass(PaymentWebhookEventEntity.class);
+    verify(paymentWebhookEventRepository).save(captor.capture());
+    assertEquals("PAYMENT_ALREADY_SETTLED", captor.getValue().getErrorCode());
+    verify(ticketIssuanceService, never()).issueTicketsForConfirmedBooking(any());
   }
 
   @Test

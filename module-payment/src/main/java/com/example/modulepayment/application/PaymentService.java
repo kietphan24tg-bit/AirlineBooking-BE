@@ -60,13 +60,12 @@ public class PaymentService {
   private static final String METHOD_PAY_LATER = "PAY_LATER";
   private static final String PAYMENT_STATUS_FAILED = "FAILED";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
+  private static final String PAYMENT_STATUS_SUSPENDED = "SUSPENDED";
   private static final String PAYMENT_STATUS_CANCELLED = "CANCELLED";
   private static final String PAYMENT_ACTION_QR = "QR";
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
-  private static final long PAYOS_PAYMENT_WINDOW_BUFFER_SECONDS = 20;
-
   /** Minimum remaining time (and checkout session length) required to start Stripe checkout. */
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
 
@@ -229,7 +228,7 @@ public class PaymentService {
         payment.getPaymentMethod(),
         payment.getPaymentStatus(),
         payment.getPaidAt(),
-        booking.getPnrExpiresAt(),
+        resolvePaymentExpireAt(payment, booking),
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
@@ -252,7 +251,7 @@ public class PaymentService {
         payment.getPaymentMethod(),
         payment.getPaymentStatus(),
         payment.getPaidAt(),
-        booking.getPnrExpiresAt(),
+        resolvePaymentExpireAt(payment, booking),
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
@@ -328,7 +327,7 @@ public class PaymentService {
         payment.getPaymentMethod(),
         payment.getPaymentStatus(),
         payment.getPaidAt(),
-        booking == null ? null : booking.getPnrExpiresAt(),
+        resolvePaymentExpireAt(payment, booking),
         payment.getTransactionId(),
         payment.getQrData(),
         payment.getQrImageUrl(),
@@ -381,14 +380,23 @@ public class PaymentService {
 
     OffsetDateTime now = OffsetDateTime.now();
     List<PaymentEntity> previousPending =
-        paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
-            booking.getId(), PAYMENT_STATUS_PENDING);
+        new ArrayList<>(
+            paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(
+                booking.getId(), PAYMENT_STATUS_PENDING));
+    List<PaymentEntity> suspendedPayLater =
+        paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+            booking.getId(), List.of(PAYMENT_STATUS_SUSPENDED));
+    if (suspendedPayLater != null && !suspendedPayLater.isEmpty()) {
+      previousPending.addAll(suspendedPayLater);
+    }
+    if (METHOD_PAYOS.equals(normalizedMethod)) {
+      return createOrReusePayosPayment(booking, previousPending, now);
+    }
     PaymentEntity latestReusablePending =
         findLatestReusablePending(previousPending, normalizedMethod);
     OffsetDateTime bookingExpireAt =
         resolveEffectiveExpireAt(booking, normalizedMethod, now, latestReusablePending != null);
-    OffsetDateTime paymentResponseExpireAt =
-        resolvePaymentResponseExpireAt(normalizedMethod, bookingExpireAt, now);
+    OffsetDateTime paymentResponseExpireAt = bookingExpireAt;
     assertSufficientPaymentWindow(booking, normalizedMethod, bookingExpireAt, now);
 
     PaymentEntity reusablePending =
@@ -398,12 +406,13 @@ public class PaymentService {
         reusablePending != null && Objects.equals(booking.getPnrExpiresAt(), bookingExpireAt);
 
     if (METHOD_PAY_LATER.equals(normalizedMethod)) {
-      PaymentEntity existingPayLater = findLatestPayLaterPending(previousPending);
+      PaymentEntity existingPayLater = findLatestPayLaterSession(previousPending);
       if (existingPayLater != null && hasActiveBookingHold(booking, now)) {
         applyEffectiveExpireAt(booking, bookingExpireAt, now);
         resolvePendingPaymentsOnMethodChange(
             previousPending, normalizedMethod, now, existingPayLater.getId());
-        refreshPayLaterProviderLink(existingPayLater, booking, bookingExpireAt, now);
+        resumePayLaterPayment(existingPayLater, now);
+        existingPayLater.setSessionExpiresAt(bookingExpireAt);
         ensureBookingPendingPayment(booking, now);
         log.info(
             "Reusing pay-later payment: bookingId={}, paymentId={}",
@@ -437,6 +446,7 @@ public class PaymentService {
     payment.setPaymentMethod(normalizedMethod);
     payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
     payment.setType(actionTypeForMethod(normalizedMethod));
+    payment.setSessionExpiresAt(paymentResponseExpireAt);
     payment.setCreatedAt(now);
     payment.setUpdatedAt(now);
     paymentRepository.saveAndFlush(payment);
@@ -487,6 +497,82 @@ public class PaymentService {
 
     ensureBookingPendingPayment(booking, OffsetDateTime.now());
     return buildCreatePaymentResult(payment, booking, paymentResponseExpireAt);
+  }
+
+  private CreatePaymentResult createOrReusePayosPayment(
+      BookingEntity booking, List<PaymentEntity> previousPending, OffsetDateTime now) {
+    PaymentEntity latestQrPending = findLatestReusablePayosPending(previousPending);
+    OffsetDateTime qrExpireAt =
+        latestQrPending == null
+            ? resolveInitialPayosQrExpireAt(booking, now)
+            : resolveSubsequentPayosQrExpireAt(latestQrPending, booking, now);
+    OffsetDateTime bookingExpireAt = maxExpireAt(booking.getPnrExpiresAt(), qrExpireAt);
+
+    if (latestQrPending != null
+        && Objects.equals(qrExpireAt, resolvePaymentExpireAt(latestQrPending, booking))) {
+      applyEffectiveExpireAt(booking, bookingExpireAt, now);
+      resolvePendingPaymentsOnMethodChange(
+          previousPending, METHOD_PAYOS, now, latestQrPending.getId());
+      latestQrPending.setSessionExpiresAt(qrExpireAt);
+      latestQrPending.setUpdatedAt(now);
+      ensureBookingPendingPayment(booking, now);
+      return buildCreatePaymentResult(latestQrPending, booking, qrExpireAt);
+    }
+
+    applyEffectiveExpireAt(booking, bookingExpireAt, now);
+    assertPaymentCreationAllowed(booking, METHOD_PAYOS, now);
+    resolvePendingPaymentsOnMethodChange(previousPending, METHOD_PAYOS, now, null);
+
+    PaymentEntity payment = new PaymentEntity();
+    payment.setBooking(booking);
+    payment.setAmount(normalizeAmount(booking.getTotalAmount()));
+    payment.setCurrency(booking.getCurrency());
+    payment.setPaymentMethod(METHOD_PAYOS);
+    payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
+    payment.setType(PAYMENT_ACTION_QR);
+    payment.setSessionExpiresAt(qrExpireAt);
+    payment.setCreatedAt(now);
+    payment.setUpdatedAt(now);
+    paymentRepository.saveAndFlush(payment);
+
+    PaymentGatewayResult gatewayResult;
+    try {
+      gatewayResult =
+          payosPaymentGateway.createPaymentLink(
+              new PaymentGatewayRequest(
+                  payment.getId(),
+                  payment.getId(),
+                  payment.getAmount(),
+                  payment.getCurrency(),
+                  buildDescription(payment.getId()),
+                  appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
+                  appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
+                  booking.getPnrCode(),
+                  booking.getContactEmail(),
+                  booking.getContactPhone(),
+                  qrExpireAt,
+                  booking.getId(),
+                  providerForMethod(METHOD_PAYOS),
+                  buildProductName(booking),
+                  buildProductDescription(booking),
+                  buildStripeLineItems(booking),
+                  buildStripeMetadata(booking)));
+    } catch (RuntimeException exception) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      payment.setUpdatedAt(OffsetDateTime.now());
+      paymentRepository.save(payment);
+      throw exception;
+    }
+
+    payment.setTransactionId(gatewayResult.paymentLinkId());
+    payment.setQrData(gatewayResult.qrCode());
+    payment.setType(gatewayResult.actionType());
+    payment.setCheckoutUrl(gatewayResult.checkoutUrl());
+    payment.setUpdatedAt(OffsetDateTime.now());
+    paymentRepository.save(payment);
+
+    ensureBookingPendingPayment(booking, OffsetDateTime.now());
+    return buildCreatePaymentResult(payment, booking, qrExpireAt);
   }
 
   private void assertPaymentCreationAllowed(
@@ -543,9 +629,6 @@ public class PaymentService {
     if (booking == null) {
       return null;
     }
-    if (METHOD_PAYOS.equals(method)) {
-      return resolvePayosExpireAt(booking, now, preserveLongerCurrentWindow);
-    }
     OffsetDateTime targetExpireAt = resolveTargetExpireAt(method, now);
     OffsetDateTime cappedExpireAt = capExpireAt(booking, method, targetExpireAt);
     if (cappedExpireAt == null) {
@@ -558,65 +641,6 @@ public class PaymentService {
       return booking.getPnrExpiresAt();
     }
     return cappedExpireAt;
-  }
-
-  /**
-   * PayOS/VietQR: keep the booking hold when >= 5 minutes remain; otherwise extend the current
-   * deadline by 5 minutes. Requires an active booking hold (pay-later logic is unchanged).
-   */
-  private OffsetDateTime resolvePayosTargetExpireAt(BookingEntity booking, OffsetDateTime now) {
-    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
-    if (currentExpireAt == null || !currentExpireAt.isAfter(now)) {
-      throw new AppException("BOOKING_EXPIRED", "Booking payment window has expired", 410);
-    }
-    long remainingSeconds = Duration.between(now, currentExpireAt).getSeconds();
-    if (remainingSeconds < PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
-      return currentExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
-    }
-    return currentExpireAt;
-  }
-
-  private OffsetDateTime resolvePayosExpireAt(
-      BookingEntity booking, OffsetDateTime now, boolean preserveLongerCurrentWindow) {
-    OffsetDateTime currentExpireAt = booking.getPnrExpiresAt();
-    OffsetDateTime targetExpireAt = resolvePayosTargetExpireAt(booking, now);
-
-    if (preserveLongerCurrentWindow
-        && currentExpireAt != null
-        && !currentExpireAt.isBefore(targetExpireAt)) {
-      return currentExpireAt;
-    }
-
-    if (booking.getPaymentWindowExtendedAt() != null
-        && currentExpireAt != null
-        && targetExpireAt.isAfter(currentExpireAt)) {
-      return currentExpireAt;
-    }
-
-    return targetExpireAt;
-  }
-
-  /**
-   * VietQR uses a short QR session window for API responses and PayOS, separate from a longer
-   * pay-later booking hold on {@code pnrExpiresAt}.
-   */
-  private OffsetDateTime resolvePaymentResponseExpireAt(
-      String method, OffsetDateTime bookingExpireAt, OffsetDateTime now) {
-    if (!METHOD_PAYOS.equals(method)) {
-      return bookingExpireAt;
-    }
-    return resolvePayosPaymentSessionExpireAt(bookingExpireAt, now);
-  }
-
-  private OffsetDateTime resolvePayosPaymentSessionExpireAt(
-      OffsetDateTime bookingExpireAt, OffsetDateTime now) {
-    OffsetDateTime sessionDeadline =
-        now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES)
-            .plusSeconds(PAYOS_PAYMENT_WINDOW_BUFFER_SECONDS);
-    if (bookingExpireAt == null || !bookingExpireAt.isAfter(sessionDeadline)) {
-      return bookingExpireAt;
-    }
-    return sessionDeadline;
   }
 
   private OffsetDateTime resolveTargetExpireAt(String method, OffsetDateTime now) {
@@ -716,9 +740,6 @@ public class PaymentService {
     if (booking == null || expireAt == null) {
       return true;
     }
-    if (METHOD_PAYOS.equals(method)) {
-      return !expireAt.plusSeconds(1).isBefore(now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES));
-    }
     if (METHOD_STRIPE_CARD.equals(method)) {
       if (expireAt == null) {
         return false;
@@ -747,6 +768,7 @@ public class PaymentService {
     }
     return previousPending.stream()
         .filter(payment -> isSamePaymentMethod(payment, method))
+        .filter(this::isActivePendingPayment)
         .filter(this::isReusablePending)
         .filter(payment -> Objects.equals(currentExpireAt, effectiveExpireAt))
         .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
@@ -761,10 +783,16 @@ public class PaymentService {
     }
     return previousPending.stream()
         .filter(payment -> isSamePaymentMethod(payment, method))
+        .filter(this::isActivePendingPayment)
         .filter(this::isReusablePending)
         .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
         .findFirst()
         .orElse(null);
+  }
+
+  private boolean isActivePendingPayment(PaymentEntity payment) {
+    return payment != null
+        && PAYMENT_STATUS_PENDING.equalsIgnoreCase(nullToBlank(payment.getPaymentStatus()));
   }
 
   private boolean isSamePaymentMethod(PaymentEntity payment, String method) {
@@ -783,6 +811,64 @@ public class PaymentService {
       return false;
     }
     return payment.getCheckoutUrl() != null && !payment.getCheckoutUrl().isBlank();
+  }
+
+  private OffsetDateTime resolvePaymentExpireAt(PaymentEntity payment, BookingEntity booking) {
+    if (payment != null && payment.getSessionExpiresAt() != null) {
+      return payment.getSessionExpiresAt();
+    }
+    return booking == null ? null : booking.getPnrExpiresAt();
+  }
+
+  private PaymentEntity findLatestReusablePayosPending(List<PaymentEntity> previousPending) {
+    if (previousPending == null || previousPending.isEmpty()) {
+      return null;
+    }
+    return previousPending.stream()
+        .filter(payment -> isSamePaymentMethod(payment, METHOD_PAYOS))
+        .filter(this::isActivePendingPayment)
+        .filter(this::isReusablePending)
+        .max(
+            Comparator.comparing(
+                    PaymentEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(
+                    PaymentEntity::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+        .orElse(null);
+  }
+
+  private OffsetDateTime resolveInitialPayosQrExpireAt(BookingEntity booking, OffsetDateTime now) {
+    OffsetDateTime bookingExpireAt = booking == null ? null : booking.getPnrExpiresAt();
+    if (bookingExpireAt == null || !bookingExpireAt.isAfter(now)) {
+      throw new AppException("BOOKING_EXPIRED", "Booking payment window has expired", 410);
+    }
+    long remainingSeconds = Duration.between(now, bookingExpireAt).getSeconds();
+    if (remainingSeconds > PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
+      return bookingExpireAt;
+    }
+    return bookingExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+  }
+
+  private OffsetDateTime resolveSubsequentPayosQrExpireAt(
+      PaymentEntity previousQrPayment, BookingEntity booking, OffsetDateTime now) {
+    OffsetDateTime previousExpireAt = resolvePaymentExpireAt(previousQrPayment, booking);
+    if (previousExpireAt == null || !previousExpireAt.isAfter(now)) {
+      return now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+    }
+    long remainingSeconds = Duration.between(now, previousExpireAt).getSeconds();
+    if (remainingSeconds > PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
+      return previousExpireAt;
+    }
+    return previousExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+  }
+
+  private OffsetDateTime maxExpireAt(OffsetDateTime left, OffsetDateTime right) {
+    if (left == null) {
+      return right;
+    }
+    if (right == null) {
+      return left;
+    }
+    return left.isAfter(right) ? left : right;
   }
 
   private CreatePaymentResult buildCreatePaymentResult(
@@ -933,15 +1019,20 @@ public class PaymentService {
         .filter(this::isPayLaterPayment)
         .filter(this::isReusablePending)
         .findFirst()
-        .map(payment -> new ActivePayLaterSessionView(payment.getId(), booking.getPnrExpiresAt()));
+        .map(
+            payment ->
+                new ActivePayLaterSessionView(
+                    payment.getId(), resolvePaymentExpireAt(payment, booking)));
   }
 
-  private PaymentEntity findLatestPayLaterPending(List<PaymentEntity> previousPending) {
+  private PaymentEntity findLatestPayLaterSession(List<PaymentEntity> previousPending) {
     if (previousPending == null || previousPending.isEmpty()) {
       return null;
     }
     return previousPending.stream()
         .filter(this::isPayLaterPayment)
+        .filter(this::isReusablePending)
+        .filter(this::isPendingOrSuspendedPayLater)
         .max(
             Comparator.comparing(
                     PaymentEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
@@ -953,6 +1044,15 @@ public class PaymentService {
   private boolean isPayLaterPayment(PaymentEntity payment) {
     return payment != null
         && METHOD_PAY_LATER.equalsIgnoreCase(nullToBlank(payment.getPaymentMethod()));
+  }
+
+  private boolean isPendingOrSuspendedPayLater(PaymentEntity payment) {
+    if (!isPayLaterPayment(payment)) {
+      return false;
+    }
+    String status = nullToBlank(payment.getPaymentStatus());
+    return PAYMENT_STATUS_PENDING.equalsIgnoreCase(status)
+        || PAYMENT_STATUS_SUSPENDED.equalsIgnoreCase(status);
   }
 
   private void resolvePendingPaymentsOnMethodChange(
@@ -985,7 +1085,7 @@ public class PaymentService {
             existing.getPaymentMethod(),
             normalizedMethod);
         if (isPayLaterPayment(existing)) {
-          suspendPayLaterProviderLink(existing, "Payment method changed");
+          existing.setPaymentStatus(PAYMENT_STATUS_SUSPENDED);
         } else {
           cancelWithProvider(existing, "Payment method changed");
           existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
@@ -997,62 +1097,9 @@ public class PaymentService {
     }
   }
 
-  private void suspendPayLaterProviderLink(PaymentEntity payment, String reason) {
-    if (!isReusablePending(payment)) {
-      return;
-    }
-    payosPaymentGateway.cancelPaymentLink(
-        new PaymentGateway.CancelPaymentLinkRequest(payment.getId(), payment.getId(), reason));
-  }
-
-  private void refreshPayLaterProviderLink(
-      PaymentEntity payment, BookingEntity booking, OffsetDateTime expireAt, OffsetDateTime now) {
-    if (isReusablePending(payment)) {
-      try {
-        suspendPayLaterProviderLink(payment, "Payment refreshed");
-      } catch (RuntimeException exception) {
-        log.warn(
-            "Unable to suspend previous pay-later provider link before refresh: paymentId={}, message={}",
-            payment.getId(),
-            exception.getMessage());
-      }
-    }
-    PaymentGatewayResult gatewayResult;
-    try {
-      gatewayResult =
-          payosPaymentGateway.createPaymentLink(
-              new PaymentGatewayRequest(
-                  payment.getId(),
-                  payment.getId(),
-                  payment.getAmount(),
-                  payment.getCurrency(),
-                  buildDescription(payment.getId()),
-                  appendPaymentId(paymentProperties.returnUrl(), payment.getId()),
-                  appendPaymentId(paymentProperties.cancelUrl(), payment.getId()),
-                  booking.getPnrCode(),
-                  booking.getContactEmail(),
-                  booking.getContactPhone(),
-                  expireAt,
-                  booking.getId(),
-                  providerForMethod(METHOD_PAY_LATER),
-                  buildProductName(booking),
-                  buildProductDescription(booking),
-                  buildStripeLineItems(booking),
-                  buildStripeMetadata(booking)));
-    } catch (RuntimeException exception) {
-      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
-      payment.setUpdatedAt(now);
-      paymentRepository.save(payment);
-      throw exception;
-    }
-    payment.setTransactionId(gatewayResult.paymentLinkId());
-    payment.setQrData(gatewayResult.qrCode());
-    payment.setType(gatewayResult.actionType());
-    payment.setCheckoutUrl(gatewayResult.checkoutUrl());
-    payment.setPaymentMethod(METHOD_PAY_LATER);
+  private void resumePayLaterPayment(PaymentEntity payment, OffsetDateTime now) {
     payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
     payment.setUpdatedAt(now);
-    paymentRepository.save(payment);
   }
 
   private void cancelWithProvider(PaymentEntity payment, String cancellationReason) {

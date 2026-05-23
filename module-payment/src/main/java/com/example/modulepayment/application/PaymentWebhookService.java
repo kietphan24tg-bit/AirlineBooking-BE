@@ -16,6 +16,7 @@ import com.example.modulepayment.repository.PaymentRepository;
 import com.example.modulepayment.repository.PaymentWebhookEventRepository;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,10 @@ public class PaymentWebhookService {
   private static final String PAYMENT_STATUS_EXPIRED = "EXPIRED";
   private static final String PAYMENT_STATUS_FAILED = "FAILED";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
+  private static final String PAYMENT_STATUS_SUSPENDED = "SUSPENDED";
+  private static final String PAYMENT_STATUS_CANCELLED = "CANCELLED";
   private static final String PAYMENT_STATUS_SUCCESS = "SUCCESS";
+  private static final String PAYMENT_ALREADY_SETTLED = "PAYMENT_ALREADY_SETTLED";
   private static final String PROVIDER_PAYOS = "PAYOS";
   private static final String PROVIDER_STRIPE = "STRIPE";
   private static final String STRIPE_EVENT_CHECKOUT_COMPLETED = "checkout.session.completed";
@@ -45,6 +49,8 @@ public class PaymentWebhookService {
   private static final String STRIPE_PAYMENT_STATUS_PAID = "paid";
   private static final String LATE_STRIPE_CAPTURE_REFUND_REASON =
       "Booking payment window expired before Stripe capture was confirmed";
+  private static final String LATE_PAYOS_CAPTURE_REFUND_REASON =
+      "Booking was already settled before suspended pay-later payment completed";
 
   private final PaymentRepository paymentRepository;
   private final PaymentWebhookEventRepository paymentWebhookEventRepository;
@@ -116,7 +122,7 @@ public class PaymentWebhookService {
     }
 
     BookingEntity booking = payment.getBooking();
-    if (!isPending(payment)) {
+    if (!isActionablePayosPayment(payment)) {
       if (EVENT_TYPE_FAILED.equals(event.eventType())) {
         saveAudit(
             payment,
@@ -173,6 +179,11 @@ public class PaymentWebhookService {
       return;
     }
 
+    if (bookingAlreadySettledByAnotherPayment(payment, booking)) {
+      rejectAndRefundLatePayosSuccess(payment, booking, event, now);
+      return;
+    }
+
     if (bookingExpired(booking, now)) {
       payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
       booking.setStatus(BOOKING_STATUS_EXPIRED);
@@ -202,6 +213,7 @@ public class PaymentWebhookService {
     flightSeatRepository.bookReservedForBooking(booking.getId());
     passengerSeatAssignmentRepository.bookReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
+    closeOtherOpenPaymentsAfterSuccess(payment, booking, now);
     ticketIssuanceService.issueTicketsForConfirmedBooking(booking.getId());
     ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
     bookingConfirmationNotifier.sendIfNeeded(booking.getId());
@@ -409,6 +421,28 @@ public class PaymentWebhookService {
     return status != null && PAYMENT_STATUS_PENDING.equalsIgnoreCase(status.trim());
   }
 
+  private boolean isSuspendedPayLater(PaymentEntity payment) {
+    if (payment == null || payment.getPaymentMethod() == null) {
+      return false;
+    }
+    return "PAY_LATER".equalsIgnoreCase(payment.getPaymentMethod().trim())
+        && PAYMENT_STATUS_SUSPENDED.equalsIgnoreCase(
+            payment.getPaymentStatus() == null ? "" : payment.getPaymentStatus().trim());
+  }
+
+  private boolean isActionablePayosPayment(PaymentEntity payment) {
+    return isPending(payment) || isSuspendedPayLater(payment);
+  }
+
+  private boolean bookingAlreadySettledByAnotherPayment(PaymentEntity payment, BookingEntity booking) {
+    if (payment == null || booking == null) {
+      return false;
+    }
+    return BOOKING_STATUS_CONFIRMED.equalsIgnoreCase(booking.getStatus())
+        && !PAYMENT_STATUS_SUCCESS.equalsIgnoreCase(
+            payment.getPaymentStatus() == null ? "" : payment.getPaymentStatus().trim());
+  }
+
   private void expirePaymentAndBooking(
       PaymentEntity payment, BookingEntity booking, OffsetDateTime now) {
     payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
@@ -418,6 +452,44 @@ public class PaymentWebhookService {
     flightSeatRepository.releaseReservedForBooking(booking.getId());
     passengerSeatAssignmentRepository.releaseReservedByBookingId(booking.getId(), now);
     paymentRepository.save(payment);
+  }
+
+  private void rejectAndRefundLatePayosSuccess(
+      PaymentEntity payment,
+      BookingEntity booking,
+      NormalizedPayosWebhookEvent event,
+      OffsetDateTime now) {
+    payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+    payment.setUpdatedAt(now);
+    if (event.counterAccountBankId() != null && !event.counterAccountBankId().isBlank()) {
+      payment.setRefundCounterAccountBankId(event.counterAccountBankId());
+      payment.setRefundCounterAccountBankName(event.counterAccountBankName());
+      payment.setRefundCounterAccountName(event.counterAccountName());
+      payment.setRefundCounterAccountNumber(event.counterAccountNumber());
+    }
+    paymentRepository.save(payment);
+    try {
+      paymentRefundService.preparePaymentForRefund(payment);
+      paymentRefundService.refund(
+          payment.getId(),
+          "late-payos-refund-" + payment.getId(),
+          payment,
+          payment.getAmount(),
+          LATE_PAYOS_CAPTURE_REFUND_REASON);
+    } catch (RuntimeException exception) {
+      log.error(
+          "Failed to refund late PayOS capture after booking settled: paymentId={}, bookingId={}",
+          payment.getId(),
+          booking == null ? null : booking.getId(),
+          exception);
+    }
+    saveAudit(
+        payment,
+        booking,
+        event,
+        OUTCOME_REJECTED,
+        PAYMENT_ALREADY_SETTLED,
+        "Booking was already settled by another payment");
   }
 
   private void refundLateStripeCapture(PaymentEntity payment, NormalizedStripeWebhookEvent event) {
@@ -476,6 +548,27 @@ public class PaymentWebhookService {
     ticketIssuanceService.issueTicketsForConfirmedBooking(booking.getId());
     ticketFinancialSnapshotService.ensureSnapshotsForBooking(booking);
     bookingConfirmationNotifier.sendIfNeeded(booking.getId());
+  }
+
+  private void closeOtherOpenPaymentsAfterSuccess(
+      PaymentEntity successfulPayment, BookingEntity booking, OffsetDateTime now) {
+    if (successfulPayment == null || booking == null || booking.getId() == null) {
+      return;
+    }
+    List<PaymentEntity> otherPayments =
+        paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+            booking.getId(), List.of(PAYMENT_STATUS_PENDING, PAYMENT_STATUS_SUSPENDED));
+    if (otherPayments == null || otherPayments.isEmpty()) {
+      return;
+    }
+    for (PaymentEntity candidate : otherPayments) {
+      if (candidate == null || Objects.equals(candidate.getId(), successfulPayment.getId())) {
+        continue;
+      }
+      candidate.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+      candidate.setUpdatedAt(now);
+      paymentRepository.save(candidate);
+    }
   }
 
   private void saveAudit(
