@@ -215,6 +215,10 @@ class BookingSeatAssignmentServiceTest {
                 List.of(new SeatAssignmentRequest.AssignmentRequest(1L, 200L))));
 
     assertEquals(2, response.assignments().size());
+    assertEquals(82825L, response.assignments().get(0).flightId());
+    assertEquals(82826L, response.assignments().get(1).flightId());
+    assertEquals("S100", response.assignments().get(0).seatNumber());
+    assertEquals("S200", response.assignments().get(1).seatNumber());
     assertEquals(new BigDecimal("40000.00"), response.seatSurchargeTotal());
     verify(passengerSeatAssignmentRepository)
         .existsByPassengerIdAndFlightIdAndStatusIn(1L, 82826L, List.of("RESERVED", "BOOKED"));
@@ -800,6 +804,7 @@ class BookingSeatAssignmentServiceTest {
     flight.setId(flightId);
     FlightSeatEntity seat = new FlightSeatEntity();
     seat.setId(seatId);
+    seat.setSeatNumber("S" + seatId);
     seat.setFlight(flight);
 
     PassengerSeatAssignmentEntity assignment = new PassengerSeatAssignmentEntity();

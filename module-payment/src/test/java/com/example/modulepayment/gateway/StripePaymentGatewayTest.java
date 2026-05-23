@@ -28,7 +28,8 @@ class StripePaymentGatewayTest {
   @Test
   void checkoutExpiresAt_shouldClampToStripeMinimumWhenCapIsSooner() {
     OffsetDateTime cap = OffsetDateTime.now().plusMinutes(5);
-    long expectedMin = OffsetDateTime.now().toEpochSecond() + StripePaymentGateway.STRIPE_MIN_CHECKOUT_TTL_SECONDS;
+    long expectedMin =
+        OffsetDateTime.now().toEpochSecond() + StripePaymentGateway.STRIPE_MIN_CHECKOUT_TTL_SECONDS;
 
     Long stripeExpiresAt = StripePaymentGateway.checkoutExpiresAt(cap);
 

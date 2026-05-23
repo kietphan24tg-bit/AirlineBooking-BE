@@ -11,5 +11,11 @@ public record SeatAssignmentResponse(
     List<AssignmentResponse> assignments) {
 
   public record AssignmentResponse(
-      Long passengerId, Long seatId, String status, BigDecimal surchargeAmount, String currency) {}
+      Long passengerId,
+      Long seatId,
+      Long flightId,
+      String seatNumber,
+      String status,
+      BigDecimal surchargeAmount,
+      String currency) {}
 }

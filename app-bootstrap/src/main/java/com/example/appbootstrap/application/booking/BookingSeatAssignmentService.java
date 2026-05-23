@@ -500,6 +500,8 @@ public class BookingSeatAssignmentService {
                     new SeatAssignmentResponse.AssignmentResponse(
                         psa.getPassenger().getId(),
                         psa.getFlightSeat().getId(),
+                        psa.getFlightSeat().getFlight().getId(),
+                        psa.getFlightSeat().getSeatNumber(),
                         psa.getStatus(),
                         psa.getSurchargeAmount(),
                         psa.getCurrency()))

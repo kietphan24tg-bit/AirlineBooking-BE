@@ -47,7 +47,8 @@ public class BookingExpirationScheduler {
     int releasedAssignments = passengerSeatAssignmentRepository.releaseExpiredReserved(now);
     int releasedSeats = flightSeatRepository.releaseExpiredReservations(now);
     int releasedHolds = bookingFareHoldRepository.releaseExpiredHolds(now);
-    int expiredStripeSessions = stripeCheckoutExpirationService.expireCheckoutSessionsPastBookingCap(now);
+    int expiredStripeSessions =
+        stripeCheckoutExpirationService.expireCheckoutSessionsPastBookingCap(now);
     int expiredBookings = bookingRepository.expirePendingPaymentBookings(now);
     int expiredPayments = paymentRepository.expirePendingPaymentsForExpiredBookings(now);
     if (releasedSeats > 0
@@ -57,7 +58,8 @@ public class BookingExpirationScheduler {
         || expiredBookings > 0
         || expiredPayments > 0) {
       LOG.info(
-          "booking expiration completed expiredBookings={} expiredPayments={} expiredStripeSessions={} releasedHolds={} releasedAssignments={} releasedSeats={}",
+          "booking expiration completed expiredBookings={} expiredPayments={} "
+              + "expiredStripeSessions={} releasedHolds={} releasedAssignments={} releasedSeats={}",
           expiredBookings,
           expiredPayments,
           expiredStripeSessions,

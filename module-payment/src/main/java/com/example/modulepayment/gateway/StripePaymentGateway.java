@@ -20,8 +20,10 @@ import org.springframework.stereotype.Component;
 public class StripePaymentGateway {
 
   private static final String ACTION_TYPE_CHECKOUT = "CHECKOUT";
+
   /** Stripe Checkout allows {@code expires_at} between 30 minutes and 24 hours after creation. */
   static final long STRIPE_MIN_CHECKOUT_TTL_SECONDS = 30L * 60L;
+
   static final long STRIPE_MAX_CHECKOUT_TTL_SECONDS = 24L * 60L * 60L;
 
   private final PaymentProperties paymentProperties;

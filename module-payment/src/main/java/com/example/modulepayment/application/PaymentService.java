@@ -58,10 +58,15 @@ public class PaymentService {
   private static final long BOOKING_PNR_EXPIRATION_MINUTES = 15;
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
   private static final long PAYOS_PAYMENT_WINDOW_BUFFER_SECONDS = 20;
+
   /** Minimum remaining time (and checkout session length) required to start Stripe checkout. */
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
-  /** Absolute Stripe payment cap from booking creation (independent of PayOS / pay-later windows). */
+
+  /**
+   * Absolute Stripe payment cap from booking creation (independent of PayOS / pay-later windows).
+   */
   private static final long STRIPE_BOOKING_CAP_MINUTES = 60;
+
   private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
   private static final long PAYMENT_CREATION_WINDOW_MINUTES = 10;
@@ -687,8 +692,7 @@ public class PaymentService {
         return false;
       }
       long remainingSeconds = java.time.Duration.between(now, expireAt).getSeconds();
-      return remainingSeconds
-          >= STRIPE_PAYMENT_WINDOW_MINUTES * 60L - 1L;
+      return remainingSeconds >= STRIPE_PAYMENT_WINDOW_MINUTES * 60L - 1L;
     }
     return expireAt.isAfter(now);
   }
