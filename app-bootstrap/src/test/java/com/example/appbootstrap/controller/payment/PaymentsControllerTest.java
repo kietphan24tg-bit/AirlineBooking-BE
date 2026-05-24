@@ -20,6 +20,7 @@ import com.example.modulepayment.application.PaymentResultStatusView;
 import com.example.modulepayment.application.PaymentResultSummaryView;
 import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
+import com.example.modulepayment.application.SeatChangePaymentService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.math.BigDecimal;
@@ -37,13 +38,15 @@ class PaymentsControllerTest {
 
   @Mock private PaymentService paymentService;
   @Mock private PaymentResultService paymentResultService;
+  @Mock private SeatChangePaymentService seatChangePaymentService;
 
   private PaymentsController controller;
   private Validator validator;
 
   @BeforeEach
   void setUp() {
-    controller = new PaymentsController(paymentService, paymentResultService);
+    controller =
+        new PaymentsController(paymentService, paymentResultService, seatChangePaymentService);
     validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 

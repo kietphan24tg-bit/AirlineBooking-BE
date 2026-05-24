@@ -90,6 +90,7 @@ public class PaymentService {
   private final FlightSeatRepository flightSeatRepository;
   private final BookingServiceRepository bookingServiceRepository;
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
+  private final SeatChangeSettlementService seatChangeSettlementService;
 
   public PaymentService(
       BookingRepository bookingRepository,
@@ -100,7 +101,8 @@ public class PaymentService {
       BookingFareHoldRepository bookingFareHoldRepository,
       FlightSeatRepository flightSeatRepository,
       BookingServiceRepository bookingServiceRepository,
-      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
+      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
+      SeatChangeSettlementService seatChangeSettlementService) {
     this.bookingRepository = bookingRepository;
     this.paymentRepository = paymentRepository;
     this.payosPaymentGateway = payosPaymentGateway;
@@ -110,6 +112,7 @@ public class PaymentService {
     this.flightSeatRepository = flightSeatRepository;
     this.bookingServiceRepository = bookingServiceRepository;
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
+    this.seatChangeSettlementService = seatChangeSettlementService;
   }
 
   @Transactional(readOnly = true)
@@ -285,6 +288,9 @@ public class PaymentService {
     payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
     payment.setUpdatedAt(now);
     paymentRepository.save(payment);
+    if (payment.getSeatChangeSettlement() != null) {
+      seatChangeSettlementService.handlePaymentCancelled(payment);
+    }
 
     return buildStatusView(payment);
   }
@@ -314,6 +320,9 @@ public class PaymentService {
     payment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
     payment.setUpdatedAt(now);
     paymentRepository.save(payment);
+    if (payment.getSeatChangeSettlement() != null) {
+      seatChangeSettlementService.handlePaymentCancelled(payment);
+    }
 
     return buildStatusView(payment);
   }

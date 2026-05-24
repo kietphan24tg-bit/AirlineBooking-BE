@@ -53,6 +53,7 @@ class PaymentServiceTest {
   @Mock private FlightSeatRepository flightSeatRepository;
   @Mock private BookingServiceRepository bookingServiceRepository;
   @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
+  @Mock private SeatChangeSettlementService seatChangeSettlementService;
 
   private PaymentService paymentService;
 
@@ -76,7 +77,8 @@ class PaymentServiceTest {
             bookingFareHoldRepository,
             flightSeatRepository,
             bookingServiceRepository,
-            passengerSeatAssignmentRepository);
+            passengerSeatAssignmentRepository,
+            seatChangeSettlementService);
   }
 
   @Test
@@ -1425,7 +1427,8 @@ class PaymentServiceTest {
         bookingFareHoldRepository,
         flightSeatRepository,
         bookingServiceRepository,
-        passengerSeatAssignmentRepository);
+        passengerSeatAssignmentRepository,
+        seatChangeSettlementService);
   }
 
   private static PaymentProperties stripeProperties() {

@@ -63,6 +63,7 @@ public class PaymentWebhookService {
   private final BookingConfirmationNotifier bookingConfirmationNotifier;
   private final TicketFinancialSnapshotService ticketFinancialSnapshotService;
   private final PaymentRefundService paymentRefundService;
+  private final SeatChangeSettlementService seatChangeSettlementService;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
@@ -75,7 +76,8 @@ public class PaymentWebhookService {
       TicketIssuanceService ticketIssuanceService,
       BookingConfirmationNotifier bookingConfirmationNotifier,
       TicketFinancialSnapshotService ticketFinancialSnapshotService,
-      PaymentRefundService paymentRefundService) {
+      PaymentRefundService paymentRefundService,
+      SeatChangeSettlementService seatChangeSettlementService) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
@@ -87,6 +89,7 @@ public class PaymentWebhookService {
     this.bookingConfirmationNotifier = bookingConfirmationNotifier;
     this.ticketFinancialSnapshotService = ticketFinancialSnapshotService;
     this.paymentRefundService = paymentRefundService;
+    this.seatChangeSettlementService = seatChangeSettlementService;
   }
 
   @Transactional
@@ -145,6 +148,46 @@ public class PaymentWebhookService {
 
     OffsetDateTime now = OffsetDateTime.now();
     payment.setUpdatedAt(now);
+
+    if (payment.getSeatChangeSettlement() != null) {
+      if (EVENT_TYPE_FAILED.equals(event.eventType())) {
+        payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        paymentRepository.save(payment);
+        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        saveAudit(payment, booking, event, OUTCOME_FAILED_EVENT, null, null);
+        return;
+      }
+      if (!matchesAmount(payment, event) || !matchesCurrency(payment, event)) {
+        payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        paymentRepository.save(payment);
+        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        saveAudit(
+            payment,
+            booking,
+            event,
+            OUTCOME_REJECTED,
+            "PAYMENT_MISMATCH",
+            "Webhook amount or currency does not match payment");
+        return;
+      }
+      payment.setPaymentStatus(PAYMENT_STATUS_SUCCESS);
+      payment.setPaidAt(event.occurredAt());
+      if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
+        payment.setTransactionId(event.paymentLinkId());
+      }
+      if (event.counterAccountBankId() != null && !event.counterAccountBankId().isBlank()) {
+        payment.setRefundCounterAccountBankId(event.counterAccountBankId());
+        payment.setRefundCounterAccountBankName(event.counterAccountBankName());
+        payment.setRefundCounterAccountName(event.counterAccountName());
+        payment.setRefundCounterAccountNumber(event.counterAccountNumber());
+      }
+      paymentRepository.save(payment);
+      closeOtherOpenPaymentsAfterSuccess(payment, booking, now);
+      seatChangeSettlementService.handlePaymentSuccess(
+          payment, payment.getProviderPaymentReference());
+      saveAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
+      return;
+    }
 
     if (EVENT_TYPE_FAILED.equals(event.eventType())) {
       payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
@@ -258,6 +301,63 @@ public class PaymentWebhookService {
           OUTCOME_REJECTED,
           "PAYMENT_NOT_PENDING",
           "Webhook rejected: payment is not pending");
+      return;
+    }
+
+    if (payment.getSeatChangeSettlement() != null) {
+      OffsetDateTime now = OffsetDateTime.now();
+      if (STRIPE_EVENT_PAYMENT_FAILED.equals(event.eventType())) {
+        payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        paymentRepository.save(payment);
+        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        saveStripeAudit(payment, booking, event, OUTCOME_FAILED_EVENT, null, null);
+        return;
+      }
+      if (STRIPE_EVENT_CHECKOUT_EXPIRED.equals(event.eventType())) {
+        payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
+        payment.setUpdatedAt(now);
+        paymentRepository.save(payment);
+        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_EXPIRED);
+        saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
+        return;
+      }
+      if (!STRIPE_EVENT_CHECKOUT_COMPLETED.equals(event.eventType())
+          || !STRIPE_PAYMENT_STATUS_PAID.equalsIgnoreCase(event.paymentStatus())) {
+        saveStripeAudit(
+            payment,
+            booking,
+            event,
+            OUTCOME_REJECTED,
+            "UNSUPPORTED_EVENT",
+            "Stripe webhook event is not actionable");
+        return;
+      }
+      if (!matchesStripeAmount(payment, event) || !matchesStripeCurrency(payment, event)) {
+        payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+        paymentRepository.save(payment);
+        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        saveStripeAudit(
+            payment,
+            booking,
+            event,
+            OUTCOME_REJECTED,
+            "PAYMENT_MISMATCH",
+            "Webhook amount or currency does not match payment");
+        return;
+      }
+      payment.setPaymentStatus(PAYMENT_STATUS_SUCCESS);
+      payment.setPaidAt(event.occurredAt());
+      if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
+        payment.setTransactionId(event.sessionId());
+      }
+      if (event.paymentIntentId() != null && !event.paymentIntentId().isBlank()) {
+        payment.setProviderPaymentReference(event.paymentIntentId());
+      }
+      payment.setUpdatedAt(now);
+      paymentRepository.save(payment);
+      closeOtherOpenPaymentsAfterSuccess(payment, booking, now);
+      seatChangeSettlementService.handlePaymentSuccess(payment, event.paymentIntentId());
+      saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
       return;
     }
 

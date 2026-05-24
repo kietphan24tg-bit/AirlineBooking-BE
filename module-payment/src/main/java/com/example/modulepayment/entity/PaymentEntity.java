@@ -31,6 +31,10 @@ public class PaymentEntity {
   @JoinColumn(name = "booking_id", nullable = false)
   private BookingEntity booking;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "seat_change_settlement_id")
+  private SeatChangeSettlementEntity seatChangeSettlement;
+
   @Column(nullable = false, precision = 18, scale = 2)
   private BigDecimal amount;
 

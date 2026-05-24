@@ -516,8 +516,9 @@ public class BookingCancellationService {
   private PaymentEntity requireRefundablePayment(Long bookingId, boolean forUpdate) {
     List<PaymentEntity> preferredPayments =
         forUpdate
-            ? paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
-                bookingId, CANCELLABLE_PAYMENT_STATUSES)
+            ? paymentRepository
+                .findBookingLevelPaymentsByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+                    bookingId, CANCELLABLE_PAYMENT_STATUSES)
             : paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
                 bookingId, CANCELLABLE_PAYMENT_STATUSES);
     if (!preferredPayments.isEmpty()) {

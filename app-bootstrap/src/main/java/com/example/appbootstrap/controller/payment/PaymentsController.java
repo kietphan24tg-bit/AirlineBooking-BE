@@ -3,6 +3,7 @@ package com.example.appbootstrap.controller.payment;
 import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
+import com.example.appbootstrap.controller.payment.dto.CreateSeatChangePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
 import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -16,6 +17,7 @@ import com.example.modulepayment.application.PaymentResultStatusView;
 import com.example.modulepayment.application.PaymentResultSummaryView;
 import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
+import com.example.modulepayment.application.SeatChangePaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -45,11 +47,15 @@ public class PaymentsController {
 
   private final PaymentService paymentService;
   private final PaymentResultService paymentResultService;
+  private final SeatChangePaymentService seatChangePaymentService;
 
   public PaymentsController(
-      PaymentService paymentService, PaymentResultService paymentResultService) {
+      PaymentService paymentService,
+      PaymentResultService paymentResultService,
+      SeatChangePaymentService seatChangePaymentService) {
     this.paymentService = paymentService;
     this.paymentResultService = paymentResultService;
+    this.seatChangePaymentService = seatChangePaymentService;
   }
 
   @GetMapping("/payment-methods")
@@ -208,6 +214,38 @@ public class PaymentsController {
             : paymentService.createPayment(
                 new CreatePaymentCommand(
                     request.bookingId(), principal.getUserId(), request.method()));
+    return new CreatePaymentResponse(
+        new CreatePaymentResponse.PaymentResponse(
+            result.payment().id(),
+            result.payment().bookingId(),
+            result.payment().amount(),
+            result.payment().currency(),
+            result.payment().method(),
+            result.payment().status(),
+            result.payment().expireAt(),
+            result.payment().transactionId(),
+            result.payment().qrData(),
+            toCreateDetails(result.payment().details())),
+        new CreatePaymentResponse.PaymentActionResponse(
+            result.action().type(),
+            result.action().qrData(),
+            result.action().qrImageUrl(),
+            result.action().paymentUrl()));
+  }
+
+  @PostMapping("/seat-change-payments")
+  @Operation(
+      summary = "Create payment link for seat change settlement",
+      description = "Creates a pending payment for an additional seat-change charge")
+  CreatePaymentResponse createSeatChangePayment(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @Valid @RequestBody CreateSeatChangePaymentRequest request) {
+    CreatePaymentResult result =
+        seatChangePaymentService.createPayment(
+            request.bookingId(),
+            request.seatChangeSettlementId(),
+            principal == null ? null : principal.getUserId(),
+            request.method());
     return new CreatePaymentResponse(
         new CreatePaymentResponse.PaymentResponse(
             result.payment().id(),
