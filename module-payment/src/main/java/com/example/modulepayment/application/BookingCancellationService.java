@@ -514,17 +514,27 @@ public class BookingCancellationService {
   }
 
   private PaymentEntity requireRefundablePayment(Long bookingId, boolean forUpdate) {
-    List<PaymentEntity> payments =
+    List<PaymentEntity> preferredPayments =
+        forUpdate
+            ? paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+                bookingId, CANCELLABLE_PAYMENT_STATUSES)
+            : paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+                bookingId, CANCELLABLE_PAYMENT_STATUSES);
+    if (!preferredPayments.isEmpty()) {
+      return preferredPayments.getFirst();
+    }
+
+    List<PaymentEntity> fallbackPayments =
         forUpdate
             ? paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
                 bookingId, CANCELLABLE_PAYMENT_STATUSES)
             : paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(
                 bookingId, CANCELLABLE_PAYMENT_STATUSES);
-    if (payments.isEmpty()) {
+    if (fallbackPayments.isEmpty()) {
       throw new AppException(
           "PAYMENT_NOT_REFUNDABLE", "Booking does not have a refundable payment", 409);
     }
-    return payments.getFirst();
+    return fallbackPayments.getFirst();
   }
 
   private BookingEntity requireBookingForUser(Long bookingId, Long userId, boolean forUpdate) {

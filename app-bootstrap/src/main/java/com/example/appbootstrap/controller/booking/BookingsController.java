@@ -17,6 +17,10 @@ import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionRequest;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeConfirmRequest;
+import com.example.appbootstrap.controller.booking.dto.SeatChangeConfirmResponse;
+import com.example.appbootstrap.controller.booking.dto.SeatChangePreviewRequest;
+import com.example.appbootstrap.controller.booking.dto.SeatChangePreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
@@ -26,6 +30,9 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.BookingCancellationPreviewView;
 import com.example.modulepayment.application.BookingCancellationResultView;
 import com.example.modulepayment.application.BookingCancellationService;
+import com.example.modulepayment.application.SeatChangeConfirmView;
+import com.example.modulepayment.application.SeatChangePreviewView;
+import com.example.modulepayment.application.SeatChangeSettlementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -58,6 +65,7 @@ public class BookingsController {
   private final BookingAncillarySelectionService bookingAncillarySelectionService;
   private final TicketIssuanceService ticketIssuanceService;
   private final BookingCancellationService bookingCancellationService;
+  private final SeatChangeSettlementService seatChangeSettlementService;
 
   public BookingsController(
       BookingRevalidateService bookingRevalidateService,
@@ -66,7 +74,8 @@ public class BookingsController {
       BookingSeatAssignmentService bookingSeatAssignmentService,
       BookingAncillarySelectionService bookingAncillarySelectionService,
       TicketIssuanceService ticketIssuanceService,
-      BookingCancellationService bookingCancellationService) {
+      BookingCancellationService bookingCancellationService,
+      SeatChangeSettlementService seatChangeSettlementService) {
     this.bookingRevalidateService = bookingRevalidateService;
     this.bookingLookupService = bookingLookupService;
     this.bookingManageOptionsService = bookingManageOptionsService;
@@ -74,6 +83,7 @@ public class BookingsController {
     this.bookingAncillarySelectionService = bookingAncillarySelectionService;
     this.ticketIssuanceService = ticketIssuanceService;
     this.bookingCancellationService = bookingCancellationService;
+    this.seatChangeSettlementService = seatChangeSettlementService;
   }
 
   @PostMapping("/bookings")
@@ -253,6 +263,62 @@ public class BookingsController {
         principal != null ? principal.getUserId() : null, bookingId, request);
   }
 
+  @PostMapping("/bookings/{bookingId}/seat-changes/preview")
+  @Operation(
+      summary = "Preview seat change settlement",
+      description =
+          "Validates current seat changes against live booking assignments and recalculates the "
+              + "authoritative additional payment or refund.")
+  SeatChangePreviewResponse previewSeatChanges(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody SeatChangePreviewRequest request) {
+    SeatChangePreviewView view =
+        seatChangeSettlementService.preview(
+            principal == null ? null : principal.getUserId(),
+            bookingId,
+            request.changes().stream()
+                .map(
+                    change ->
+                        new SeatChangeSettlementService.ChangeCommand(
+                            change.passengerId(),
+                            change.flightId(),
+                            change.fromSeatId(),
+                            change.toSeatId()))
+                .toList());
+    return toSeatChangePreviewResponse(view);
+  }
+
+  @PostMapping("/bookings/{bookingId}/seat-changes/confirm")
+  @Operation(
+      summary = "Confirm seat change settlement",
+      description =
+          "Revalidates seat-change totals and either completes the settlement, starts a refund, "
+              + "or marks the booking as requiring additional payment.")
+  SeatChangeConfirmResponse confirmSeatChanges(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody SeatChangeConfirmRequest request) {
+    SeatChangeConfirmView view =
+        seatChangeSettlementService.confirm(
+            principal == null ? null : principal.getUserId(),
+            bookingId,
+            request.changes().stream()
+                .map(
+                    change ->
+                        new SeatChangeSettlementService.ChangeCommand(
+                            change.passengerId(),
+                            change.flightId(),
+                            change.fromSeatId(),
+                            change.toSeatId()))
+                .toList(),
+            request.idempotencyKey(),
+            request.expectedAdditionalAmount(),
+            request.expectedRefundAmount(),
+            request.expectedNetAmount());
+    return toSeatChangeConfirmResponse(view);
+  }
+
   @PutMapping("/bookings/{bookingId}/services")
   @Operation(
       summary = "Assign selected services to booking passengers",
@@ -358,6 +424,71 @@ public class BookingsController {
         view.bookingId(),
         view.pnrCode(),
         view.tickets().stream().map(this::ticketResponse).toList());
+  }
+
+  private SeatChangePreviewResponse toSeatChangePreviewResponse(SeatChangePreviewView view) {
+    return new SeatChangePreviewResponse(
+        view.bookingId(),
+        view.currency(),
+        view.previewToken(),
+        view.settlementType(),
+        view.items().stream()
+            .map(
+                item ->
+                    new SeatChangePreviewResponse.ItemResponse(
+                        item.passengerId(),
+                        item.passengerName(),
+                        item.flightId(),
+                        item.flightNumber(),
+                        item.departureAirportCode(),
+                        item.arrivalAirportCode(),
+                        item.departureTime(),
+                        item.fromSeatId(),
+                        item.fromSeatNumber(),
+                        item.toSeatId(),
+                        item.toSeatNumber(),
+                        item.oldAmount(),
+                        item.newAmount(),
+                        item.delta(),
+                        item.status(),
+                        item.message()))
+            .toList(),
+        new SeatChangePreviewResponse.SummaryResponse(
+            view.summary().additionalAmount(),
+            view.summary().refundAmount(),
+            view.summary().netAmount()));
+  }
+
+  private SeatChangeConfirmResponse toSeatChangeConfirmResponse(SeatChangeConfirmView view) {
+    SeatChangeConfirmView.RefundMethodView refundMethod = view.refundMethod();
+    return new SeatChangeConfirmResponse(
+        view.settlementId(),
+        view.bookingId(),
+        view.currency(),
+        view.settlementType(),
+        view.status(),
+        view.refundStatus(),
+        view.provider(),
+        view.providerRefundId(),
+        view.errorCode(),
+        view.errorMessage(),
+        refundMethod == null
+            ? null
+            : new SeatChangeConfirmResponse.RefundMethodResponse(
+                refundMethod.type(),
+                refundMethod.label(),
+                refundMethod.maskedAccount(),
+                refundMethod.estimatedDays()),
+        view.paymentMethods().stream()
+            .map(
+                item ->
+                    new SeatChangeConfirmResponse.PaymentMethodItemResponse(
+                        item.code(), item.label(), item.provider(), item.icon(), item.supported()))
+            .toList(),
+        new SeatChangeConfirmResponse.SummaryResponse(
+            view.summary().additionalAmount(),
+            view.summary().refundAmount(),
+            view.summary().netAmount()));
   }
 
   private BookingTicketsResponse.TicketResponse ticketResponse(
