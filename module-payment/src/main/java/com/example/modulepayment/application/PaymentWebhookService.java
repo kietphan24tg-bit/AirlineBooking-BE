@@ -434,7 +434,8 @@ public class PaymentWebhookService {
     return isPending(payment) || isSuspendedPayLater(payment);
   }
 
-  private boolean bookingAlreadySettledByAnotherPayment(PaymentEntity payment, BookingEntity booking) {
+  private boolean bookingAlreadySettledByAnotherPayment(
+      PaymentEntity payment, BookingEntity booking) {
     if (payment == null || booking == null) {
       return false;
     }
