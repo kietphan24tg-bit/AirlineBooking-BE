@@ -486,7 +486,17 @@ public class PaymentService {
       payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
       payment.setUpdatedAt(OffsetDateTime.now());
       paymentRepository.save(payment);
-      throw exception;
+      log.error(
+          "Unable to create payment checkout request: bookingId={}, paymentId={}, method={}",
+          booking.getId(),
+          payment.getId(),
+          normalizedMethod,
+          exception);
+      if (exception instanceof AppException appException) {
+        throw appException;
+      }
+      throw new AppException(
+          "PAYMENT_REQUEST_PREPARATION_FAILED", "Unable to prepare payment request", 500);
     }
 
     payment.setTransactionId(gatewayResult.paymentLinkId());
@@ -562,7 +572,17 @@ public class PaymentService {
       payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
       payment.setUpdatedAt(OffsetDateTime.now());
       paymentRepository.save(payment);
-      throw exception;
+      log.error(
+          "Unable to create PayOS payment request: bookingId={}, paymentId={}, method={}",
+          booking.getId(),
+          payment.getId(),
+          METHOD_PAYOS,
+          exception);
+      if (exception instanceof AppException appException) {
+        throw appException;
+      }
+      throw new AppException(
+          "PAYMENT_REQUEST_PREPARATION_FAILED", "Unable to prepare payment request", 500);
     }
 
     payment.setTransactionId(gatewayResult.paymentLinkId());
@@ -969,10 +989,19 @@ public class PaymentService {
   }
 
   private String appendPaymentId(String url, Long paymentId) {
-    return UriComponentsBuilder.fromUriString(url)
-        .queryParam("paymentId", paymentId)
-        .build()
-        .toUriString();
+    if (url == null || url.isBlank()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Payment redirect URL is not configured", 500);
+    }
+    try {
+      return UriComponentsBuilder.fromUriString(url)
+          .queryParam("paymentId", paymentId)
+          .build()
+          .toUriString();
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Payment redirect URL is invalid", 500);
+    }
   }
 
   private String buildDescription(Long paymentId) {
@@ -1225,6 +1254,9 @@ public class PaymentService {
   }
 
   private String buildRouteLabel(PaymentDetailsView.FlightView flight) {
+    if (flight == null) {
+      return "";
+    }
     String departure = nullToBlank(flight.departureCode());
     String arrival = nullToBlank(flight.arrivalCode());
     if (departure.isBlank() || arrival.isBlank()) {
