@@ -6,7 +6,5 @@ import jakarta.validation.constraints.Positive;
 
 public record CreateServiceChangePaymentRequest(
     @NotNull(message = "bookingId is required") Long bookingId,
-    @NotNull(message = "settlementId is required")
-        @Positive(message = "settlementId must be positive")
-        Long serviceChangeSettlementId,
+    @NotNull(message = "settlementId is required") @Positive(message = "settlementId must be positive") Long serviceChangeSettlementId,
     @NotBlank(message = "method is required") String method) {}

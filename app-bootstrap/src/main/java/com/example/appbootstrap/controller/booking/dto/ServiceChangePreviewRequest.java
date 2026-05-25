@@ -16,10 +16,6 @@ public record ServiceChangePreviewRequest(
       @NotNull(message = "selections is required") List<@Valid ServiceSelectionRequest> selections) {}
 
   public record ServiceSelectionRequest(
-      @NotNull(message = "optionId is required")
-          @Positive(message = "optionId must be positive")
-          Long optionId,
-      @NotNull(message = "quantity is required")
-          @Positive(message = "quantity must be positive")
-          Integer quantity) {}
+      @NotNull(message = "optionId is required") @Positive(message = "optionId must be positive") Long optionId,
+      @NotNull(message = "quantity is required") @Positive(message = "quantity must be positive") Integer quantity) {}
 }
