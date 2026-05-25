@@ -85,7 +85,7 @@ public class OpenApiConfig {
   GroupedOpenApi paymentsApi() {
     return GroupedOpenApi.builder()
         .group("payments")
-        .pathsToMatch("/api/payments/**", "/api/payment-methods")
+        .pathsToMatch("/api/payments/**", "/api/payment-methods", "/api/service-change-payments")
         .build();
   }
 

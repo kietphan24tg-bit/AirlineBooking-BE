@@ -50,6 +50,10 @@ class OpenApiCoverageIntegrationTest {
         .isEqualTo("#/components/schemas/SeatAssignmentResponse");
     assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/services", "put"))
         .isEqualTo("#/components/schemas/PassengerServiceSelectionResponse");
+    assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/service-changes/preview", "post"))
+        .isEqualTo("#/components/schemas/ServiceChangePreviewResponse");
+    assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/service-changes/confirm", "post"))
+        .isEqualTo("#/components/schemas/ServiceChangeConfirmResponse");
     assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/tickets", "get"))
         .isEqualTo("#/components/schemas/BookingTicketsResponse");
     assertThat(schemaRef(flightsSpec, "/api/flights/{flightId}/seats", "get"))
@@ -104,10 +108,13 @@ class OpenApiCoverageIntegrationTest {
         Arguments.of("bookings", "/api/bookings/{bookingId}/seat-assignments"),
         Arguments.of("bookings", "/api/bookings/{bookingId}/seat-assignment"),
         Arguments.of("bookings", "/api/bookings/{bookingId}/services"),
+        Arguments.of("bookings", "/api/bookings/{bookingId}/service-changes/preview"),
+        Arguments.of("bookings", "/api/bookings/{bookingId}/service-changes/confirm"),
         Arguments.of("bookings", "/api/bookings/{bookingId}/tickets"),
         Arguments.of("services", "/api/services"),
         Arguments.of("payments", "/api/payment-methods"),
         Arguments.of("payments", "/api/payments"),
+        Arguments.of("payments", "/api/service-change-payments"),
         Arguments.of("payments", "/api/payments/{paymentId}"),
         Arguments.of("payments", "/api/payments/webhooks/payos"),
         Arguments.of("payments", "/api/payments/webhooks/stripe"));

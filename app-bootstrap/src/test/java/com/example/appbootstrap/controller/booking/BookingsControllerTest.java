@@ -23,6 +23,7 @@ import com.example.modulepayment.application.BookingCancellationPreviewView;
 import com.example.modulepayment.application.BookingCancellationResultView;
 import com.example.modulepayment.application.BookingCancellationService;
 import com.example.modulepayment.application.SeatChangeSettlementService;
+import com.example.modulepayment.application.ServiceChangeSettlementService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.math.BigDecimal;
@@ -45,6 +46,7 @@ class BookingsControllerTest {
   @Mock private TicketIssuanceService ticketIssuanceService;
   @Mock private BookingCancellationService bookingCancellationService;
   @Mock private SeatChangeSettlementService seatChangeSettlementService;
+  @Mock private ServiceChangeSettlementService serviceChangeSettlementService;
 
   private BookingsController controller;
   private Validator validator;
@@ -60,7 +62,8 @@ class BookingsControllerTest {
             bookingAncillarySelectionService,
             ticketIssuanceService,
             bookingCancellationService,
-            seatChangeSettlementService);
+            seatChangeSettlementService,
+            serviceChangeSettlementService);
     validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 

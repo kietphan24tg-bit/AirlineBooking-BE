@@ -24,6 +24,10 @@ import com.example.appbootstrap.controller.booking.dto.SeatChangeConfirmResponse
 import com.example.appbootstrap.controller.booking.dto.SeatChangePreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.SeatChangePreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
+import com.example.appbootstrap.controller.booking.dto.ServiceChangeConfirmRequest;
+import com.example.appbootstrap.controller.booking.dto.ServiceChangeConfirmResponse;
+import com.example.appbootstrap.controller.booking.dto.ServiceChangePreviewRequest;
+import com.example.appbootstrap.controller.booking.dto.ServiceChangePreviewResponse;
 import com.example.modulebooking.application.BookingTicketsView;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -33,6 +37,9 @@ import com.example.modulepayment.application.BookingCancellationService;
 import com.example.modulepayment.application.SeatChangeConfirmView;
 import com.example.modulepayment.application.SeatChangePreviewView;
 import com.example.modulepayment.application.SeatChangeSettlementService;
+import com.example.modulepayment.application.ServiceChangeConfirmView;
+import com.example.modulepayment.application.ServiceChangePreviewView;
+import com.example.modulepayment.application.ServiceChangeSettlementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -66,6 +73,7 @@ public class BookingsController {
   private final TicketIssuanceService ticketIssuanceService;
   private final BookingCancellationService bookingCancellationService;
   private final SeatChangeSettlementService seatChangeSettlementService;
+  private final ServiceChangeSettlementService serviceChangeSettlementService;
 
   public BookingsController(
       BookingRevalidateService bookingRevalidateService,
@@ -75,7 +83,8 @@ public class BookingsController {
       BookingAncillarySelectionService bookingAncillarySelectionService,
       TicketIssuanceService ticketIssuanceService,
       BookingCancellationService bookingCancellationService,
-      SeatChangeSettlementService seatChangeSettlementService) {
+      SeatChangeSettlementService seatChangeSettlementService,
+      ServiceChangeSettlementService serviceChangeSettlementService) {
     this.bookingRevalidateService = bookingRevalidateService;
     this.bookingLookupService = bookingLookupService;
     this.bookingManageOptionsService = bookingManageOptionsService;
@@ -84,6 +93,7 @@ public class BookingsController {
     this.ticketIssuanceService = ticketIssuanceService;
     this.bookingCancellationService = bookingCancellationService;
     this.seatChangeSettlementService = seatChangeSettlementService;
+    this.serviceChangeSettlementService = serviceChangeSettlementService;
   }
 
   @PostMapping("/bookings")
@@ -319,6 +329,69 @@ public class BookingsController {
     return toSeatChangeConfirmResponse(view);
   }
 
+  @PostMapping("/bookings/{bookingId}/service-changes/preview")
+  @Operation(
+      summary = "Preview ancillary service change settlement",
+      description =
+          "Validates current ancillary service changes and recalculates the authoritative "
+              + "additional payment or refund before confirmation.")
+  ServiceChangePreviewResponse previewServiceChanges(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody ServiceChangePreviewRequest request) {
+    ServiceChangePreviewView view =
+        serviceChangeSettlementService.preview(
+            principal == null ? null : principal.getUserId(),
+            bookingId,
+            request.passengers().stream()
+                .map(
+                    passenger ->
+                        new ServiceChangeSettlementService.PassengerSelectionsCommand(
+                            passenger.passengerId(),
+                            passenger.selections().stream()
+                                .map(
+                                    selection ->
+                                        new ServiceChangeSettlementService.SelectionCommand(
+                                            selection.optionId(), selection.quantity()))
+                                .toList()))
+                .toList());
+    return toServiceChangePreviewResponse(view);
+  }
+
+  @PostMapping("/bookings/{bookingId}/service-changes/confirm")
+  @Operation(
+      summary = "Confirm ancillary service change settlement",
+      description =
+          "Revalidates ancillary-service totals and either completes the change, starts a refund, "
+              + "or marks the booking as requiring additional payment.")
+  ServiceChangeConfirmResponse confirmServiceChanges(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody ServiceChangeConfirmRequest request) {
+    ServiceChangeConfirmView view =
+        serviceChangeSettlementService.confirm(
+            principal == null ? null : principal.getUserId(),
+            bookingId,
+            request.passengers().stream()
+                .map(
+                    passenger ->
+                        new ServiceChangeSettlementService.PassengerSelectionsCommand(
+                            passenger.passengerId(),
+                            passenger.selections().stream()
+                                .map(
+                                    selection ->
+                                        new ServiceChangeSettlementService.SelectionCommand(
+                                            selection.optionId(), selection.quantity()))
+                                .toList()))
+                .toList(),
+            request.previewToken(),
+            request.idempotencyKey(),
+            request.expectedAdditionalAmount(),
+            request.expectedRefundAmount(),
+            request.expectedNetAmount());
+    return toServiceChangeConfirmResponse(view);
+  }
+
   @PutMapping("/bookings/{bookingId}/services")
   @Operation(
       summary = "Assign selected services to booking passengers",
@@ -486,6 +559,68 @@ public class BookingsController {
                         item.code(), item.label(), item.provider(), item.icon(), item.supported()))
             .toList(),
         new SeatChangeConfirmResponse.SummaryResponse(
+            view.summary().additionalAmount(),
+            view.summary().refundAmount(),
+            view.summary().netAmount()));
+  }
+
+  private ServiceChangePreviewResponse toServiceChangePreviewResponse(ServiceChangePreviewView view) {
+    return new ServiceChangePreviewResponse(
+        view.bookingId(),
+        view.currency(),
+        view.previewToken(),
+        view.settlementType(),
+        view.items().stream()
+            .map(
+                item ->
+                    new ServiceChangePreviewResponse.ItemResponse(
+                        item.passengerId(),
+                        item.passengerName(),
+                        item.serviceId(),
+                        item.serviceType(),
+                        item.serviceName(),
+                        item.optionId(),
+                        item.optionName(),
+                        item.quantity(),
+                        item.oldAmount(),
+                        item.newAmount(),
+                        item.delta(),
+                        item.status(),
+                        item.message()))
+            .toList(),
+        new ServiceChangePreviewResponse.SummaryResponse(
+            view.summary().additionalAmount(),
+            view.summary().refundAmount(),
+            view.summary().netAmount()));
+  }
+
+  private ServiceChangeConfirmResponse toServiceChangeConfirmResponse(ServiceChangeConfirmView view) {
+    ServiceChangeConfirmView.RefundMethodView refundMethod = view.refundMethod();
+    return new ServiceChangeConfirmResponse(
+        view.settlementId(),
+        view.bookingId(),
+        view.currency(),
+        view.settlementType(),
+        view.status(),
+        view.refundStatus(),
+        view.provider(),
+        view.providerRefundId(),
+        view.errorCode(),
+        view.errorMessage(),
+        refundMethod == null
+            ? null
+            : new ServiceChangeConfirmResponse.RefundMethodResponse(
+                refundMethod.type(),
+                refundMethod.label(),
+                refundMethod.maskedAccount(),
+                refundMethod.estimatedDays()),
+        view.paymentMethods().stream()
+            .map(
+                item ->
+                    new ServiceChangeConfirmResponse.PaymentMethodItemResponse(
+                        item.code(), item.label(), item.provider(), item.icon(), item.supported()))
+            .toList(),
+        new ServiceChangeConfirmResponse.SummaryResponse(
             view.summary().additionalAmount(),
             view.summary().refundAmount(),
             view.summary().netAmount()));

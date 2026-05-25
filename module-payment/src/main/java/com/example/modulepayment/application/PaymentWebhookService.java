@@ -64,6 +64,7 @@ public class PaymentWebhookService {
   private final TicketFinancialSnapshotService ticketFinancialSnapshotService;
   private final PaymentRefundService paymentRefundService;
   private final SeatChangeSettlementService seatChangeSettlementService;
+  private final ServiceChangeSettlementService serviceChangeSettlementService;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
@@ -77,7 +78,8 @@ public class PaymentWebhookService {
       BookingConfirmationNotifier bookingConfirmationNotifier,
       TicketFinancialSnapshotService ticketFinancialSnapshotService,
       PaymentRefundService paymentRefundService,
-      SeatChangeSettlementService seatChangeSettlementService) {
+      SeatChangeSettlementService seatChangeSettlementService,
+      ServiceChangeSettlementService serviceChangeSettlementService) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
@@ -90,6 +92,7 @@ public class PaymentWebhookService {
     this.ticketFinancialSnapshotService = ticketFinancialSnapshotService;
     this.paymentRefundService = paymentRefundService;
     this.seatChangeSettlementService = seatChangeSettlementService;
+    this.serviceChangeSettlementService = serviceChangeSettlementService;
   }
 
   @Transactional
@@ -149,18 +152,18 @@ public class PaymentWebhookService {
     OffsetDateTime now = OffsetDateTime.now();
     payment.setUpdatedAt(now);
 
-    if (payment.getSeatChangeSettlement() != null) {
+    if (payment.getSeatChangeSettlement() != null || payment.getServiceChangeSettlement() != null) {
       if (EVENT_TYPE_FAILED.equals(event.eventType())) {
         payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
         paymentRepository.save(payment);
-        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_FAILED);
         saveAudit(payment, booking, event, OUTCOME_FAILED_EVENT, null, null);
         return;
       }
       if (!matchesAmount(payment, event) || !matchesCurrency(payment, event)) {
         payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
         paymentRepository.save(payment);
-        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_FAILED);
         saveAudit(
             payment,
             booking,
@@ -183,8 +186,7 @@ public class PaymentWebhookService {
       }
       paymentRepository.save(payment);
       closeOtherOpenPaymentsAfterSuccess(payment, booking, now);
-      seatChangeSettlementService.handlePaymentSuccess(
-          payment, payment.getProviderPaymentReference());
+      handleSettlementPaymentSuccess(payment, payment.getProviderPaymentReference());
       saveAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
       return;
     }
@@ -304,12 +306,12 @@ public class PaymentWebhookService {
       return;
     }
 
-    if (payment.getSeatChangeSettlement() != null) {
+    if (payment.getSeatChangeSettlement() != null || payment.getServiceChangeSettlement() != null) {
       OffsetDateTime now = OffsetDateTime.now();
       if (STRIPE_EVENT_PAYMENT_FAILED.equals(event.eventType())) {
         payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
         paymentRepository.save(payment);
-        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_FAILED);
         saveStripeAudit(payment, booking, event, OUTCOME_FAILED_EVENT, null, null);
         return;
       }
@@ -317,7 +319,7 @@ public class PaymentWebhookService {
         payment.setPaymentStatus(PAYMENT_STATUS_EXPIRED);
         payment.setUpdatedAt(now);
         paymentRepository.save(payment);
-        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_EXPIRED);
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_EXPIRED);
         saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
         return;
       }
@@ -335,7 +337,7 @@ public class PaymentWebhookService {
       if (!matchesStripeAmount(payment, event) || !matchesStripeCurrency(payment, event)) {
         payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
         paymentRepository.save(payment);
-        seatChangeSettlementService.handlePaymentFailure(payment, PAYMENT_STATUS_FAILED);
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_FAILED);
         saveStripeAudit(
             payment,
             booking,
@@ -356,7 +358,7 @@ public class PaymentWebhookService {
       payment.setUpdatedAt(now);
       paymentRepository.save(payment);
       closeOtherOpenPaymentsAfterSuccess(payment, booking, now);
-      seatChangeSettlementService.handlePaymentSuccess(payment, event.paymentIntentId());
+      handleSettlementPaymentSuccess(payment, event.paymentIntentId());
       saveStripeAudit(payment, booking, event, OUTCOME_PROCESSED, null, null);
       return;
     }
@@ -519,6 +521,25 @@ public class PaymentWebhookService {
   private boolean isPending(PaymentEntity payment) {
     String status = payment.getPaymentStatus();
     return status != null && PAYMENT_STATUS_PENDING.equalsIgnoreCase(status.trim());
+  }
+
+  private void handleSettlementPaymentSuccess(
+      PaymentEntity payment, String providerPaymentReference) {
+    if (payment.getSeatChangeSettlement() != null) {
+      seatChangeSettlementService.handlePaymentSuccess(payment, providerPaymentReference);
+    }
+    if (payment.getServiceChangeSettlement() != null) {
+      serviceChangeSettlementService.handlePaymentSuccess(payment, providerPaymentReference);
+    }
+  }
+
+  private void handleSettlementPaymentFailure(PaymentEntity payment, String status) {
+    if (payment.getSeatChangeSettlement() != null) {
+      seatChangeSettlementService.handlePaymentFailure(payment, status);
+    }
+    if (payment.getServiceChangeSettlement() != null) {
+      serviceChangeSettlementService.handlePaymentFailure(payment, status);
+    }
   }
 
   private boolean isSuspendedPayLater(PaymentEntity payment) {
