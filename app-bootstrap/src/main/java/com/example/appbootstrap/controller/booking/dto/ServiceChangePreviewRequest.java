@@ -10,7 +10,9 @@ public record ServiceChangePreviewRequest(
     @NotEmpty(message = "passengers is required") List<@Valid PassengerServicesRequest> passengers) {
 
   public record PassengerServicesRequest(
-      @NotNull(message = "passengerId is required") @Positive(message = "passengerId must be positive") Long passengerId,
+      @NotNull(message = "passengerId is required")
+          @Positive(message = "passengerId must be positive")
+          Long passengerId,
       @NotNull(message = "selections is required") List<@Valid ServiceSelectionRequest> selections) {}
 
   public record ServiceSelectionRequest(
