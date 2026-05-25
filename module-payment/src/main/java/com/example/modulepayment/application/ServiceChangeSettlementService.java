@@ -324,7 +324,8 @@ public class ServiceChangeSettlementService {
     }
     BookingEntity booking = settlement.getBooking();
     Map<Long, PassengerSelectionsCommand> commands = restoreCommands(settlement);
-    Map<Long, ServiceOptionEntity> optionsById = loadOptionsById(commands.values().stream().toList());
+    Map<Long, ServiceOptionEntity> optionsById =
+        loadOptionsById(commands.values().stream().toList());
     applyRequestedSelections(booking, commands.values().stream().toList(), optionsById);
     settlement.setStatus(SETTLEMENT_STATUS_COMPLETED);
     settlement.setUpdatedAt(OffsetDateTime.now());
@@ -382,7 +383,9 @@ public class ServiceChangeSettlementService {
 
     Map<Long, List<BookingServiceEntity>> currentByPassenger =
         bookingServiceRepository.findDetailedByBookingId(bookingId).stream()
-            .collect(Collectors.groupingBy(bs -> bs.getPassenger().getId(), LinkedHashMap::new, Collectors.toList()));
+            .collect(
+                Collectors.groupingBy(
+                    bs -> bs.getPassenger().getId(), LinkedHashMap::new, Collectors.toList()));
 
     List<ServiceChangePreviewView.ItemView> items = new ArrayList<>();
     BigDecimal additionalAmount = ZERO;
@@ -412,8 +415,11 @@ public class ServiceChangeSettlementService {
                       selection -> selection,
                       (left, right) -> left,
                       LinkedHashMap::new));
-      Set<Long> optionIds = new LinkedHashMap<Long, Long>() {{
-      }}.keySet();
+      Set<Long> optionIds =
+          new LinkedHashMap<Long, Long>() {
+            {
+            }
+          }.keySet();
       Set<Long> mergedOptionIds = new HashSet<>();
       mergedOptionIds.addAll(currentSelections.keySet());
       mergedOptionIds.addAll(requestedSelections.keySet());
@@ -429,9 +435,7 @@ public class ServiceChangeSettlementService {
             option != null ? option.getService() : current == null ? null : current.getService();
         BigDecimal oldAmount = current == null ? ZERO : normalizeMoney(current.getPrice());
         BigDecimal newAmount =
-            requested == null || option == null
-                ? ZERO
-                : linePrice(option, requested.quantity());
+            requested == null || option == null ? ZERO : linePrice(option, requested.quantity());
         BigDecimal delta = normalizeMoney(newAmount.subtract(oldAmount));
         int quantity =
             requested != null ? requested.quantity() : current == null ? 0 : current.getQuantity();
@@ -533,7 +537,8 @@ public class ServiceChangeSettlementService {
     refreshTotal(booking, fareTotal);
   }
 
-  private Map<Long, ServiceOptionEntity> loadOptionsById(List<PassengerSelectionsCommand> commands) {
+  private Map<Long, ServiceOptionEntity> loadOptionsById(
+      List<PassengerSelectionsCommand> commands) {
     Set<Long> optionIds = new HashSet<>();
     for (PassengerSelectionsCommand passenger : commands) {
       for (SelectionCommand selection : passenger.selections()) {
@@ -543,7 +548,8 @@ public class ServiceChangeSettlementService {
     if (optionIds.isEmpty()) {
       return Map.of();
     }
-    List<ServiceOptionEntity> options = serviceOptionRepository.findActiveByIdsWithService(optionIds);
+    List<ServiceOptionEntity> options =
+        serviceOptionRepository.findActiveByIdsWithService(optionIds);
     if (options.size() != optionIds.size()) {
       throw new AppException(
           "SERVICE_OPTION_NOT_FOUND", "One or more service options were not found", 404);
@@ -566,7 +572,8 @@ public class ServiceChangeSettlementService {
         throw new AppException(
             "VALIDATION_FAILED", "Each passenger selection must include a valid passengerId", 400);
       }
-      List<SelectionCommand> selections = passenger.selections() == null ? List.of() : passenger.selections();
+      List<SelectionCommand> selections =
+          passenger.selections() == null ? List.of() : passenger.selections();
       Map<Long, SelectionCommand> dedupedSelections = new LinkedHashMap<>();
       for (SelectionCommand selection : selections) {
         if (selection == null
@@ -620,7 +627,8 @@ public class ServiceChangeSettlementService {
       throw new AppException("BOOKING_EXPIRED", "Booking payment window has expired", 410);
     }
     if ("PENDING_PAYMENT".equals(status)
-        && paymentRepository.existsByBookingIdAndPaymentStatus(booking.getId(), PAYMENT_STATUS_PENDING)) {
+        && paymentRepository.existsByBookingIdAndPaymentStatus(
+            booking.getId(), PAYMENT_STATUS_PENDING)) {
       throw new AppException(
           "BOOKING_PAYMENT_ALREADY_STARTED",
           "Booking services cannot be changed after payment has started",
@@ -703,8 +711,9 @@ public class ServiceChangeSettlementService {
   private PaymentEntity requireRefundablePayment(Long bookingId, boolean forUpdate) {
     List<PaymentEntity> preferredPayments =
         forUpdate
-            ? paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
-                bookingId, REFUNDABLE_PAYMENT_STATUSES)
+            ? paymentRepository
+                .findBookingLevelPaymentsByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+                    bookingId, REFUNDABLE_PAYMENT_STATUSES)
             : paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
                 bookingId, REFUNDABLE_PAYMENT_STATUSES);
     if (!preferredPayments.isEmpty()) {
@@ -748,10 +757,13 @@ public class ServiceChangeSettlementService {
     boolean hasRefund = settlement.getRefundAmount().signum() > 0;
     String paymentStatus =
         switch (normalizedStatus) {
-          case SETTLEMENT_STATUS_PAYMENT_REQUIRED, SETTLEMENT_STATUS_PAYMENT_PENDING -> STATUS_PAYMENT_REQUIRED;
+          case SETTLEMENT_STATUS_PAYMENT_REQUIRED, SETTLEMENT_STATUS_PAYMENT_PENDING ->
+              STATUS_PAYMENT_REQUIRED;
           case SETTLEMENT_STATUS_REFUND_PENDING, SETTLEMENT_STATUS_COMPLETED ->
               hasRefund ? STATUS_REFUND_PENDING : STATUS_COMPLETED;
-          case SETTLEMENT_STATUS_PAYMENT_FAILED, SETTLEMENT_STATUS_EXPIRED, SETTLEMENT_STATUS_CANCELLED ->
+          case SETTLEMENT_STATUS_PAYMENT_FAILED,
+                  SETTLEMENT_STATUS_EXPIRED,
+                  SETTLEMENT_STATUS_CANCELLED ->
               STATUS_REFUND_FAILED;
           default -> STATUS_COMPLETED;
         };
@@ -852,7 +864,8 @@ public class ServiceChangeSettlementService {
     Map<Long, SelectionCommand> requestedByPassengerOption = new HashMap<>();
     for (PassengerSelectionsCommand command : commands) {
       for (SelectionCommand selection : command.selections()) {
-        requestedByPassengerOption.put(selectionKey(command.passengerId(), selection.optionId()), selection);
+        requestedByPassengerOption.put(
+            selectionKey(command.passengerId(), selection.optionId()), selection);
       }
     }
 
@@ -916,7 +929,9 @@ public class ServiceChangeSettlementService {
       ServiceChangeSettlementEntity settlement) {
     Map<Long, List<SelectionCommand>> byPassenger = new LinkedHashMap<>();
     for (ServiceChangeSettlementItemEntity item : settlement.getItems()) {
-      if (item.getQuantity() == null || item.getQuantity() <= 0 || item.getNewAmount().signum() <= 0) {
+      if (item.getQuantity() == null
+          || item.getQuantity() <= 0
+          || item.getNewAmount().signum() <= 0) {
         continue;
       }
       byPassenger
@@ -925,10 +940,13 @@ public class ServiceChangeSettlementService {
     }
     Map<Long, PassengerSelectionsCommand> commands = new LinkedHashMap<>();
     for (Map.Entry<Long, List<SelectionCommand>> entry : byPassenger.entrySet()) {
-      commands.put(entry.getKey(), new PassengerSelectionsCommand(entry.getKey(), List.copyOf(entry.getValue())));
+      commands.put(
+          entry.getKey(),
+          new PassengerSelectionsCommand(entry.getKey(), List.copyOf(entry.getValue())));
     }
     for (ServiceChangeSettlementItemEntity item : settlement.getItems()) {
-      commands.putIfAbsent(item.getPassengerId(), new PassengerSelectionsCommand(item.getPassengerId(), List.of()));
+      commands.putIfAbsent(
+          item.getPassengerId(), new PassengerSelectionsCommand(item.getPassengerId(), List.of()));
     }
     return commands;
   }
@@ -939,7 +957,8 @@ public class ServiceChangeSettlementService {
             .subtract(normalizeMoney(bookingServiceRepository.sumPriceByBookingId(booking.getId())))
             .subtract(
                 normalizeMoney(
-                    passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(booking.getId())));
+                    passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(
+                        booking.getId())));
     if (fareTotal.signum() < 0) {
       throw new AppException(
           "BOOKING_TOTAL_INVALID", "Booking total is lower than selected add-ons", 409);
@@ -948,11 +967,16 @@ public class ServiceChangeSettlementService {
   }
 
   private void refreshTotal(BookingEntity booking, BigDecimal fareTotal) {
-    BigDecimal serviceTotal = normalizeMoney(bookingServiceRepository.sumPriceByBookingId(booking.getId()));
+    BigDecimal serviceTotal =
+        normalizeMoney(bookingServiceRepository.sumPriceByBookingId(booking.getId()));
     BigDecimal seatSurchargeTotal =
-        normalizeMoney(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(booking.getId()));
+        normalizeMoney(
+            passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(booking.getId()));
     BigDecimal totalAmount =
-        normalizeMoney(fareTotal).add(serviceTotal).add(seatSurchargeTotal).setScale(2, RoundingMode.HALF_UP);
+        normalizeMoney(fareTotal)
+            .add(serviceTotal)
+            .add(seatSurchargeTotal)
+            .setScale(2, RoundingMode.HALF_UP);
     booking.setTotalAmount(totalAmount);
     booking.setUpdatedAt(OffsetDateTime.now());
     bookingRepository.save(booking);
