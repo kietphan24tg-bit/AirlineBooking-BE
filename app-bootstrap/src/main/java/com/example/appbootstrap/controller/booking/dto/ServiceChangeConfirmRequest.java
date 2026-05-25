@@ -8,18 +8,15 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record ServiceChangeConfirmRequest(
-    @NotEmpty(message = "passengers is required")
-        List<ServiceChangePreviewRequest.PassengerServicesRequest> passengers,
+    @NotEmpty(message = "passengers is required") List<ServiceChangePreviewRequest.PassengerServicesRequest> passengers,
     String previewToken,
     @NotBlank(message = "idempotencyKey is required") String idempotencyKey,
-    @NotNull(message = "expectedAdditionalAmount is required")
-        @DecimalMin(
+    @NotNull(message = "expectedAdditionalAmount is required") @DecimalMin(
             value = "0.00",
             inclusive = true,
             message = "expectedAdditionalAmount must be non-negative")
         BigDecimal expectedAdditionalAmount,
-    @NotNull(message = "expectedRefundAmount is required")
-        @DecimalMin(
+    @NotNull(message = "expectedRefundAmount is required") @DecimalMin(
             value = "0.00",
             inclusive = true,
             message = "expectedRefundAmount must be non-negative")

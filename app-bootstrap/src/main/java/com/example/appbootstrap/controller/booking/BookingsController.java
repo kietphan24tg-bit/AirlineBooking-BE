@@ -564,7 +564,8 @@ public class BookingsController {
             view.summary().netAmount()));
   }
 
-  private ServiceChangePreviewResponse toServiceChangePreviewResponse(ServiceChangePreviewView view) {
+  private ServiceChangePreviewResponse toServiceChangePreviewResponse(
+      ServiceChangePreviewView view) {
     return new ServiceChangePreviewResponse(
         view.bookingId(),
         view.currency(),
@@ -594,7 +595,8 @@ public class BookingsController {
             view.summary().netAmount()));
   }
 
-  private ServiceChangeConfirmResponse toServiceChangeConfirmResponse(ServiceChangeConfirmView view) {
+  private ServiceChangeConfirmResponse toServiceChangeConfirmResponse(
+      ServiceChangeConfirmView view) {
     ServiceChangeConfirmView.RefundMethodView refundMethod = view.refundMethod();
     return new ServiceChangeConfirmResponse(
         view.settlementId(),
