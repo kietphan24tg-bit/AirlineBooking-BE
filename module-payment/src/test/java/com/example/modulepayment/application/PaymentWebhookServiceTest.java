@@ -47,6 +47,7 @@ class PaymentWebhookServiceTest {
   @Mock private TicketFinancialSnapshotService ticketFinancialSnapshotService;
   @Mock private PaymentRefundService paymentRefundService;
   @Mock private SeatChangeSettlementService seatChangeSettlementService;
+  @Mock private ServiceChangeSettlementService serviceChangeSettlementService;
 
   private PaymentWebhookService paymentWebhookService;
 
@@ -65,7 +66,8 @@ class PaymentWebhookServiceTest {
             bookingConfirmationNotifier,
             ticketFinancialSnapshotService,
             paymentRefundService,
-            seatChangeSettlementService);
+            seatChangeSettlementService,
+            serviceChangeSettlementService);
   }
 
   @Test

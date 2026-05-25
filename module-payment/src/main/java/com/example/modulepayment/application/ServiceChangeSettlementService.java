@@ -744,23 +744,37 @@ public class ServiceChangeSettlementService {
   }
 
   private ServiceChangeConfirmView toConfirmView(ServiceChangeSettlementEntity settlement) {
+    String normalizedStatus = normalize(settlement.getStatus());
+    boolean hasRefund = settlement.getRefundAmount().signum() > 0;
+    String paymentStatus =
+        switch (normalizedStatus) {
+          case SETTLEMENT_STATUS_PAYMENT_REQUIRED, SETTLEMENT_STATUS_PAYMENT_PENDING -> STATUS_PAYMENT_REQUIRED;
+          case SETTLEMENT_STATUS_REFUND_PENDING, SETTLEMENT_STATUS_COMPLETED ->
+              hasRefund ? STATUS_REFUND_PENDING : STATUS_COMPLETED;
+          case SETTLEMENT_STATUS_PAYMENT_FAILED, SETTLEMENT_STATUS_EXPIRED, SETTLEMENT_STATUS_CANCELLED ->
+              STATUS_REFUND_FAILED;
+          default -> STATUS_COMPLETED;
+        };
+    String refundStatus;
+    if (hasRefund && SETTLEMENT_STATUS_PAYMENT_FAILED.equals(normalizedStatus)) {
+      refundStatus = "FAILED";
+    } else if (hasRefund) {
+      refundStatus = "SUCCEEDED";
+    } else {
+      refundStatus = null;
+    }
     return new ServiceChangeConfirmView(
         settlement.getId(),
         settlement.getBooking().getId(),
         settlement.getCurrency(),
         settlement.getSettlementType(),
-        switch (normalize(settlement.getStatus())) {
-          case SETTLEMENT_STATUS_PAYMENT_REQUIRED, SETTLEMENT_STATUS_PAYMENT_PENDING -> STATUS_PAYMENT_REQUIRED;
-          case SETTLEMENT_STATUS_REFUND_PENDING, SETTLEMENT_STATUS_COMPLETED -> settlement.getRefundAmount().signum() > 0 ? STATUS_REFUND_PENDING : STATUS_COMPLETED;
-          case SETTLEMENT_STATUS_PAYMENT_FAILED, SETTLEMENT_STATUS_EXPIRED, SETTLEMENT_STATUS_CANCELLED -> STATUS_REFUND_FAILED;
-          default -> STATUS_COMPLETED;
-        },
-        settlement.getRefundAmount().signum() > 0 && SETTLEMENT_STATUS_PAYMENT_FAILED.equals(normalize(settlement.getStatus())) ? "FAILED" : settlement.getRefundAmount().signum() > 0 ? "SUCCEEDED" : null,
+        paymentStatus,
+        refundStatus,
         settlement.getProvider(),
         settlement.getProviderRefundId(),
         settlement.getErrorCode(),
         settlement.getErrorMessage(),
-        settlement.getRefundAmount().signum() > 0 ? buildRefundMethod(null, settlement.getProvider()) : null,
+        hasRefund ? buildRefundMethod(null, settlement.getProvider()) : null,
         SETTLEMENT_COLLECT_PAYMENT.equals(settlement.getSettlementType())
             ? supportedPaymentMethods(settlement.getCurrency())
             : List.of(),
