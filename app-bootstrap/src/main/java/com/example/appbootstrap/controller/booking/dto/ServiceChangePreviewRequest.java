@@ -7,15 +7,13 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 public record ServiceChangePreviewRequest(
-    @NotEmpty(message = "passengers is required")
-        List<@Valid PassengerServicesRequest> passengers) {
+    @NotEmpty(message = "passengers is required") List<@Valid PassengerServicesRequest> passengers) {
 
   public record PassengerServicesRequest(
       @NotNull(message = "passengerId is required")
           @Positive(message = "passengerId must be positive")
           Long passengerId,
-      @NotNull(message = "selections is required")
-          List<@Valid ServiceSelectionRequest> selections) {}
+      @NotNull(message = "selections is required") List<@Valid ServiceSelectionRequest> selections) {}
 
   public record ServiceSelectionRequest(
       @NotNull(message = "optionId is required")
