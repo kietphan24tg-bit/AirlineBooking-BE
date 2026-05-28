@@ -72,6 +72,7 @@ public class FlightCalendarSearchService {
             .findFirst()
             .orElse(null);
 
-    return new FlightCalendarSearchResult(query.centerDate(), selectedDate, currency, days, selectedDay);
+    return new FlightCalendarSearchResult(
+        query.centerDate(), selectedDate, currency, days, selectedDay);
   }
 }

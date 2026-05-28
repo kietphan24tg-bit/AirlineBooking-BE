@@ -36,11 +36,16 @@ class FlightCalendarSearchServiceTest {
   void search_buildsCalendarWindowAndReusesDailySearchResults() {
     when(flightSearchFacadeService.search(any()))
         .thenReturn(emptyResult())
-        .thenReturn(resultFor("2026-05-24", "VN124", new BigDecimal("980000"), new BigDecimal("1200000")))
-        .thenReturn(resultFor("2026-05-25", "VN125", new BigDecimal("990000"), new BigDecimal("1250000")))
-        .thenReturn(resultFor("2026-05-26", "VN126", new BigDecimal("1000000"), new BigDecimal("1300000")))
-        .thenReturn(resultFor("2026-05-27", "VN127", new BigDecimal("1010000"), new BigDecimal("1310000")))
-        .thenReturn(resultFor("2026-05-28", "VN128", new BigDecimal("1020000"), new BigDecimal("1320000")))
+        .thenReturn(
+            resultFor("2026-05-24", "VN124", new BigDecimal("980000"), new BigDecimal("1200000")))
+        .thenReturn(
+            resultFor("2026-05-25", "VN125", new BigDecimal("990000"), new BigDecimal("1250000")))
+        .thenReturn(
+            resultFor("2026-05-26", "VN126", new BigDecimal("1000000"), new BigDecimal("1300000")))
+        .thenReturn(
+            resultFor("2026-05-27", "VN127", new BigDecimal("1010000"), new BigDecimal("1310000")))
+        .thenReturn(
+            resultFor("2026-05-28", "VN128", new BigDecimal("1020000"), new BigDecimal("1320000")))
         .thenReturn(emptyResult());
 
     FlightCalendarSearchResult result =
