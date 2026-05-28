@@ -5,6 +5,8 @@ import com.example.appbootstrap.application.booking.BookingLookupService;
 import com.example.appbootstrap.application.booking.BookingManageOptionsService;
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
+import com.example.appbootstrap.application.booking.FlightChangeConfirmService;
+import com.example.appbootstrap.application.booking.FlightChangeQuoteService;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
@@ -15,6 +17,10 @@ import com.example.appbootstrap.controller.booking.dto.BookingManageOptionsRespo
 import com.example.appbootstrap.controller.booking.dto.BookingTicketsResponse;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
 import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeConfirmRequest;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeConfirmResponse;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteRequest;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteResponse;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionRequest;
 import com.example.appbootstrap.controller.booking.dto.PassengerServiceSelectionResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentRequest;
@@ -70,6 +76,8 @@ public class BookingsController {
   private final BookingManageOptionsService bookingManageOptionsService;
   private final BookingSeatAssignmentService bookingSeatAssignmentService;
   private final BookingAncillarySelectionService bookingAncillarySelectionService;
+  private final FlightChangeQuoteService flightChangeQuoteService;
+  private final FlightChangeConfirmService flightChangeConfirmService;
   private final TicketIssuanceService ticketIssuanceService;
   private final BookingCancellationService bookingCancellationService;
   private final SeatChangeSettlementService seatChangeSettlementService;
@@ -81,6 +89,8 @@ public class BookingsController {
       BookingManageOptionsService bookingManageOptionsService,
       BookingSeatAssignmentService bookingSeatAssignmentService,
       BookingAncillarySelectionService bookingAncillarySelectionService,
+      FlightChangeQuoteService flightChangeQuoteService,
+      FlightChangeConfirmService flightChangeConfirmService,
       TicketIssuanceService ticketIssuanceService,
       BookingCancellationService bookingCancellationService,
       SeatChangeSettlementService seatChangeSettlementService,
@@ -90,6 +100,8 @@ public class BookingsController {
     this.bookingManageOptionsService = bookingManageOptionsService;
     this.bookingSeatAssignmentService = bookingSeatAssignmentService;
     this.bookingAncillarySelectionService = bookingAncillarySelectionService;
+    this.flightChangeQuoteService = flightChangeQuoteService;
+    this.flightChangeConfirmService = flightChangeConfirmService;
     this.ticketIssuanceService = ticketIssuanceService;
     this.bookingCancellationService = bookingCancellationService;
     this.seatChangeSettlementService = seatChangeSettlementService;
@@ -158,6 +170,49 @@ public class BookingsController {
     return BookingManageOptionsResponse.from(
         bookingManageOptionsService.getManageOptions(
             principal != null ? principal.getUserId() : null, bookingId));
+  }
+
+  @PostMapping("/bookings/{bookingId}/flight-change/quote")
+  @Operation(
+      summary = "Preview flight change eligibility and settlement",
+      description =
+          "Validates the selected tickets against fare rules, booking state, live inventory, "
+              + "and reprices the proposed replacement flight without committing the change.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Flight change quote returned",
+        content = @Content(schema = @Schema(implementation = FlightChangeQuoteResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking, ticket, or flight not found",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Flight change is not allowed",
+        content = @Content)
+  })
+  FlightChangeQuoteResponse quoteFlightChange(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody FlightChangeQuoteRequest request) {
+    return flightChangeQuoteService.quote(
+        principal == null ? null : principal.getUserId(), bookingId, request);
+  }
+
+  @PostMapping("/bookings/{bookingId}/flight-changes/confirm")
+  @Operation(
+      summary = "Confirm flight change settlement",
+      description =
+          "Revalidates the quoted flight change and returns whether the booking completes, "
+              + "triggers a refund, or requires additional payment.")
+  FlightChangeConfirmResponse confirmFlightChange(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @Valid @RequestBody FlightChangeConfirmRequest request) {
+    return flightChangeConfirmService.confirm(
+        principal == null ? null : principal.getUserId(), bookingId, request);
   }
 
   @GetMapping("/bookings/{bookingId}/tickets")

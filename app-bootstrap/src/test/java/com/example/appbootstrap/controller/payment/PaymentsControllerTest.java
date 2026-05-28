@@ -14,6 +14,7 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
 import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.CreatePaymentResult;
+import com.example.modulepayment.application.FlightChangePaymentService;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentResultService;
 import com.example.modulepayment.application.PaymentResultStatusView;
@@ -41,6 +42,7 @@ class PaymentsControllerTest {
   @Mock private PaymentResultService paymentResultService;
   @Mock private SeatChangePaymentService seatChangePaymentService;
   @Mock private ServiceChangePaymentService serviceChangePaymentService;
+  @Mock private FlightChangePaymentService flightChangePaymentService;
 
   private PaymentsController controller;
   private Validator validator;
@@ -52,7 +54,8 @@ class PaymentsControllerTest {
             paymentService,
             paymentResultService,
             seatChangePaymentService,
-            serviceChangePaymentService);
+            serviceChangePaymentService,
+            flightChangePaymentService);
     validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 

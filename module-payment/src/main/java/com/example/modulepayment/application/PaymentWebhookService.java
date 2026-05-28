@@ -65,6 +65,7 @@ public class PaymentWebhookService {
   private final PaymentRefundService paymentRefundService;
   private final SeatChangeSettlementService seatChangeSettlementService;
   private final ServiceChangeSettlementService serviceChangeSettlementService;
+  private final FlightChangeSettlementService flightChangeSettlementService;
 
   public PaymentWebhookService(
       PaymentRepository paymentRepository,
@@ -79,7 +80,8 @@ public class PaymentWebhookService {
       TicketFinancialSnapshotService ticketFinancialSnapshotService,
       PaymentRefundService paymentRefundService,
       SeatChangeSettlementService seatChangeSettlementService,
-      ServiceChangeSettlementService serviceChangeSettlementService) {
+      ServiceChangeSettlementService serviceChangeSettlementService,
+      FlightChangeSettlementService flightChangeSettlementService) {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
@@ -93,6 +95,7 @@ public class PaymentWebhookService {
     this.paymentRefundService = paymentRefundService;
     this.seatChangeSettlementService = seatChangeSettlementService;
     this.serviceChangeSettlementService = serviceChangeSettlementService;
+    this.flightChangeSettlementService = flightChangeSettlementService;
   }
 
   @Transactional
@@ -152,7 +155,9 @@ public class PaymentWebhookService {
     OffsetDateTime now = OffsetDateTime.now();
     payment.setUpdatedAt(now);
 
-    if (payment.getSeatChangeSettlement() != null || payment.getServiceChangeSettlement() != null) {
+    if (payment.getSeatChangeSettlement() != null
+        || payment.getServiceChangeSettlement() != null
+        || payment.getFlightChangeSettlement() != null) {
       if (EVENT_TYPE_FAILED.equals(event.eventType())) {
         payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
         paymentRepository.save(payment);
@@ -306,7 +311,9 @@ public class PaymentWebhookService {
       return;
     }
 
-    if (payment.getSeatChangeSettlement() != null || payment.getServiceChangeSettlement() != null) {
+    if (payment.getSeatChangeSettlement() != null
+        || payment.getServiceChangeSettlement() != null
+        || payment.getFlightChangeSettlement() != null) {
       OffsetDateTime now = OffsetDateTime.now();
       if (STRIPE_EVENT_PAYMENT_FAILED.equals(event.eventType())) {
         payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
@@ -531,6 +538,9 @@ public class PaymentWebhookService {
     if (payment.getServiceChangeSettlement() != null) {
       serviceChangeSettlementService.handlePaymentSuccess(payment, providerPaymentReference);
     }
+    if (payment.getFlightChangeSettlement() != null) {
+      flightChangeSettlementService.handlePaymentSuccess(payment, providerPaymentReference);
+    }
   }
 
   private void handleSettlementPaymentFailure(PaymentEntity payment, String status) {
@@ -539,6 +549,9 @@ public class PaymentWebhookService {
     }
     if (payment.getServiceChangeSettlement() != null) {
       serviceChangeSettlementService.handlePaymentFailure(payment, status);
+    }
+    if (payment.getFlightChangeSettlement() != null) {
+      flightChangeSettlementService.handlePaymentFailure(payment, status);
     }
   }
 

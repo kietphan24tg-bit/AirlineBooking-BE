@@ -56,6 +56,9 @@ app:
         checkin-open-hours: ${APP_BOOKING_CHECKIN_OPEN_HOURS:24}
         domestic-checkin-close-minutes: ${APP_BOOKING_DOMESTIC_CHECKIN_CLOSE_MINUTES:40}
         international-checkin-close-minutes: ${APP_BOOKING_INTERNATIONAL_CHECKIN_CLOSE_MINUTES:60}
+        flight-change-quote-expiration-minutes: ${APP_BOOKING_FLIGHT_CHANGE_QUOTE_EXPIRATION_MINUTES:15}
+        flight-change-close-minutes: ${APP_BOOKING_FLIGHT_CHANGE_CLOSE_MINUTES:180}
+        minimum-connection-minutes: ${APP_BOOKING_MINIMUM_CONNECTION_MINUTES:90}
     airport-import:
         enabled: ${APP_AIRPORT_IMPORT_ENABLED:false}
         run-on-startup: ${APP_AIRPORT_IMPORT_RUN_ON_STARTUP:false}

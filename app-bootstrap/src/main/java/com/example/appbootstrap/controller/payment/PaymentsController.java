@@ -1,6 +1,7 @@
 package com.example.appbootstrap.controller.payment;
 
 import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
+import com.example.appbootstrap.controller.payment.dto.CreateFlightChangePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
 import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
 import com.example.appbootstrap.controller.payment.dto.CreateSeatChangePaymentRequest;
@@ -11,6 +12,7 @@ import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.CreatePaymentCommand;
 import com.example.modulepayment.application.CreatePaymentResult;
+import com.example.modulepayment.application.FlightChangePaymentService;
 import com.example.modulepayment.application.PaymentDetailsView;
 import com.example.modulepayment.application.PaymentMethodView;
 import com.example.modulepayment.application.PaymentResultService;
@@ -51,16 +53,19 @@ public class PaymentsController {
   private final PaymentResultService paymentResultService;
   private final SeatChangePaymentService seatChangePaymentService;
   private final ServiceChangePaymentService serviceChangePaymentService;
+  private final FlightChangePaymentService flightChangePaymentService;
 
   public PaymentsController(
       PaymentService paymentService,
       PaymentResultService paymentResultService,
       SeatChangePaymentService seatChangePaymentService,
-      ServiceChangePaymentService serviceChangePaymentService) {
+      ServiceChangePaymentService serviceChangePaymentService,
+      FlightChangePaymentService flightChangePaymentService) {
     this.paymentService = paymentService;
     this.paymentResultService = paymentResultService;
     this.seatChangePaymentService = seatChangePaymentService;
     this.serviceChangePaymentService = serviceChangePaymentService;
+    this.flightChangePaymentService = flightChangePaymentService;
   }
 
   @GetMapping("/payment-methods")
@@ -281,6 +286,38 @@ public class PaymentsController {
         serviceChangePaymentService.createPayment(
             request.bookingId(),
             request.serviceChangeSettlementId(),
+            principal == null ? null : principal.getUserId(),
+            request.method());
+    return new CreatePaymentResponse(
+        new CreatePaymentResponse.PaymentResponse(
+            result.payment().id(),
+            result.payment().bookingId(),
+            result.payment().amount(),
+            result.payment().currency(),
+            result.payment().method(),
+            result.payment().status(),
+            result.payment().expireAt(),
+            result.payment().transactionId(),
+            result.payment().qrData(),
+            toCreateDetails(result.payment().details())),
+        new CreatePaymentResponse.PaymentActionResponse(
+            result.action().type(),
+            result.action().qrData(),
+            result.action().qrImageUrl(),
+            result.action().paymentUrl()));
+  }
+
+  @PostMapping("/flight-change-payments")
+  @Operation(
+      summary = "Create payment link for flight change settlement",
+      description = "Creates a pending payment for an additional flight-change charge")
+  CreatePaymentResponse createFlightChangePayment(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @Valid @RequestBody CreateFlightChangePaymentRequest request) {
+    CreatePaymentResult result =
+        flightChangePaymentService.createPayment(
+            request.bookingId(),
+            request.flightChangeSettlementId(),
             principal == null ? null : principal.getUserId(),
             request.method());
     return new CreatePaymentResponse(

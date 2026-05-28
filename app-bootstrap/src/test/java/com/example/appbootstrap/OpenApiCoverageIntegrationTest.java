@@ -56,6 +56,8 @@ class OpenApiCoverageIntegrationTest {
         .isEqualTo("#/components/schemas/ServiceChangeConfirmResponse");
     assertThat(schemaRef(bookingsSpec, "/api/bookings/{bookingId}/tickets", "get"))
         .isEqualTo("#/components/schemas/BookingTicketsResponse");
+    assertThat(schemaRef(flightsSpec, "/api/flights/search-calendar", "get"))
+        .isEqualTo("#/components/schemas/FlightCalendarSearchResponse");
     assertThat(schemaRef(flightsSpec, "/api/flights/{flightId}/seats", "get"))
         .isEqualTo("#/components/schemas/FlightSeatMapResponse");
     assertThat(schemaRef(servicesSpec, "/api/services", "get"))
@@ -97,6 +99,7 @@ class OpenApiCoverageIntegrationTest {
         Arguments.of("identity", "/api/users/me"),
         Arguments.of("identity", "/api/users/me/password"),
         Arguments.of("flights", "/api/flights/search"),
+        Arguments.of("flights", "/api/flights/search-calendar"),
         Arguments.of("flights", "/api/flights/revalidate-fare"),
         Arguments.of("flights", "/api/flights/{flightId}/seats"),
         Arguments.of("flights", "/api/airports"),

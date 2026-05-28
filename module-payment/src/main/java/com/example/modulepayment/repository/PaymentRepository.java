@@ -72,6 +72,7 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       where p.booking.id = :bookingId
         and p.seatChangeSettlement is null
         and p.serviceChangeSettlement is null
+        and p.flightChangeSettlement is null
         and p.paymentStatus in :statuses
       order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
       """)
@@ -98,6 +99,7 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       where p.booking.id = :bookingId
         and p.seatChangeSettlement is null
         and p.serviceChangeSettlement is null
+        and p.flightChangeSettlement is null
         and p.paymentStatus in :statuses
       order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
       """)
@@ -126,6 +128,18 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
       """)
   List<PaymentEntity> findByServiceChangeSettlementIdAndPaymentStatusInForUpdateOrderByLatest(
+      @Param("settlementId") Long settlementId, @Param("statuses") List<String> statuses);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      where p.flightChangeSettlement.id = :settlementId
+        and p.paymentStatus in :statuses
+      order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
+      """)
+  List<PaymentEntity> findByFlightChangeSettlementIdAndPaymentStatusInForUpdateOrderByLatest(
       @Param("settlementId") Long settlementId, @Param("statuses") List<String> statuses);
 
   boolean existsByBookingIdAndPaymentStatus(Long bookingId, String paymentStatus);

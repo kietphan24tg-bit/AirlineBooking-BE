@@ -17,11 +17,16 @@ import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
+import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchQueryRequest;
+import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
 import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
+import com.example.moduleflight.application.FlightCalendarSearchQuery;
+import com.example.moduleflight.application.FlightCalendarSearchResult;
+import com.example.moduleflight.application.FlightCalendarSearchService;
 import com.example.moduleflight.application.FlightConnectionFilter;
 import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
@@ -50,6 +55,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class FlightsControllerTest {
 
   @Mock private FlightSearchFacadeService flightSearchFacadeService;
+  @Mock private FlightCalendarSearchService flightCalendarSearchService;
   @Mock private BookingRevalidateService bookingRevalidateService;
   @Mock private FlightSeatMapService flightSeatMapService;
   @Mock private PromotionCatalogService promotionCatalogService;
@@ -62,6 +68,7 @@ class FlightsControllerTest {
     controller =
         new FlightsController(
             flightSearchFacadeService,
+            flightCalendarSearchService,
             bookingRevalidateService,
             flightSeatMapService,
             promotionCatalogService,
@@ -372,6 +379,171 @@ class FlightsControllerTest {
   }
 
   @Test
+  void searchCalendar_mapsServiceResponse() {
+    when(flightCalendarSearchService.search(any()))
+        .thenReturn(
+            new FlightCalendarSearchResult(
+                LocalDate.parse("2026-05-26"),
+                LocalDate.parse("2026-05-26"),
+                "VND",
+                List.of(
+                    new FlightCalendarSearchResult.CalendarDayResult(
+                        LocalDate.parse("2026-05-25"), false, null, null, null, 0, List.of()),
+                    new FlightCalendarSearchResult.CalendarDayResult(
+                        LocalDate.parse("2026-05-26"),
+                        true,
+                        new BigDecimal("1200000"),
+                        new BigDecimal("1500000"),
+                        "VND",
+                        1,
+                        List.of(
+                            new FlightSearchResult.FlightOptionView(
+                                11L,
+                                "VN123",
+                                "VN",
+                                "Vietnam Airlines",
+                                "SGN",
+                                "HAN",
+                                LocalDate.parse("2026-05-26"),
+                                OffsetDateTime.parse("2026-05-26T02:00:00Z"),
+                                OffsetDateTime.parse("2026-05-26T04:00:00Z"),
+                                "VND",
+                                List.of())))),
+                new FlightCalendarSearchResult.CalendarDayResult(
+                    LocalDate.parse("2026-05-26"),
+                    true,
+                    new BigDecimal("1200000"),
+                    new BigDecimal("1500000"),
+                    "VND",
+                    1,
+                    List.of(
+                        new FlightSearchResult.FlightOptionView(
+                            11L,
+                            "VN123",
+                            "VN",
+                            "Vietnam Airlines",
+                            "SGN",
+                            "HAN",
+                            LocalDate.parse("2026-05-26"),
+                            OffsetDateTime.parse("2026-05-26T02:00:00Z"),
+                            OffsetDateTime.parse("2026-05-26T04:00:00Z"),
+                            "VND",
+                            List.of())))));
+
+    FlightCalendarSearchResponse response =
+        controller.searchCalendar(
+            new FlightCalendarSearchQueryRequest(
+                "ONE_WAY",
+                "SGN",
+                "HAN",
+                LocalDate.parse("2026-05-26"),
+                1,
+                0,
+                0,
+                null,
+                10,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                3,
+                3));
+
+    assertEquals("VND", response.currency());
+    assertEquals(2, response.days().size());
+    assertEquals(LocalDate.parse("2026-05-26"), response.selectedDay().date());
+    assertEquals("VN123", response.selectedDay().flights().getFirst().flightNumber());
+  }
+
+  @Test
+  void searchCalendar_mapsOptionalFiltersToCalendarQuery() {
+    when(flightCalendarSearchService.search(any()))
+        .thenReturn(
+            new FlightCalendarSearchResult(
+                LocalDate.parse("2026-05-26"),
+                LocalDate.parse("2026-05-26"),
+                null,
+                List.of(),
+                null));
+
+    controller.searchCalendar(
+        new FlightCalendarSearchQueryRequest(
+            "ONE_WAY",
+            "SGN",
+            "HAN",
+            LocalDate.parse("2026-05-26"),
+            1,
+            0,
+            0,
+            "SAVE20",
+            12,
+            List.of("ECONOMY", "BUSINESS"),
+            new BigDecimal("2000000"),
+            "MORNING",
+            "EVENING",
+            "DIRECT_ONLY",
+            "CHEAPEST",
+            2,
+            4));
+
+    ArgumentCaptor<FlightCalendarSearchQuery> captor =
+        ArgumentCaptor.forClass(FlightCalendarSearchQuery.class);
+    verify(flightCalendarSearchService).search(captor.capture());
+    FlightCalendarSearchQuery q = captor.getValue();
+    assertEquals(LocalDate.parse("2026-05-26"), q.centerDate());
+    assertEquals(12, q.limit());
+    assertEquals(2, q.daysBefore());
+    assertEquals(4, q.daysAfter());
+    assertEquals(Set.of(CabinClass.ECONOMY, CabinClass.BUSINESS), q.cabinClasses());
+    assertEquals(new BigDecimal("2000000"), q.maxBudget());
+    assertEquals(TimeOfDayBucket.MORNING, q.departureTimeBucket());
+    assertEquals(TimeOfDayBucket.EVENING, q.arrivalTimeBucket());
+    assertEquals(FlightConnectionFilter.DIRECT_ONLY, q.connectionFilter());
+    assertEquals(FlightSortBy.CHEAPEST, q.sortBy());
+  }
+
+  @Test
+  void searchCalendar_defaultsWindowAndLimit() {
+    when(flightCalendarSearchService.search(any()))
+        .thenReturn(
+            new FlightCalendarSearchResult(
+                LocalDate.parse("2026-05-26"),
+                LocalDate.parse("2026-05-26"),
+                null,
+                List.of(),
+                null));
+
+    controller.searchCalendar(
+        new FlightCalendarSearchQueryRequest(
+            "ONE_WAY",
+            "SGN",
+            "HAN",
+            LocalDate.parse("2026-05-26"),
+            1,
+            0,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null));
+
+    ArgumentCaptor<FlightCalendarSearchQuery> captor =
+        ArgumentCaptor.forClass(FlightCalendarSearchQuery.class);
+    verify(flightCalendarSearchService).search(captor.capture());
+    assertEquals(10, captor.getValue().limit());
+    assertEquals(3, captor.getValue().daysBefore());
+    assertEquals(3, captor.getValue().daysAfter());
+  }
+
+  @Test
   void searchFlights_mapsOptionalFiltersToFlightSearchQuery() {
     when(flightSearchFacadeService.search(any()))
         .thenReturn(
@@ -624,6 +796,64 @@ class FlightsControllerTest {
   }
 
   @Test
+  void searchCalendar_rejectsRoundTrip() {
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                controller.searchCalendar(
+                    new FlightCalendarSearchQueryRequest(
+                        "ROUND_TRIP",
+                        "SGN",
+                        "HAN",
+                        LocalDate.parse("2026-05-26"),
+                        1,
+                        0,
+                        0,
+                        null,
+                        10,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        3,
+                        3)));
+
+    assertEquals("INVALID_TRIP_TYPE", exception.getCode());
+  }
+
+  @Test
+  void searchCalendar_rejectsTooWideWindow() {
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                controller.searchCalendar(
+                    new FlightCalendarSearchQueryRequest(
+                        "ONE_WAY",
+                        "SGN",
+                        "HAN",
+                        LocalDate.parse("2026-05-26"),
+                        1,
+                        0,
+                        0,
+                        null,
+                        10,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        8,
+                        7)));
+
+    assertEquals("INVALID_CALENDAR_WINDOW", exception.getCode());
+  }
+
+  @Test
   void maxBudget_zeroFailsBeanValidation() {
     try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
       Validator validator = factory.getValidator();
@@ -644,6 +874,33 @@ class FlightsControllerTest {
               20,
               null,
               BigDecimal.ZERO,
+              null,
+              null,
+              null,
+              null);
+      assertFalse(validator.validate(request).isEmpty());
+    }
+  }
+
+  @Test
+  void searchCalendar_maxBudgetZeroFailsBeanValidation() {
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+      Validator validator = factory.getValidator();
+      FlightCalendarSearchQueryRequest request =
+          new FlightCalendarSearchQueryRequest(
+              "ONE_WAY",
+              "SGN",
+              "HAN",
+              LocalDate.parse("2026-05-26"),
+              1,
+              0,
+              0,
+              null,
+              10,
+              null,
+              BigDecimal.ZERO,
+              null,
+              null,
               null,
               null,
               null,
@@ -720,6 +977,35 @@ class FlightsControllerTest {
                         null,
                         null,
                         null)));
+
+    assertEquals("INVALID_PASSENGER_BREAKDOWN", exception.getCode());
+  }
+
+  @Test
+  void searchCalendar_rejectsInfantGreaterThanAdult() {
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                controller.searchCalendar(
+                    new FlightCalendarSearchQueryRequest(
+                        "ONE_WAY",
+                        "SGN",
+                        "HAN",
+                        LocalDate.parse("2026-05-26"),
+                        1,
+                        0,
+                        2,
+                        null,
+                        10,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        3,
+                        3)));
 
     assertEquals("INVALID_PASSENGER_BREAKDOWN", exception.getCode());
   }

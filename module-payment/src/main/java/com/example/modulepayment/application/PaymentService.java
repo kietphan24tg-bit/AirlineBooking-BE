@@ -92,6 +92,7 @@ public class PaymentService {
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
   private final SeatChangeSettlementService seatChangeSettlementService;
   private final ServiceChangeSettlementService serviceChangeSettlementService;
+  private final FlightChangeSettlementService flightChangeSettlementService;
 
   public PaymentService(
       BookingRepository bookingRepository,
@@ -104,7 +105,8 @@ public class PaymentService {
       BookingServiceRepository bookingServiceRepository,
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
       SeatChangeSettlementService seatChangeSettlementService,
-      ServiceChangeSettlementService serviceChangeSettlementService) {
+      ServiceChangeSettlementService serviceChangeSettlementService,
+      FlightChangeSettlementService flightChangeSettlementService) {
     this.bookingRepository = bookingRepository;
     this.paymentRepository = paymentRepository;
     this.payosPaymentGateway = payosPaymentGateway;
@@ -116,6 +118,7 @@ public class PaymentService {
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
     this.seatChangeSettlementService = seatChangeSettlementService;
     this.serviceChangeSettlementService = serviceChangeSettlementService;
+    this.flightChangeSettlementService = flightChangeSettlementService;
   }
 
   @Transactional(readOnly = true)
@@ -297,6 +300,9 @@ public class PaymentService {
     if (payment.getServiceChangeSettlement() != null) {
       serviceChangeSettlementService.handlePaymentCancelled(payment);
     }
+    if (payment.getFlightChangeSettlement() != null) {
+      flightChangeSettlementService.handlePaymentCancelled(payment);
+    }
 
     return buildStatusView(payment);
   }
@@ -331,6 +337,9 @@ public class PaymentService {
     }
     if (payment.getServiceChangeSettlement() != null) {
       serviceChangeSettlementService.handlePaymentCancelled(payment);
+    }
+    if (payment.getFlightChangeSettlement() != null) {
+      flightChangeSettlementService.handlePaymentCancelled(payment);
     }
 
     return buildStatusView(payment);

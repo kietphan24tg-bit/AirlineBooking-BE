@@ -9,11 +9,17 @@ import com.example.appbootstrap.application.booking.BookingLookupService;
 import com.example.appbootstrap.application.booking.BookingManageOptionsService;
 import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
+import com.example.appbootstrap.application.booking.FlightChangeConfirmService;
+import com.example.appbootstrap.application.booking.FlightChangeQuoteService;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingManageOptionsResponse;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeConfirmRequest;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeConfirmResponse;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteRequest;
+import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
 import com.example.modulebooking.application.TicketIssuanceService;
@@ -43,6 +49,8 @@ class BookingsControllerTest {
   @Mock private BookingManageOptionsService bookingManageOptionsService;
   @Mock private BookingSeatAssignmentService bookingSeatAssignmentService;
   @Mock private BookingAncillarySelectionService bookingAncillarySelectionService;
+  @Mock private FlightChangeQuoteService flightChangeQuoteService;
+  @Mock private FlightChangeConfirmService flightChangeConfirmService;
   @Mock private TicketIssuanceService ticketIssuanceService;
   @Mock private BookingCancellationService bookingCancellationService;
   @Mock private SeatChangeSettlementService seatChangeSettlementService;
@@ -60,6 +68,8 @@ class BookingsControllerTest {
             bookingManageOptionsService,
             bookingSeatAssignmentService,
             bookingAncillarySelectionService,
+            flightChangeQuoteService,
+            flightChangeConfirmService,
             ticketIssuanceService,
             bookingCancellationService,
             seatChangeSettlementService,
@@ -168,6 +178,77 @@ class BookingsControllerTest {
     assertEquals("SUCCESS", response.paymentStatus());
     assertEquals("An Nguyen", response.items().getFirst().passengerName());
     assertEquals(new BigDecimal("820000"), response.summary().netRefund());
+  }
+
+  @Test
+  void quoteFlightChangeShouldDelegateToService() {
+    FlightChangeQuoteRequest request =
+        new FlightChangeQuoteRequest(List.of(101L), 501L, 888L, 321L);
+    when(flightChangeQuoteService.quote(7L, 10L, request))
+        .thenReturn(
+            new FlightChangeQuoteResponse(
+                10L,
+                "VND",
+                "FCQ_123",
+                OffsetDateTime.parse("2026-06-01T09:00:00+07:00"),
+                true,
+                "REFUND",
+                new FlightChangeQuoteResponse.FlightSummaryResponse(
+                    501L, "VN123", "SGN", "HAN", OffsetDateTime.parse("2026-06-01T08:30:00+07:00")),
+                new FlightChangeQuoteResponse.FlightSummaryResponse(
+                    888L, "VN220", "SGN", "HAN", OffsetDateTime.parse("2026-06-01T06:30:00+07:00")),
+                List.of(),
+                new FlightChangeQuoteResponse.SummaryResponse(
+                    new BigDecimal("2000000"),
+                    new BigDecimal("920000"),
+                    new BigDecimal("-1080000"),
+                    new BigDecimal("500000"),
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    new BigDecimal("-580000")),
+                new FlightChangeQuoteResponse.ImpactsResponse(
+                    "RESELECT_REQUIRED", "REVIEW_REQUIRED"),
+                List.of("Quote có hiệu lực trong 15 phút.")));
+
+    FlightChangeQuoteResponse response = controller.quoteFlightChange(principal(), 10L, request);
+
+    assertEquals("FCQ_123", response.quoteToken());
+    assertEquals("REFUND", response.settlementType());
+    assertEquals(new BigDecimal("-580000"), response.summary().netAmount());
+    verify(flightChangeQuoteService).quote(7L, 10L, request);
+  }
+
+  @Test
+  void confirmFlightChangeShouldDelegateToService() {
+    FlightChangeConfirmRequest request =
+        new FlightChangeConfirmRequest(
+            "FCQ_123", "idem-1", new BigDecimal("840000"), BigDecimal.ZERO, new BigDecimal("840000"));
+    when(flightChangeConfirmService.confirm(7L, 10L, request))
+        .thenReturn(
+            new FlightChangeConfirmResponse(
+                900L,
+                10L,
+                "VND",
+                "COLLECT_PAYMENT",
+                "PAYMENT_REQUIRED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(
+                    new FlightChangeConfirmResponse.PaymentMethodItemResponse(
+                        "PAYOS_QR", "Mobile Banking (VietQR)", "PAYOS", null, true)),
+                new FlightChangeConfirmResponse.SummaryResponse(
+                    new BigDecimal("840000"), BigDecimal.ZERO, new BigDecimal("840000"))));
+
+    FlightChangeConfirmResponse response = controller.confirmFlightChange(principal(), 10L, request);
+
+    assertEquals("PAYMENT_REQUIRED", response.status());
+    assertEquals("COLLECT_PAYMENT", response.settlementType());
+    assertEquals(new BigDecimal("840000"), response.summary().netAmount());
+    verify(flightChangeConfirmService).confirm(7L, 10L, request);
   }
 
   @Test

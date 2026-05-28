@@ -7,4 +7,7 @@ public record BookingProperties(
     int pnrExpirationMinutes,
     int checkinOpenHours,
     int domesticCheckinCloseMinutes,
-    int internationalCheckinCloseMinutes) {}
+    int internationalCheckinCloseMinutes,
+    int flightChangeQuoteExpirationMinutes,
+    int flightChangeCloseMinutes,
+    int minimumConnectionMinutes) {}

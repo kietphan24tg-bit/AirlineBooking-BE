@@ -7,12 +7,16 @@ import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
+import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchQueryRequest;
+import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
 import com.example.appbootstrap.controller.flight.dto.PromotionCatalogResponse;
 import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
+import com.example.moduleflight.application.FlightCalendarSearchQuery;
+import com.example.moduleflight.application.FlightCalendarSearchService;
 import com.example.moduleflight.application.FlightConnectionFilter;
 import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
@@ -52,7 +56,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Flights", description = "Flight search endpoints")
 public class FlightsController {
 
+  private static final int MAX_CALENDAR_WINDOW_DAYS = 15;
+
   private final FlightSearchFacadeService flightSearchFacadeService;
+  private final FlightCalendarSearchService flightCalendarSearchService;
   private final BookingRevalidateService bookingRevalidateService;
   private final FlightSeatMapService flightSeatMapService;
   private final PromotionCatalogService promotionCatalogService;
@@ -60,11 +67,13 @@ public class FlightsController {
 
   public FlightsController(
       FlightSearchFacadeService flightSearchFacadeService,
+      FlightCalendarSearchService flightCalendarSearchService,
       BookingRevalidateService bookingRevalidateService,
       FlightSeatMapService flightSeatMapService,
       PromotionCatalogService promotionCatalogService,
       UserRecentAirportService userRecentAirportService) {
     this.flightSearchFacadeService = flightSearchFacadeService;
+    this.flightCalendarSearchService = flightCalendarSearchService;
     this.bookingRevalidateService = bookingRevalidateService;
     this.flightSeatMapService = flightSeatMapService;
     this.promotionCatalogService = promotionCatalogService;
@@ -87,34 +96,32 @@ public class FlightsController {
       @AuthenticationPrincipal AppUserPrincipal principal,
       @Valid @ParameterObject FlightSearchQueryRequest request) {
     validateBusinessRules(request);
-    FlightSearchTripType tripType = parseTripType(request.tripType());
-    FlightSearchQuery query =
-        new FlightSearchQuery(
-            tripType,
-            request.from(),
-            request.to(),
-            request.departureDate(),
-            request.returnDate(),
-            request.adult(),
-            request.effectiveChild(),
-            request.effectiveInfant(),
-            request.promoCode(),
-            request.cursor(),
-            request.outboundCursor(),
-            request.inboundCursor(),
-            request.effectiveLimit(),
-            parseCabinClasses(request.cabinClasses()),
-            request.maxBudget(),
-            parseTimeBucket(request.departureTimeBucket()),
-            parseTimeBucket(request.arrivalTimeBucket()),
-            parseConnectionFilter(request.connectionFilter()),
-            parseSortBy(request.sortBy()));
     FlightSearchResponse response =
-        FlightSearchResponse.from(flightSearchFacadeService.search(query));
+        FlightSearchResponse.from(flightSearchFacadeService.search(buildSearchQuery(request)));
     if (principal != null) {
       userRecentAirportService.recordSearch(principal.getUserId(), request.from(), request.to());
     }
     return response;
+  }
+
+  @GetMapping("/search-calendar")
+  @Operation(
+      summary = "Search flights across a calendar window",
+      description =
+          "Returns one-way flight summaries and per-day flight lists for the center date and the surrounding days.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Calendar search completed",
+        content = @Content(schema = @Schema(implementation = FlightCalendarSearchResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content)
+  })
+  FlightCalendarSearchResponse searchCalendar(
+      @Valid @ParameterObject FlightCalendarSearchQueryRequest request) {
+    validateCalendarBusinessRules(request);
+    return FlightCalendarSearchResponse.from(
+        flightCalendarSearchService.search(buildCalendarSearchQuery(request)));
   }
 
   @PostMapping("/revalidate-fare")
@@ -229,6 +236,75 @@ public class FlightsController {
       throw new AppException(
           "INVALID_PASSENGER_BREAKDOWN", "total passengers must not exceed 9", 400);
     }
+  }
+
+  private void validateCalendarBusinessRules(FlightCalendarSearchQueryRequest request) {
+    FlightSearchTripType tripType = parseTripType(request.tripType());
+    if (tripType != FlightSearchTripType.ONE_WAY) {
+      throw new AppException(
+          "INVALID_TRIP_TYPE", "search-calendar currently supports ONE_WAY only", 400);
+    }
+    if (request.effectiveInfant() > request.adult()) {
+      throw new AppException(
+          "INVALID_PASSENGER_BREAKDOWN", "infant count must not exceed adult count", 400);
+    }
+    if (request.totalPassengers() > 9) {
+      throw new AppException(
+          "INVALID_PASSENGER_BREAKDOWN", "total passengers must not exceed 9", 400);
+    }
+    int totalWindowDays = request.effectiveDaysBefore() + request.effectiveDaysAfter() + 1;
+    if (totalWindowDays > MAX_CALENDAR_WINDOW_DAYS) {
+      throw new AppException(
+          "INVALID_CALENDAR_WINDOW",
+          "daysBefore + daysAfter + 1 must not exceed " + MAX_CALENDAR_WINDOW_DAYS,
+          400);
+    }
+  }
+
+  private FlightSearchQuery buildSearchQuery(FlightSearchQueryRequest request) {
+    FlightSearchTripType tripType = parseTripType(request.tripType());
+    return new FlightSearchQuery(
+        tripType,
+        request.from(),
+        request.to(),
+        request.departureDate(),
+        request.returnDate(),
+        request.adult(),
+        request.effectiveChild(),
+        request.effectiveInfant(),
+        request.promoCode(),
+        request.cursor(),
+        request.outboundCursor(),
+        request.inboundCursor(),
+        request.effectiveLimit(),
+        parseCabinClasses(request.cabinClasses()),
+        request.maxBudget(),
+        parseTimeBucket(request.departureTimeBucket()),
+        parseTimeBucket(request.arrivalTimeBucket()),
+        parseConnectionFilter(request.connectionFilter()),
+        parseSortBy(request.sortBy()));
+  }
+
+  private FlightCalendarSearchQuery buildCalendarSearchQuery(
+      FlightCalendarSearchQueryRequest request) {
+    return new FlightCalendarSearchQuery(
+        parseTripType(request.tripType()),
+        request.from(),
+        request.to(),
+        request.centerDate(),
+        request.adult(),
+        request.effectiveChild(),
+        request.effectiveInfant(),
+        request.promoCode(),
+        request.effectiveLimit(),
+        parseCabinClasses(request.cabinClasses()),
+        request.maxBudget(),
+        parseTimeBucket(request.departureTimeBucket()),
+        parseTimeBucket(request.arrivalTimeBucket()),
+        parseConnectionFilter(request.connectionFilter()),
+        parseSortBy(request.sortBy()),
+        request.effectiveDaysBefore(),
+        request.effectiveDaysAfter());
   }
 
   private FlightSearchTripType parseTripType(String tripType) {
