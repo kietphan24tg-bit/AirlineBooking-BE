@@ -436,17 +436,22 @@ public class PaymentService {
     if (METHOD_PAY_LATER.equals(normalizedMethod)) {
       PaymentEntity existingPayLater = findLatestPayLaterSession(previousPending);
       if (existingPayLater != null && hasActiveBookingHold(booking, now)) {
-        applyEffectiveExpireAt(booking, bookingExpireAt, now);
+        OffsetDateTime preservedExpireAt = existingPayLater.getSessionExpiresAt();
+        if (preservedExpireAt == null || !preservedExpireAt.isAfter(now)) {
+          preservedExpireAt = bookingExpireAt;
+        }
+        applyEffectiveExpireAt(booking, preservedExpireAt, now);
         resolvePendingPaymentsOnMethodChange(
             previousPending, normalizedMethod, now, existingPayLater.getId());
         resumePayLaterPayment(existingPayLater, now);
-        existingPayLater.setSessionExpiresAt(bookingExpireAt);
+        existingPayLater.setSessionExpiresAt(preservedExpireAt);
         ensureBookingPendingPayment(booking, now);
         log.info(
-            "Reusing pay-later payment: bookingId={}, paymentId={}",
+            "Reusing pay-later payment: bookingId={}, paymentId={}, sessionExpiresAt={}",
             booking.getId(),
-            existingPayLater.getId());
-        return buildCreatePaymentResult(existingPayLater, booking, bookingExpireAt);
+            existingPayLater.getId(),
+            preservedExpireAt);
+        return buildCreatePaymentResult(existingPayLater, booking, preservedExpireAt);
       }
     }
 
@@ -736,6 +741,10 @@ public class PaymentService {
     if (Objects.equals(booking.getPnrExpiresAt(), effectiveExpireAt)) {
       return;
     }
+    if (booking.getPnrExpiresAt() != null
+        && effectiveExpireAt.isBefore(booking.getPnrExpiresAt())) {
+      return;
+    }
     if (booking.getPnrExpiresAt() == null || effectiveExpireAt.isAfter(booking.getPnrExpiresAt())) {
       booking.setPaymentWindowExtendedAt(now);
     }
@@ -889,11 +898,7 @@ public class PaymentService {
     if (bookingExpireAt == null || !bookingExpireAt.isAfter(now)) {
       throw new AppException("BOOKING_EXPIRED", "Booking payment window has expired", 410);
     }
-    long remainingSeconds = Duration.between(now, bookingExpireAt).getSeconds();
-    if (remainingSeconds > PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
-      return bookingExpireAt;
-    }
-    return bookingExpireAt.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
+    return now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
   }
 
   private OffsetDateTime resolveSubsequentPayosQrExpireAt(

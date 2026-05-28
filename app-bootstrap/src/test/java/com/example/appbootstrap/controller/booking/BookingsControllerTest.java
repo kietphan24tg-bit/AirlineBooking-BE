@@ -222,7 +222,11 @@ class BookingsControllerTest {
   void confirmFlightChangeShouldDelegateToService() {
     FlightChangeConfirmRequest request =
         new FlightChangeConfirmRequest(
-            "FCQ_123", "idem-1", new BigDecimal("840000"), BigDecimal.ZERO, new BigDecimal("840000"));
+            "FCQ_123",
+            "idem-1",
+            new BigDecimal("840000"),
+            BigDecimal.ZERO,
+            new BigDecimal("840000"));
     when(flightChangeConfirmService.confirm(7L, 10L, request))
         .thenReturn(
             new FlightChangeConfirmResponse(
@@ -243,7 +247,8 @@ class BookingsControllerTest {
                 new FlightChangeConfirmResponse.SummaryResponse(
                     new BigDecimal("840000"), BigDecimal.ZERO, new BigDecimal("840000"))));
 
-    FlightChangeConfirmResponse response = controller.confirmFlightChange(principal(), 10L, request);
+    FlightChangeConfirmResponse response =
+        controller.confirmFlightChange(principal(), 10L, request);
 
     assertEquals("PAYMENT_REQUIRED", response.status());
     assertEquals("COLLECT_PAYMENT", response.settlementType());

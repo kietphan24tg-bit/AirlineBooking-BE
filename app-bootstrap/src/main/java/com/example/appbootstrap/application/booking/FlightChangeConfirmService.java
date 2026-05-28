@@ -9,7 +9,6 @@ import com.example.modulepayment.application.FlightChangeConfirmView;
 import com.example.modulepayment.application.FlightChangeSettlementService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

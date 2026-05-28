@@ -241,13 +241,11 @@ public class FlightChangeQuoteService {
 
   public QuoteSnapshotView requireQuoteSnapshot(String quoteToken) {
     if (!StringUtils.hasText(quoteToken)) {
-      throw new AppException(
-          "FLIGHT_CHANGE_QUOTE_EXPIRED", "Flight change quote has expired", 409);
+      throw new AppException("FLIGHT_CHANGE_QUOTE_EXPIRED", "Flight change quote has expired", 409);
     }
     QuoteSnapshot snapshot = readQuoteSnapshot(quoteToken.trim());
     if (snapshot == null || snapshot.response() == null) {
-      throw new AppException(
-          "FLIGHT_CHANGE_QUOTE_EXPIRED", "Flight change quote has expired", 409);
+      throw new AppException("FLIGHT_CHANGE_QUOTE_EXPIRED", "Flight change quote has expired", 409);
     }
     return new QuoteSnapshotView(
         snapshot.quoteToken(),

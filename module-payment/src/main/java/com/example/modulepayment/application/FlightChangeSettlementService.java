@@ -3,7 +3,6 @@ package com.example.modulepayment.application;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
-import com.example.modulebooking.entity.PassengerEntity;
 import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
 import com.example.modulebooking.entity.TicketEntity;
 import com.example.modulebooking.repository.BookingFareHoldRepository;
@@ -123,7 +122,15 @@ public class FlightChangeSettlementService {
     validateExpectedAmounts(command);
 
     FlightChangeSettlementEntity settlement =
-        saveSettlement(booking, command, normalizedIdempotencyKey, initialStatus(command), null, null, null, null);
+        saveSettlement(
+            booking,
+            command,
+            normalizedIdempotencyKey,
+            initialStatus(command),
+            null,
+            null,
+            null,
+            null);
 
     if (SETTLEMENT_NO_CHANGE.equals(command.settlementType())) {
       applyFlightChange(settlement);
@@ -487,7 +494,8 @@ public class FlightChangeSettlementService {
               hasRefund ? STATUS_REFUND_PENDING : STATUS_COMPLETED;
           case SETTLEMENT_STATUS_PAYMENT_FAILED,
                   SETTLEMENT_STATUS_EXPIRED,
-                  SETTLEMENT_STATUS_CANCELLED -> hasRefund ? STATUS_REFUND_FAILED : STATUS_PAYMENT_REQUIRED;
+                  SETTLEMENT_STATUS_CANCELLED ->
+              hasRefund ? STATUS_REFUND_FAILED : STATUS_PAYMENT_REQUIRED;
           default -> STATUS_COMPLETED;
         };
     String refundStatus;
@@ -514,7 +522,9 @@ public class FlightChangeSettlementService {
             ? supportedPaymentMethods(settlement.getCurrency())
             : List.of(),
         new FlightChangeConfirmView.SummaryView(
-            settlement.getAdditionalAmount(), settlement.getRefundAmount(), settlement.getNetAmount()));
+            settlement.getAdditionalAmount(),
+            settlement.getRefundAmount(),
+            settlement.getNetAmount()));
   }
 
   private List<FlightChangeConfirmView.PaymentMethodItemView> supportedPaymentMethods(

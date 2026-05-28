@@ -2,6 +2,7 @@ package com.example.modulepayment.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -543,12 +544,16 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
-    OffsetDateTime expectedBookingExpireAt = currentExpireAt.plusMinutes(5);
-    assertEquals(expectedBookingExpireAt, booking.getPnrExpiresAt());
-    assertEquals(expectedBookingExpireAt, result.payment().expireAt());
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertEquals(true, !booking.getPnrExpiresAt().isBefore(expectedQrLow));
+    assertEquals(true, !booking.getPnrExpiresAt().isAfter(expectedQrHigh));
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
     assertEquals(true, booking.getPaymentWindowExtendedAt() != null);
   }
 
@@ -582,11 +587,16 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
     assertEquals(currentExpireAt, booking.getPnrExpiresAt());
-    assertEquals(currentExpireAt, result.payment().expireAt());
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertEquals(true, !result.payment().expireAt().isBefore(expectedQrLow));
+    assertEquals(true, !result.payment().expireAt().isAfter(expectedQrHigh));
     assertEquals(null, booking.getPaymentWindowExtendedAt());
   }
 
@@ -620,13 +630,16 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
-    OffsetDateTime originalExpireAt = booking.getPnrExpiresAt();
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
-    OffsetDateTime expectedExpireAt = originalExpireAt.plusMinutes(5);
-    assertEquals(expectedExpireAt, booking.getPnrExpiresAt());
-    assertEquals(expectedExpireAt, result.payment().expireAt());
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertEquals(true, !booking.getPnrExpiresAt().isBefore(expectedQrLow));
+    assertEquals(true, !booking.getPnrExpiresAt().isAfter(expectedQrHigh));
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
     verify(paymentGateway).createPaymentLink(any());
   }
 
@@ -732,8 +745,8 @@ class PaymentServiceTest {
     verify(paymentGateway, never()).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
     verify(paymentGateway, never()).createPaymentLink(any());
     verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
-    verify(bookingFareHoldRepository).extendHeldExpiryByBookingId(any(), any(), any());
-    verify(flightSeatRepository).extendReservedUntilForBooking(any(), any());
+    verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
+    verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
   }
 
   @Test
@@ -796,13 +809,16 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
-    OffsetDateTime expectedBookingExpireAt = currentExpireAt.plusMinutes(5);
-    assertEquals(expectedBookingExpireAt, booking.getPnrExpiresAt());
-    assertEquals(expectedBookingExpireAt, result.payment().expireAt());
-    assertEquals(true, booking.getPnrExpiresAt().isAfter(start.plusMinutes(6)));
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertEquals(true, !booking.getPnrExpiresAt().isBefore(expectedQrLow));
+    assertEquals(true, !booking.getPnrExpiresAt().isAfter(expectedQrHigh));
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
     assertEquals(true, booking.getPaymentWindowExtendedAt() != null);
     verify(bookingFareHoldRepository)
         .extendHeldExpiryByBookingId(
@@ -868,13 +884,16 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
-    OffsetDateTime originalExpireAt = booking.getPnrExpiresAt();
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
-    OffsetDateTime expectedExpireAt = originalExpireAt.plusMinutes(5);
-    assertEquals(expectedExpireAt, booking.getPnrExpiresAt());
-    assertEquals(expectedExpireAt, result.payment().expireAt());
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertEquals(true, !booking.getPnrExpiresAt().isBefore(expectedQrLow));
+    assertEquals(true, !booking.getPnrExpiresAt().isAfter(expectedQrHigh));
+    assertEquals(booking.getPnrExpiresAt(), result.payment().expireAt());
     verify(paymentGateway).createPaymentLink(any());
   }
 
@@ -1125,14 +1144,19 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
     assertEquals("CANCELLED", existing.getPaymentStatus());
     assertEquals("PAYOS", result.payment().method());
     assertEquals(123L, result.payment().id());
     assertEquals(bookingExpireAt, booking.getPnrExpiresAt());
-    assertEquals(bookingExpireAt, result.payment().expireAt());
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertEquals(true, !result.payment().expireAt().isBefore(expectedQrLow));
+    assertEquals(true, !result.payment().expireAt().isAfter(expectedQrHigh));
     verify(stripePaymentGateway).expireCheckoutSession("cs_old_123");
     verify(paymentGateway).createPaymentLink(any());
     verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
@@ -1173,13 +1197,22 @@ class PaymentServiceTest {
     when(paymentRepository.save(any(PaymentEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
 
+    OffsetDateTime before = OffsetDateTime.now();
     CreatePaymentResult result =
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+    OffsetDateTime after = OffsetDateTime.now();
 
     assertEquals("SUSPENDED", existing.getPaymentStatus());
     assertEquals("PAYOS", result.payment().method());
+    // PAY_LATER hold (60m) must NOT be shrunk by the QR's 5m window.
     assertEquals(payLaterExpireAt, booking.getPnrExpiresAt());
-    assertEquals(payLaterExpireAt, result.payment().expireAt());
+    // QR session expires ~5 minutes from now, independent of the longer PAY_LATER hold.
+    OffsetDateTime expectedQrLow = before.plusMinutes(5).minusSeconds(1);
+    OffsetDateTime expectedQrHigh = after.plusMinutes(5).plusSeconds(1);
+    assertTrue(
+        !result.payment().expireAt().isBefore(expectedQrLow)
+            && !result.payment().expireAt().isAfter(expectedQrHigh),
+        "QR expireAt should be ~5 min from now, was: " + result.payment().expireAt());
     verify(paymentGateway, never()).cancelPaymentLink(any(CancelPaymentLinkRequest.class));
     verify(bookingFareHoldRepository, never()).extendHeldExpiryByBookingId(any(), any(), any());
     verify(flightSeatRepository, never()).extendReservedUntilForBooking(any(), any());
@@ -1195,6 +1228,8 @@ class PaymentServiceTest {
     payLater.setType("QR");
     payLater.setCheckoutUrl("https://pay.payos.vn/web/91");
     payLater.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
+    OffsetDateTime originalSessionExpiresAt = OffsetDateTime.now().plusMinutes(50);
+    payLater.setSessionExpiresAt(originalSessionExpiresAt);
 
     PaymentEntity payos = paymentForBooking(92L, booking, "PENDING");
     payos.setPaymentMethod("PAYOS");
@@ -1219,6 +1254,10 @@ class PaymentServiceTest {
     assertEquals("PENDING", payLater.getPaymentStatus());
     assertEquals("CANCELLED", payos.getPaymentStatus());
     assertEquals("plink_91", payLater.getTransactionId());
+    // sessionExpiresAt of the existing PAY_LATER must be preserved, not reset to a fresh 60m
+    // window.
+    assertEquals(originalSessionExpiresAt, payLater.getSessionExpiresAt());
+    assertEquals(originalSessionExpiresAt, result.payment().expireAt());
     verify(paymentGateway, never()).createPaymentLink(any());
     verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
   }

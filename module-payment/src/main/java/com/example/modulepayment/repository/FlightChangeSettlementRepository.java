@@ -1,13 +1,12 @@
 package com.example.modulepayment.repository;
 
 import com.example.modulepayment.entity.FlightChangeSettlementEntity;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import jakarta.persistence.LockModeType;
 
 public interface FlightChangeSettlementRepository
     extends JpaRepository<FlightChangeSettlementEntity, Long> {

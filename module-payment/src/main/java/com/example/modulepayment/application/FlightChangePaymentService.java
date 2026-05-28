@@ -194,9 +194,7 @@ public class FlightChangePaymentService {
       URI baseUri = URI.create(baseUrl);
       String existingQuery = baseUri.getQuery();
       String flowQuery =
-          (success ? "flightChangeReturn=1" : "flightChangeReturn=1")
-              + "&paymentId="
-              + paymentId;
+          (success ? "flightChangeReturn=1" : "flightChangeReturn=1") + "&paymentId=" + paymentId;
       String query =
           existingQuery == null || existingQuery.isBlank()
               ? flowQuery
