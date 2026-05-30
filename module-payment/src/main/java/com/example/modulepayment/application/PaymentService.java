@@ -154,14 +154,14 @@ public class PaymentService {
     boolean stripeWindowEligible = hasValidEffectivePaymentWindow(booking, METHOD_STRIPE_CARD, now);
     boolean payosSupported =
         paymentProperties.isPayosConfigured()
-            && supportsCurrency(booking.getCurrency())
+            && supportsPayosCurrency(booking.getCurrency())
             && payosWindowEligible;
     boolean stripeSupported =
         paymentProperties.isStripeConfigured()
-            && supportsCurrency(booking.getCurrency())
+            && supportsStripeCurrency(booking.getCurrency())
             && stripeWindowEligible;
     boolean payLaterSupported =
-        paymentProperties.isPayosConfigured() && supportsCurrency(booking.getCurrency());
+        paymentProperties.isPayosConfigured() && supportsPayosCurrency(booking.getCurrency());
     String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
     String stripeIcon = iconUrl("/assets/payment-icons/stripe.svg");
     String vnpayIcon = iconUrl("/assets/payment-icons/vnpay.svg");
@@ -401,10 +401,7 @@ public class PaymentService {
         requireOwner
             ? requirePayableBookingForUpdate(command.bookingId(), command.userId())
             : requirePayableBookingForUpdatePublic(command.bookingId());
-    if (!supportsCurrency(booking.getCurrency())) {
-      throw new AppException(
-          "UNSUPPORTED_PAYMENT_CURRENCY", "Only VND payments are supported in phase 1", 400);
-    }
+    validatePaymentCurrency(normalizedMethod, booking.getCurrency());
 
     OffsetDateTime now = OffsetDateTime.now();
     List<PaymentEntity> previousPending =
@@ -995,8 +992,37 @@ public class PaymentService {
     }
   }
 
-  private boolean supportsCurrency(String currency) {
+  private boolean supportsStripeCurrency(String currency) {
+    if (currency == null || currency.isBlank()) {
+      return false;
+    }
+    String normalizedCurrency = currency.trim().toUpperCase(Locale.ROOT);
+    return normalizedCurrency.matches("^[A-Z]{3}$");
+  }
+
+  private boolean supportsPayosCurrency(String currency) {
     return currency != null && "VND".equalsIgnoreCase(currency);
+  }
+
+  private void validatePaymentCurrency(String normalizedMethod, String currency) {
+    boolean supported =
+        switch (normalizedMethod) {
+          case METHOD_STRIPE_CARD -> supportsStripeCurrency(currency);
+          case METHOD_PAYOS, METHOD_PAY_LATER -> supportsPayosCurrency(currency);
+          default -> false;
+        };
+
+    if (supported) {
+      return;
+    }
+
+    String message =
+        switch (normalizedMethod) {
+          case METHOD_STRIPE_CARD -> "This currency is not supported for Stripe payments";
+          case METHOD_PAYOS, METHOD_PAY_LATER -> "Only VND payments are supported for this method";
+          default -> "Payment currency is not supported";
+        };
+    throw new AppException("UNSUPPORTED_PAYMENT_CURRENCY", message, 400);
   }
 
   private BigDecimal normalizeAmount(BigDecimal amount) {

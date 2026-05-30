@@ -191,6 +191,39 @@ class PaymentServiceTest {
   }
 
   @Test
+  void shouldSupportStripeForThbBookingsButKeepPayosDisabled() {
+    PaymentService stripeService = paymentService(stripeProperties());
+    BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(15));
+    booking.setCurrency("THB");
+    when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
+
+    List<PaymentMethodView> groups = stripeService.getPaymentMethods(10L, 7L, false);
+
+    PaymentMethodView.PaymentMethodItemView stripeMethod =
+        groups.stream()
+            .flatMap(group -> group.methods().stream())
+            .filter(method -> "STRIPE_CARD".equals(method.code()))
+            .findFirst()
+            .orElseThrow();
+    PaymentMethodView.PaymentMethodItemView payosMethod =
+        groups.stream()
+            .flatMap(group -> group.methods().stream())
+            .filter(method -> "PAYOS_QR".equals(method.code()))
+            .findFirst()
+            .orElseThrow();
+    PaymentMethodView.PaymentMethodItemView payLaterMethod =
+        groups.stream()
+            .flatMap(group -> group.methods().stream())
+            .filter(method -> "PAY_LATER".equals(method.code()))
+            .findFirst()
+            .orElseThrow();
+
+    assertTrue(stripeMethod.supported());
+    assertEquals(false, payosMethod.supported());
+    assertEquals(false, payLaterMethod.supported());
+  }
+
+  @Test
   void shouldCreateStripeCheckoutPayment() {
     PaymentService stripeService = paymentService(stripeProperties());
     OffsetDateTime start = OffsetDateTime.now();
@@ -421,6 +454,21 @@ class PaymentServiceTest {
             () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "MOMO")));
 
     assertEquals("UNSUPPORTED_PAYMENT_METHOD", exception.getCode());
+  }
+
+  @Test
+  void shouldRejectPayosForNonVndCurrency() {
+    BookingEntity booking = booking("PENDING", OffsetDateTime.now().plusMinutes(15));
+    booking.setCurrency("THB");
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS")));
+
+    assertEquals("UNSUPPORTED_PAYMENT_CURRENCY", exception.getCode());
+    assertEquals("Only VND payments are supported for this method", exception.getMessage());
   }
 
   @Test
