@@ -7,6 +7,8 @@ import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
 import com.example.appbootstrap.application.booking.FlightChangeConfirmService;
 import com.example.appbootstrap.application.booking.FlightChangeQuoteService;
+import com.example.appbootstrap.application.booking.UserTripDetailService;
+import com.example.appbootstrap.application.booking.UserTripHistoryService;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
@@ -34,8 +36,12 @@ import com.example.appbootstrap.controller.booking.dto.ServiceChangeConfirmReque
 import com.example.appbootstrap.controller.booking.dto.ServiceChangeConfirmResponse;
 import com.example.appbootstrap.controller.booking.dto.ServiceChangePreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.ServiceChangePreviewResponse;
+import com.example.appbootstrap.controller.booking.dto.TripHistoryQueryRequest;
+import com.example.appbootstrap.controller.booking.dto.TripHistoryResponse;
+import com.example.appbootstrap.controller.booking.dto.TripDetailResponse;
 import com.example.modulebooking.application.BookingTicketsView;
 import com.example.modulebooking.application.TicketIssuanceService;
+import com.example.common.exception.AppException;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.BookingCancellationPreviewView;
 import com.example.modulepayment.application.BookingCancellationResultView;
@@ -53,6 +59,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.OffsetDateTime;
+import java.util.Locale;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -82,6 +90,8 @@ public class BookingsController {
   private final BookingCancellationService bookingCancellationService;
   private final SeatChangeSettlementService seatChangeSettlementService;
   private final ServiceChangeSettlementService serviceChangeSettlementService;
+  private final UserTripHistoryService userTripHistoryService;
+  private final UserTripDetailService userTripDetailService;
 
   public BookingsController(
       BookingRevalidateService bookingRevalidateService,
@@ -94,7 +104,9 @@ public class BookingsController {
       TicketIssuanceService ticketIssuanceService,
       BookingCancellationService bookingCancellationService,
       SeatChangeSettlementService seatChangeSettlementService,
-      ServiceChangeSettlementService serviceChangeSettlementService) {
+      ServiceChangeSettlementService serviceChangeSettlementService,
+      UserTripHistoryService userTripHistoryService,
+      UserTripDetailService userTripDetailService) {
     this.bookingRevalidateService = bookingRevalidateService;
     this.bookingLookupService = bookingLookupService;
     this.bookingManageOptionsService = bookingManageOptionsService;
@@ -106,6 +118,8 @@ public class BookingsController {
     this.bookingCancellationService = bookingCancellationService;
     this.seatChangeSettlementService = seatChangeSettlementService;
     this.serviceChangeSettlementService = serviceChangeSettlementService;
+    this.userTripHistoryService = userTripHistoryService;
+    this.userTripDetailService = userTripDetailService;
   }
 
   @PostMapping("/bookings")
@@ -150,6 +164,59 @@ public class BookingsController {
   })
   BookingLookupResponse lookupBooking(@Valid @RequestBody BookingLookupRequest request) {
     return bookingLookupService.lookup(request);
+  }
+
+  @GetMapping("/bookings/my-trips")
+  @Operation(
+      summary = "List current user's trip history",
+      description =
+          "Returns booking flight segments for the authenticated user with search, time range"
+              + " filtering, status tabs, and cursor pagination.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Trip history returned",
+        content = @Content(schema = @Schema(implementation = TripHistoryResponse.class))),
+    @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+    @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content)
+  })
+  TripHistoryResponse getMyTrips(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @Valid @org.springdoc.core.annotations.ParameterObject TripHistoryQueryRequest request) {
+    validateTripHistoryRequest(request);
+    return TripHistoryResponse.from(
+        userTripHistoryService.getTrips(
+            principal.getUserId(),
+            new UserTripHistoryService.UserTripHistoryQuery(
+                parseTripStatus(request.status()),
+                request.query(),
+                request.fromDate(),
+                request.toDate(),
+                request.cursor(),
+                request.effectiveLimit(),
+                OffsetDateTime.now())));
+  }
+
+  @GetMapping("/bookings/{bookingId}/trips/{flightId}")
+  @Operation(
+      summary = "Get current user's trip segment detail",
+      description =
+          "Returns booking, segment, passenger ticket/seat, payment, and action details for one"
+              + " booking flight segment.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Trip detail returned",
+        content = @Content(schema = @Schema(implementation = TripDetailResponse.class))),
+    @ApiResponse(responseCode = "404", description = "Booking or trip segment not found", content = @Content),
+    @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content)
+  })
+  TripDetailResponse getTripDetail(
+      @AuthenticationPrincipal AppUserPrincipal principal,
+      @PathVariable Long bookingId,
+      @PathVariable Long flightId) {
+    return TripDetailResponse.from(
+        userTripDetailService.getTripDetail(principal.getUserId(), bookingId, flightId));
   }
 
   @GetMapping("/bookings/{bookingId}/manage-options")
@@ -790,5 +857,26 @@ public class BookingsController {
             view.summary().serviceRefund(),
             view.summary().refundFee(),
             view.summary().netRefund()));
+  }
+
+  private void validateTripHistoryRequest(TripHistoryQueryRequest request) {
+    if (request.fromDate() != null
+        && request.toDate() != null
+        && request.toDate().isBefore(request.fromDate())) {
+      throw new AppException("INVALID_DATE_RANGE", "toDate must be on or after fromDate", 400);
+    }
+    parseTripStatus(request.status());
+  }
+
+  private UserTripHistoryService.TripFilterStatus parseTripStatus(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return UserTripHistoryService.TripFilterStatus.UPCOMING;
+    }
+    try {
+      return UserTripHistoryService.TripFilterStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(
+          "INVALID_TRIP_STATUS", "status must be UPCOMING, COMPLETED, or CANCELLED", 400);
+    }
   }
 }

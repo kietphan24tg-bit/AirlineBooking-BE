@@ -2,6 +2,7 @@ package com.example.modulepayment.repository;
 
 import com.example.modulepayment.entity.PaymentEntity;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -78,6 +79,33 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
       """)
   List<PaymentEntity> findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
       @Param("bookingId") Long bookingId, @Param("statuses") List<String> statuses);
+
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      where p.booking.id = :bookingId
+        and p.seatChangeSettlement is null
+        and p.serviceChangeSettlement is null
+        and p.flightChangeSettlement is null
+      order by coalesce(p.paidAt, p.updatedAt) desc, p.id desc
+      """)
+  List<PaymentEntity> findBookingLevelPaymentsByBookingIdOrderByLatest(
+      @Param("bookingId") Long bookingId);
+
+  @Query(
+      """
+      select p
+      from PaymentEntity p
+      join fetch p.booking b
+      where b.id in :bookingIds
+        and p.seatChangeSettlement is null
+        and p.serviceChangeSettlement is null
+        and p.flightChangeSettlement is null
+      order by b.id asc, coalesce(p.paidAt, p.updatedAt) desc, p.id desc
+      """)
+  List<PaymentEntity> findBookingLevelPaymentsByBookingIdInOrderByLatest(
+      @Param("bookingIds") Collection<Long> bookingIds);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(

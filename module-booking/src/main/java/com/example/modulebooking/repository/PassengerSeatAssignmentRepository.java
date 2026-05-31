@@ -70,6 +70,23 @@ public interface PassengerSeatAssignmentRepository
       select psa
       from PassengerSeatAssignmentEntity psa
         join fetch psa.passenger
+        join fetch psa.flightSeat fs
+        join fetch fs.flight
+      where psa.booking.id = :bookingId
+        and fs.flight.id = :flightId
+        and psa.status in :statuses
+      order by psa.id
+      """)
+  List<PassengerSeatAssignmentEntity> findByBookingIdAndFlightIdAndStatusIn(
+      @Param("bookingId") Long bookingId,
+      @Param("flightId") Long flightId,
+      @Param("statuses") Collection<String> statuses);
+
+  @Query(
+      """
+      select psa
+      from PassengerSeatAssignmentEntity psa
+        join fetch psa.passenger
         join fetch psa.flightSeat
       where psa.booking.id = :bookingId
         and psa.passenger.id in :passengerIds

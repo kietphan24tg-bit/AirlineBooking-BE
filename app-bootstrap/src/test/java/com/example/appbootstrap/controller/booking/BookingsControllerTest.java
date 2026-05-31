@@ -1,6 +1,7 @@
 package com.example.appbootstrap.controller.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +12,9 @@ import com.example.appbootstrap.application.booking.BookingRevalidateService;
 import com.example.appbootstrap.application.booking.BookingSeatAssignmentService;
 import com.example.appbootstrap.application.booking.FlightChangeConfirmService;
 import com.example.appbootstrap.application.booking.FlightChangeQuoteService;
+import com.example.appbootstrap.application.booking.UserTripDetailService;
+import com.example.appbootstrap.application.booking.UserTripHistoryPaginationService;
+import com.example.appbootstrap.application.booking.UserTripHistoryService;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationPreviewResponse;
 import com.example.appbootstrap.controller.booking.dto.BookingCancellationRequest;
@@ -22,6 +26,10 @@ import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteRequest;
 import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
+import com.example.appbootstrap.controller.booking.dto.TripHistoryQueryRequest;
+import com.example.appbootstrap.controller.booking.dto.TripHistoryResponse;
+import com.example.appbootstrap.controller.booking.dto.TripDetailResponse;
+import com.example.common.exception.AppException;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
@@ -55,6 +63,8 @@ class BookingsControllerTest {
   @Mock private BookingCancellationService bookingCancellationService;
   @Mock private SeatChangeSettlementService seatChangeSettlementService;
   @Mock private ServiceChangeSettlementService serviceChangeSettlementService;
+  @Mock private UserTripHistoryService userTripHistoryService;
+  @Mock private UserTripDetailService userTripDetailService;
 
   private BookingsController controller;
   private Validator validator;
@@ -73,8 +83,144 @@ class BookingsControllerTest {
             ticketIssuanceService,
             bookingCancellationService,
             seatChangeSettlementService,
-            serviceChangeSettlementService);
+            serviceChangeSettlementService,
+            userTripHistoryService,
+            userTripDetailService);
     validator = Validation.buildDefaultValidatorFactory().getValidator();
+  }
+
+  @Test
+  void getMyTripsShouldMapServiceResponse() {
+    when(userTripHistoryService.getTrips(
+            org.mockito.ArgumentMatchers.eq(7L),
+            argThat(
+                query ->
+                    query.status() == UserTripHistoryService.TripFilterStatus.UPCOMING
+                        && "ABC".equals(query.query())
+                        && "cursor-1".equals(query.cursor())
+                        && query.limit() == 10)))
+        .thenReturn(
+            new UserTripHistoryService.UserTripHistoryResult(
+                List.of(
+                    new UserTripHistoryService.TripHistoryItemView(
+                        10L,
+                        100L,
+                        "ABC123",
+                        UserTripHistoryService.TripFilterStatus.UPCOMING,
+                        "Upcoming",
+                        "SUCCESS",
+                        "Paid",
+                        "VN123",
+                        "ECONOMY",
+                        "SGN",
+                        "Ho Chi Minh City",
+                        "HAN",
+                        "Ha Noi",
+                        OffsetDateTime.parse("2026-06-01T08:30:00+07:00"),
+                        OffsetDateTime.parse("2026-06-01T10:30:00+07:00"),
+                        java.time.LocalDate.parse("2026-06-01"),
+                        2,
+                        new BigDecimal("2300000.00"),
+                        "VND",
+                        new UserTripHistoryService.TripActionsView(true, true, true),
+                        new UserTripHistoryPaginationService.UserTripHistoryRankKey(
+                            UserTripHistoryService.TripFilterStatus.UPCOMING,
+                            UserTripHistoryPaginationService.SortDirection.ASC,
+                            OffsetDateTime.parse("2026-06-01T08:30:00+07:00"),
+                            10L,
+                            100L))),
+                new UserTripHistoryService.PageInfo("next-1", true, 10)));
+
+    TripHistoryResponse response =
+        controller.getMyTrips(principal(), new TripHistoryQueryRequest("UPCOMING", "ABC", null, null, "cursor-1", 10));
+
+    assertEquals(1, response.items().size());
+    assertEquals("ABC123", response.items().getFirst().pnrCode());
+    assertEquals("Upcoming", response.items().getFirst().tripStatusLabel());
+    assertEquals("next-1", response.pageInfo().nextCursor());
+  }
+
+  @Test
+  void getMyTripsShouldRejectInvalidDateRange() {
+    try {
+      controller.getMyTrips(
+          principal(),
+          new TripHistoryQueryRequest(
+              "UPCOMING",
+              null,
+              java.time.LocalDate.parse("2026-06-10"),
+              java.time.LocalDate.parse("2026-06-01"),
+              null,
+              20));
+    } catch (AppException exception) {
+      assertEquals("INVALID_DATE_RANGE", exception.getCode());
+      return;
+    }
+    throw new AssertionError("Expected INVALID_DATE_RANGE");
+  }
+
+  @Test
+  void getTripDetailShouldMapServiceResponse() {
+    when(userTripDetailService.getTripDetail(7L, 10L, 100L))
+        .thenReturn(
+            new UserTripDetailService.TripDetailView(
+                new UserTripDetailService.BookingSummaryView(
+                    10L,
+                    "ABC123",
+                    "CONFIRMED",
+                    "Confirmed",
+                    "UPCOMING",
+                    "Upcoming",
+                    new BigDecimal("2300000.00"),
+                    "VND",
+                    OffsetDateTime.parse("2026-05-30T10:00:00+07:00")),
+                new UserTripDetailService.SegmentView(
+                    100L,
+                    "VN123",
+                    java.time.LocalDate.parse("2026-06-01"),
+                    OffsetDateTime.parse("2026-06-01T08:30:00+07:00"),
+                    OffsetDateTime.parse("2026-06-01T10:05:00+07:00"),
+                    95,
+                    "SGN",
+                    "Tan Son Nhat",
+                    "Ho Chi Minh City",
+                    "T1",
+                    "HAN",
+                    "Noi Bai",
+                    "Ha Noi",
+                    "T1",
+                    "ECO",
+                    "Economy",
+                    "ECONOMY",
+                    20,
+                    7),
+                List.of(
+                    new UserTripDetailService.PassengerView(
+                        1L,
+                        "Van A",
+                        "Nguyen",
+                        "Nguyen Van A",
+                        "ADULT",
+                        new UserTripDetailService.TicketView(
+                            1000L, "7381234567890", "ISSUED", OffsetDateTime.parse("2026-05-30T11:00:00+07:00")),
+                        new UserTripDetailService.SeatView(
+                            500L, "12A", "BOOKED", new BigDecimal("0.00"), "VND"))),
+                new UserTripDetailService.PaymentView(
+                    "SUCCESS",
+                    "Paid",
+                    "STRIPE_CARD",
+                    "txn_123",
+                    new BigDecimal("2300000.00"),
+                    "VND"),
+                new UserTripDetailService.ActionsView(true, true, true)));
+
+    TripDetailResponse response = controller.getTripDetail(principal(), 10L, 100L);
+
+    assertEquals("ABC123", response.booking().pnrCode());
+    assertEquals("VN123", response.segment().flightNumber());
+    assertEquals("Nguyen Van A", response.passengers().getFirst().fullName());
+    assertEquals("7381234567890", response.passengers().getFirst().ticket().ticketNumber());
+    assertEquals("txn_123", response.payment().transactionId());
   }
 
   @Test
