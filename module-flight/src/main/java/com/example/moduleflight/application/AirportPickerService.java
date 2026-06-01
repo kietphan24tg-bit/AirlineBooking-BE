@@ -68,6 +68,12 @@ public class AirportPickerService {
   }
 
   @Transactional(readOnly = true)
+  public List<AirportPickerItem> recent(Long userId, Integer limit) {
+    int effectiveLimit = clamp(limit, 1, 10, DEFAULT_RECENT_LIMIT);
+    return loadRecent(userId, effectiveLimit);
+  }
+
+  @Transactional(readOnly = true)
   public List<AirportPickerItem> search(String query, Integer limit) {
     if (!StringUtils.hasText(query)) {
       return List.of();

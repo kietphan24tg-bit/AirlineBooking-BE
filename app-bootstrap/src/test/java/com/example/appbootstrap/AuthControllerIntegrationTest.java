@@ -798,6 +798,7 @@ class AuthControllerIntegrationTest {
                 .doesNotExist())
         .andExpect(
             jsonPath("$.paths['/api/auth/register'].post.summary").value("Register a new account"))
+        .andExpect(jsonPath("$.paths['/api/account/overview']").exists())
         .andExpect(jsonPath("$.paths['/api/users/me']").exists())
         .andExpect(jsonPath("$.paths['/api/users/me/password']").exists())
         .andExpect(
@@ -862,9 +863,37 @@ class AuthControllerIntegrationTest {
   }
 
   @Test
+  void shouldReturnAccountOverviewForAuthenticatedRequest() throws Exception {
+    UserEntity user = saveUser("overview@example.com", "secret123");
+    user.setDob(OffsetDateTime.parse("1999-01-15T00:00:00Z"));
+    user.setNationality("VN");
+    user.setIdentifyNumber("ID-OVERVIEW");
+    userRepository.save(user);
+    String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId());
+
+    mockMvc
+        .perform(get("/api/account/overview").header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-Id"))
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.profile.email").value("overview@example.com"))
+        .andExpect(jsonPath("$.data.profile.dob").value("1999-01-15"))
+        .andExpect(jsonPath("$.data.tripStats.upcoming").value(0))
+        .andExpect(jsonPath("$.data.tripStats.completed").value(0))
+        .andExpect(jsonPath("$.data.tripStats.cancelled").value(0))
+        .andExpect(jsonPath("$.data.recentAirports").isArray())
+        .andExpect(jsonPath("$.message").value("Operation successful"));
+  }
+
+  @Test
   void shouldRequireAuthenticationForCurrentUserEndpoints() throws Exception {
     mockMvc
         .perform(get("/api/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+    mockMvc
+        .perform(get("/api/account/overview"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
 

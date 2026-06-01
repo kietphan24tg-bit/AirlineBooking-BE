@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.time.ZoneOffset;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -48,7 +47,7 @@ public class UsersController {
     @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content)
   })
   CurrentUserResponse getCurrentUser(@AuthenticationPrincipal AppUserPrincipal principal) {
-    return toCurrentUserResponse(authService.findById(principal.getUserId()));
+    return CurrentUserResponse.from(authService.findById(principal.getUserId()));
   }
 
   @PatchMapping("/me")
@@ -75,7 +74,7 @@ public class UsersController {
             request.dob(),
             request.nationality(),
             request.identifyNumber());
-    return toCurrentUserResponse(user);
+    return CurrentUserResponse.from(user);
   }
 
   @PostMapping("/me/password")
@@ -97,21 +96,5 @@ public class UsersController {
     authService.changePassword(
         principal.getUserId(), request.currentPassword(), request.newPassword());
     return null;
-  }
-
-  private CurrentUserResponse toCurrentUserResponse(UserEntity user) {
-    return new CurrentUserResponse(
-        user.getId(),
-        user.getEmail(),
-        user.getFirstName(),
-        user.getLastName(),
-        user.getPhone(),
-        user.getDob() == null
-            ? null
-            : user.getDob().atZoneSameInstant(ZoneOffset.UTC).toLocalDate(),
-        user.getNationality(),
-        user.getIdentifyNumber(),
-        user.getRole() == null ? null : user.getRole().name(),
-        user.getCreatedAt());
   }
 }

@@ -96,6 +96,7 @@ class OpenApiCoverageIntegrationTest {
         Arguments.of("identity", "/api/auth/logout"),
         Arguments.of("identity", "/api/auth/password-reset/request"),
         Arguments.of("identity", "/api/auth/password-reset/confirm"),
+        Arguments.of("identity", "/api/account/overview"),
         Arguments.of("identity", "/api/users/me"),
         Arguments.of("identity", "/api/users/me/password"),
         Arguments.of("flights", "/api/flights/search"),

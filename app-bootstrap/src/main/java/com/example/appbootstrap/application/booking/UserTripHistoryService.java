@@ -72,6 +72,30 @@ public class UserTripHistoryService {
         page.items(), new PageInfo(page.nextCursor(), page.hasMore(), page.limit()));
   }
 
+  @Transactional(readOnly = true)
+  public TripStatusCounts getTripStatusCounts(Long userId, OffsetDateTime referenceTime) {
+    List<UserTripHistoryRow> rows =
+        userTripHistoryRepository.findTripHistoryRows(userId, null, null, null);
+    Map<String, TicketSummary> ticketSummaryBySegment = loadTicketSummaryBySegment(rows);
+
+    int upcoming = 0;
+    int completed = 0;
+    int cancelled = 0;
+    for (UserTripHistoryRow row : rows) {
+      TripFilterStatus tripStatus =
+          classifyTripStatus(
+              row,
+              ticketSummaryBySegment.get(segmentKey(row.bookingId(), row.flightId())),
+              referenceTime);
+      switch (tripStatus) {
+        case UPCOMING -> upcoming++;
+        case COMPLETED -> completed++;
+        case CANCELLED -> cancelled++;
+      }
+    }
+    return new TripStatusCounts(upcoming, completed, cancelled);
+  }
+
   private TripHistoryItemView toItemView(
       UserTripHistoryRow row,
       TripFilterStatus filterStatus,
@@ -234,6 +258,8 @@ public class UserTripHistoryService {
       OffsetDateTime referenceTime) {}
 
   public record UserTripHistoryResult(List<TripHistoryItemView> items, PageInfo pageInfo) {}
+
+  public record TripStatusCounts(int upcoming, int completed, int cancelled) {}
 
   public record PageInfo(String nextCursor, boolean hasMore, int limit) {}
 
