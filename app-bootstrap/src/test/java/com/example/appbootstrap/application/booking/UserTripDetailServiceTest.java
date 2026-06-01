@@ -23,6 +23,7 @@ import com.example.modulepayment.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class UserTripDetailServiceTest {
+
+  private static final OffsetDateTime SEGMENT_DEPARTURE =
+      OffsetDateTime.now()
+          .plusDays(7)
+          .withHour(8)
+          .withMinute(30)
+          .withSecond(0)
+          .withNano(0)
+          .truncatedTo(ChronoUnit.SECONDS);
+
+  private static final OffsetDateTime SEGMENT_ARRIVAL =
+      SEGMENT_DEPARTURE.plusHours(1).plusMinutes(35);
 
   @Mock private BookingRepository bookingRepository;
   @Mock private BookingFareHoldRepository bookingFareHoldRepository;
@@ -116,11 +129,11 @@ class UserTripDetailServiceTest {
     FlightEntity flight = new FlightEntity();
     flight.setId(100L);
     flight.setFlightNumber("VN123");
-    flight.setFlightDate(LocalDate.parse("2026-06-01"));
+    flight.setFlightDate(SEGMENT_DEPARTURE.toLocalDate());
     flight.setDepartureAirport(departure);
     flight.setArrivalAirport(arrival);
-    flight.setDepartureTime(OffsetDateTime.parse("2026-06-01T08:30:00+07:00"));
-    flight.setArrivalTime(OffsetDateTime.parse("2026-06-01T10:05:00+07:00"));
+    flight.setDepartureTime(SEGMENT_DEPARTURE);
+    flight.setArrivalTime(SEGMENT_ARRIVAL);
     flight.setDepartureTerminal("T1");
     flight.setArrivalTerminal("T1");
 

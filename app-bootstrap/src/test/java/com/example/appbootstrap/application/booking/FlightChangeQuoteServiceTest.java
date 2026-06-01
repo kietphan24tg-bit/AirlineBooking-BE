@@ -38,6 +38,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,24 @@ import org.springframework.data.redis.core.ValueOperations;
 
 @ExtendWith(MockitoExtension.class)
 class FlightChangeQuoteServiceTest {
+
+  private static final OffsetDateTime CURRENT_FLIGHT_DEPARTURE =
+      OffsetDateTime.now()
+          .plusDays(7)
+          .withHour(8)
+          .withMinute(30)
+          .withSecond(0)
+          .withNano(0)
+          .truncatedTo(ChronoUnit.SECONDS);
+
+  private static final OffsetDateTime CURRENT_FLIGHT_ARRIVAL =
+      CURRENT_FLIGHT_DEPARTURE.plusHours(2).plusMinutes(5);
+
+  private static final OffsetDateTime NEW_FLIGHT_DEPARTURE =
+      CURRENT_FLIGHT_DEPARTURE.minusHours(2);
+
+  private static final OffsetDateTime NEW_FLIGHT_ARRIVAL =
+      NEW_FLIGHT_DEPARTURE.plusHours(2).plusMinutes(5);
 
   @Mock private BookingRepository bookingRepository;
   @Mock private TicketRepository ticketRepository;
@@ -194,11 +213,11 @@ class FlightChangeQuoteServiceTest {
     flight.setId(flightId);
     flight.setFlightNumber("VN123");
     flight.setStatus("SCHEDULED");
-    flight.setFlightDate(LocalDate.parse("2026-06-01"));
+    flight.setFlightDate(CURRENT_FLIGHT_DEPARTURE.toLocalDate());
     flight.setDepartureAirport(departureAirport);
     flight.setArrivalAirport(arrivalAirport);
-    flight.setDepartureTime(OffsetDateTime.parse("2026-06-01T08:30:00+07:00"));
-    flight.setArrivalTime(OffsetDateTime.parse("2026-06-01T10:35:00+07:00"));
+    flight.setDepartureTime(CURRENT_FLIGHT_DEPARTURE);
+    flight.setArrivalTime(CURRENT_FLIGHT_ARRIVAL);
     ticket.setFlight(flight);
 
     FareClassEntity fareClass = new FareClassEntity();
@@ -232,11 +251,11 @@ class FlightChangeQuoteServiceTest {
     flight.setId(flightId);
     flight.setFlightNumber("VN220");
     flight.setStatus("SCHEDULED");
-    flight.setFlightDate(LocalDate.parse("2026-06-01"));
+    flight.setFlightDate(NEW_FLIGHT_DEPARTURE.toLocalDate());
     flight.setDepartureAirport(departureAirport);
     flight.setArrivalAirport(arrivalAirport);
-    flight.setDepartureTime(OffsetDateTime.parse("2026-06-01T06:30:00+07:00"));
-    flight.setArrivalTime(OffsetDateTime.parse("2026-06-01T08:35:00+07:00"));
+    flight.setDepartureTime(NEW_FLIGHT_DEPARTURE);
+    flight.setArrivalTime(NEW_FLIGHT_ARRIVAL);
 
     FareClassEntity fareClass = new FareClassEntity();
     fareClass.setId(20L);
