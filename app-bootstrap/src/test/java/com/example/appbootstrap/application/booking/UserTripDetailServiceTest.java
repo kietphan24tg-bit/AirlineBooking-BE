@@ -60,8 +60,10 @@ class UserTripDetailServiceTest {
     BookingEntity booking = booking();
     BookingFareHoldEntity hold = hold(booking);
     PassengerEntity passenger = passenger(booking);
-    PassengerSeatAssignmentEntity seatAssignment = seatAssignment(booking, passenger, hold.getFlightFare().getFlight());
-    TicketEntity ticket = ticket(booking, passenger, hold.getFlightFare().getFlight(), hold.getFlightFare());
+    PassengerSeatAssignmentEntity seatAssignment =
+        seatAssignment(booking, passenger, hold.getFlightFare().getFlight());
+    TicketEntity ticket =
+        ticket(booking, passenger, hold.getFlightFare().getFlight(), hold.getFlightFare());
     PaymentEntity payment = payment(booking);
 
     when(bookingRepository.findByIdAndUserId(10L, 7L)).thenReturn(Optional.of(booking));
@@ -72,8 +74,10 @@ class UserTripDetailServiceTest {
     when(passengerSeatAssignmentRepository.findByBookingIdAndFlightIdAndStatusIn(
             10L, 100L, List.of("RESERVED", "BOOKED")))
         .thenReturn(List.of(seatAssignment));
-    when(ticketRepository.findByBookingIdAndFlightIdWithDetails(10L, 100L)).thenReturn(List.of(ticket));
-    when(paymentRepository.findBookingLevelPaymentsByBookingIdOrderByLatest(10L)).thenReturn(List.of(payment));
+    when(ticketRepository.findByBookingIdAndFlightIdWithDetails(10L, 100L))
+        .thenReturn(List.of(ticket));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdOrderByLatest(10L))
+        .thenReturn(List.of(payment));
 
     UserTripDetailService.TripDetailView result = service.getTripDetail(7L, 10L, 100L);
 
@@ -167,7 +171,10 @@ class UserTripDetailServiceTest {
   }
 
   private static TicketEntity ticket(
-      BookingEntity booking, PassengerEntity passenger, FlightEntity flight, FlightFareEntity fare) {
+      BookingEntity booking,
+      PassengerEntity passenger,
+      FlightEntity flight,
+      FlightFareEntity fare) {
     TicketEntity ticket = new TicketEntity();
     ticket.setId(1000L);
     ticket.setBooking(booking);

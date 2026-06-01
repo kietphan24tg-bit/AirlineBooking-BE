@@ -25,7 +25,8 @@ import org.springframework.util.StringUtils;
 public class UserTripHistoryService {
 
   private static final Set<String> CANCELLED_BOOKING_STATUSES = Set.of("CANCELLED", "EXPIRED");
-  private static final Set<String> MANAGEABLE_BOOKING_STATUSES = Set.of("PENDING_PAYMENT", "CONFIRMED");
+  private static final Set<String> MANAGEABLE_BOOKING_STATUSES =
+      Set.of("PENDING_PAYMENT", "CONFIRMED");
 
   private final UserTripHistoryRepository userTripHistoryRepository;
   private final TicketRepository ticketRepository;
@@ -68,8 +69,7 @@ public class UserTripHistoryService {
     PageResult<TripHistoryItemView> page =
         paginationService.paginate(matchingItems, query.limit(), query.cursor());
     return new UserTripHistoryResult(
-        page.items(),
-        new PageInfo(page.nextCursor(), page.hasMore(), page.limit()));
+        page.items(), new PageInfo(page.nextCursor(), page.hasMore(), page.limit()));
   }
 
   private TripHistoryItemView toItemView(
@@ -102,21 +102,26 @@ public class UserTripHistoryService {
         row.currency(),
         new TripActionsView(
             MANAGEABLE_BOOKING_STATUSES.contains(normalize(row.bookingStatus())),
-            "CONFIRMED".equals(normalize(row.bookingStatus())) && tripStatus == TripFilterStatus.UPCOMING,
+            "CONFIRMED".equals(normalize(row.bookingStatus()))
+                && tripStatus == TripFilterStatus.UPCOMING,
             true),
         rankKeyFor(filterStatus, row));
   }
 
   private UserTripHistoryRankKey rankKeyFor(TripFilterStatus status, UserTripHistoryRow row) {
-    SortDirection direction = status == TripFilterStatus.UPCOMING ? SortDirection.ASC : SortDirection.DESC;
-    return new UserTripHistoryRankKey(status, direction, row.departureTime(), row.bookingId(), row.flightId());
+    SortDirection direction =
+        status == TripFilterStatus.UPCOMING ? SortDirection.ASC : SortDirection.DESC;
+    return new UserTripHistoryRankKey(
+        status, direction, row.departureTime(), row.bookingId(), row.flightId());
   }
 
   private TripFilterStatus classifyTripStatus(
       UserTripHistoryRow row, TicketSummary ticketSummary, OffsetDateTime referenceTime) {
     if (CANCELLED_BOOKING_STATUSES.contains(normalize(row.bookingStatus()))
         || "RELEASED".equals(normalize(row.holdStatus()))
-        || (ticketSummary != null && ticketSummary.totalCount() > 0 && ticketSummary.activeCount() == 0)) {
+        || (ticketSummary != null
+            && ticketSummary.totalCount() > 0
+            && ticketSummary.activeCount() == 0)) {
       return TripFilterStatus.CANCELLED;
     }
     if (row.departureTime() != null && !row.departureTime().isBefore(referenceTime)) {
@@ -131,15 +136,18 @@ public class UserTripHistoryService {
       return Map.of();
     }
     Map<String, MutableTicketSummary> mutable = new LinkedHashMap<>();
-    ticketRepository.findByBookingIdInWithBookingAndFlight(bookingIds).forEach(
-        ticket -> {
-          String key = segmentKey(ticket.getBooking().getId(), ticket.getFlight().getId());
-          MutableTicketSummary summary = mutable.computeIfAbsent(key, ignored -> new MutableTicketSummary());
-          summary.totalCount++;
-          if (!"CANCELLED".equalsIgnoreCase(ticket.getStatus())) {
-            summary.activeCount++;
-          }
-        });
+    ticketRepository
+        .findByBookingIdInWithBookingAndFlight(bookingIds)
+        .forEach(
+            ticket -> {
+              String key = segmentKey(ticket.getBooking().getId(), ticket.getFlight().getId());
+              MutableTicketSummary summary =
+                  mutable.computeIfAbsent(key, ignored -> new MutableTicketSummary());
+              summary.totalCount++;
+              if (!"CANCELLED".equalsIgnoreCase(ticket.getStatus())) {
+                summary.activeCount++;
+              }
+            });
     return mutable.entrySet().stream()
         .collect(
             LinkedHashMap::new,
@@ -229,7 +237,8 @@ public class UserTripHistoryService {
 
   public record PageInfo(String nextCursor, boolean hasMore, int limit) {}
 
-  public record TripActionsView(boolean canManageBooking, boolean canCheckIn, boolean canViewDetail) {}
+  public record TripActionsView(
+      boolean canManageBooking, boolean canCheckIn, boolean canViewDetail) {}
 
   public record TripHistoryItemView(
       Long bookingId,

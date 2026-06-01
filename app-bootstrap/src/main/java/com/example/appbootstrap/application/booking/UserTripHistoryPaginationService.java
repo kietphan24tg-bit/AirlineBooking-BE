@@ -16,8 +16,10 @@ public class UserTripHistoryPaginationService {
   private static final String CURSOR_VERSION = "v1";
   private static final String CURSOR_NULL_DEPARTURE = "";
 
-  public <T extends HasRankKey> PageResult<T> paginate(List<T> sortedItems, int limit, String cursor) {
-    List<T> sorted = sortedItems.stream().sorted(Comparator.comparing(HasRankKey::rankKey)).toList();
+  public <T extends HasRankKey> PageResult<T> paginate(
+      List<T> sortedItems, int limit, String cursor) {
+    List<T> sorted =
+        sortedItems.stream().sorted(Comparator.comparing(HasRankKey::rankKey)).toList();
     UserTripHistoryRankKey cursorKey = decodeCursor(cursor);
 
     List<T> pageItems = collectPage(sorted, limit, cursorKey);

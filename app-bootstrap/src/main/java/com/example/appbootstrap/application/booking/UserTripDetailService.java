@@ -76,8 +76,12 @@ public class UserTripDetailService {
     List<PassengerSeatAssignmentEntity> seats =
         passengerSeatAssignmentRepository.findByBookingIdAndFlightIdAndStatusIn(
             bookingId, flightId, ACTIVE_ASSIGNMENT_STATUSES);
-    List<TicketEntity> tickets = ticketRepository.findByBookingIdAndFlightIdWithDetails(bookingId, flightId);
-    PaymentEntity payment = paymentRepository.findBookingLevelPaymentsByBookingIdOrderByLatest(bookingId).stream().findFirst().orElse(null);
+    List<TicketEntity> tickets =
+        ticketRepository.findByBookingIdAndFlightIdWithDetails(bookingId, flightId);
+    PaymentEntity payment =
+        paymentRepository.findBookingLevelPaymentsByBookingIdOrderByLatest(bookingId).stream()
+            .findFirst()
+            .orElse(null);
 
     Map<Long, PassengerSeatAssignmentEntity> seatByPassengerId = new LinkedHashMap<>();
     for (PassengerSeatAssignmentEntity seat : seats) {
@@ -94,8 +98,15 @@ public class UserTripDetailService {
             booking.getPnrCode(),
             booking.getStatus(),
             bookingStatusLabel(booking.getStatus()),
-            classifyTripStatus(booking.getStatus(), hold.getStatus(), flight.getDepartureTime(), seats, tickets),
-            tripStatusLabel(classifyTripStatus(booking.getStatus(), hold.getStatus(), flight.getDepartureTime(), seats, tickets)),
+            classifyTripStatus(
+                booking.getStatus(), hold.getStatus(), flight.getDepartureTime(), seats, tickets),
+            tripStatusLabel(
+                classifyTripStatus(
+                    booking.getStatus(),
+                    hold.getStatus(),
+                    flight.getDepartureTime(),
+                    seats,
+                    tickets)),
             booking.getTotalAmount(),
             booking.getCurrency(),
             booking.getCreatedAt()),
@@ -128,16 +139,19 @@ public class UserTripDetailService {
                         ticketByPassengerId.get(passenger.getId())))
             .toList(),
         new PaymentView(
-            payment == null ? fallbackPaymentStatus(booking.getStatus()) : payment.getPaymentStatus(),
-            paymentStatusLabel(payment == null ? fallbackPaymentStatus(booking.getStatus()) : payment.getPaymentStatus()),
+            payment == null
+                ? fallbackPaymentStatus(booking.getStatus())
+                : payment.getPaymentStatus(),
+            paymentStatusLabel(
+                payment == null
+                    ? fallbackPaymentStatus(booking.getStatus())
+                    : payment.getPaymentStatus()),
             payment == null ? null : payment.getPaymentMethod(),
             payment == null ? null : payment.getTransactionId(),
             payment == null ? booking.getTotalAmount() : nonNullMoney(payment.getAmount()),
             payment == null ? booking.getCurrency() : payment.getCurrency()),
         new ActionsView(
-            canManageBooking(booking.getStatus()),
-            !tickets.isEmpty(),
-            !tickets.isEmpty()));
+            canManageBooking(booking.getStatus()), !tickets.isEmpty(), !tickets.isEmpty()));
   }
 
   private PassengerView toPassengerView(
@@ -150,7 +164,8 @@ public class UserTripDetailService {
         passenger.getPassengerType(),
         ticket == null
             ? null
-            : new TicketView(ticket.getId(), ticket.getTicketNumber(), ticket.getStatus(), ticket.getIssuedAt()),
+            : new TicketView(
+                ticket.getId(), ticket.getTicketNumber(), ticket.getStatus(), ticket.getIssuedAt()),
         seat == null
             ? null
             : new SeatView(
@@ -170,7 +185,9 @@ public class UserTripDetailService {
     if ("CANCELLED".equalsIgnoreCase(bookingStatus)
         || "EXPIRED".equalsIgnoreCase(bookingStatus)
         || "RELEASED".equalsIgnoreCase(holdStatus)
-        || (!tickets.isEmpty() && tickets.stream().allMatch(ticket -> "CANCELLED".equalsIgnoreCase(ticket.getStatus())))) {
+        || (!tickets.isEmpty()
+            && tickets.stream()
+                .allMatch(ticket -> "CANCELLED".equalsIgnoreCase(ticket.getStatus())))) {
       return "CANCELLED";
     }
     if (departureTime != null && !departureTime.isBefore(OffsetDateTime.now())) {
@@ -234,7 +251,8 @@ public class UserTripDetailService {
   }
 
   private String fullName(PassengerEntity passenger) {
-    return (nullToBlank(passenger.getLastName()) + " " + nullToBlank(passenger.getFirstName())).trim();
+    return (nullToBlank(passenger.getLastName()) + " " + nullToBlank(passenger.getFirstName()))
+        .trim();
   }
 
   private String normalize(String value) {
@@ -299,7 +317,8 @@ public class UserTripDetailService {
       TicketView ticket,
       SeatView seat) {}
 
-  public record TicketView(Long ticketId, String ticketNumber, String status, OffsetDateTime issuedAt) {}
+  public record TicketView(
+      Long ticketId, String ticketNumber, String status, OffsetDateTime issuedAt) {}
 
   public record SeatView(
       Long seatId, String seatNumber, String status, BigDecimal surchargeAmount, String currency) {}
@@ -312,5 +331,6 @@ public class UserTripDetailService {
       BigDecimal amount,
       String currency) {}
 
-  public record ActionsView(boolean canManageBooking, boolean canViewETicket, boolean canDownloadInvoice) {}
+  public record ActionsView(
+      boolean canManageBooking, boolean canViewETicket, boolean canDownloadInvoice) {}
 }

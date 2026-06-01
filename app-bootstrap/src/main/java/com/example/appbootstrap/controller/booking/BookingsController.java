@@ -36,12 +36,12 @@ import com.example.appbootstrap.controller.booking.dto.ServiceChangeConfirmReque
 import com.example.appbootstrap.controller.booking.dto.ServiceChangeConfirmResponse;
 import com.example.appbootstrap.controller.booking.dto.ServiceChangePreviewRequest;
 import com.example.appbootstrap.controller.booking.dto.ServiceChangePreviewResponse;
+import com.example.appbootstrap.controller.booking.dto.TripDetailResponse;
 import com.example.appbootstrap.controller.booking.dto.TripHistoryQueryRequest;
 import com.example.appbootstrap.controller.booking.dto.TripHistoryResponse;
-import com.example.appbootstrap.controller.booking.dto.TripDetailResponse;
+import com.example.common.exception.AppException;
 import com.example.modulebooking.application.BookingTicketsView;
 import com.example.modulebooking.application.TicketIssuanceService;
-import com.example.common.exception.AppException;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.BookingCancellationPreviewView;
 import com.example.modulepayment.application.BookingCancellationResultView;
@@ -208,7 +208,10 @@ public class BookingsController {
         responseCode = "200",
         description = "Trip detail returned",
         content = @Content(schema = @Schema(implementation = TripDetailResponse.class))),
-    @ApiResponse(responseCode = "404", description = "Booking or trip segment not found", content = @Content),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Booking or trip segment not found",
+        content = @Content),
     @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content)
   })
   TripDetailResponse getTripDetail(

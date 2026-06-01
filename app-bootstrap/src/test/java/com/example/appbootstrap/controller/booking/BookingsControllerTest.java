@@ -26,9 +26,9 @@ import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteRequest;
 import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatAssignmentResponse;
 import com.example.appbootstrap.controller.booking.dto.SeatChangeRequest;
+import com.example.appbootstrap.controller.booking.dto.TripDetailResponse;
 import com.example.appbootstrap.controller.booking.dto.TripHistoryQueryRequest;
 import com.example.appbootstrap.controller.booking.dto.TripHistoryResponse;
-import com.example.appbootstrap.controller.booking.dto.TripDetailResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.application.TicketIssuanceService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
@@ -132,7 +132,9 @@ class BookingsControllerTest {
                 new UserTripHistoryService.PageInfo("next-1", true, 10)));
 
     TripHistoryResponse response =
-        controller.getMyTrips(principal(), new TripHistoryQueryRequest("UPCOMING", "ABC", null, null, "cursor-1", 10));
+        controller.getMyTrips(
+            principal(),
+            new TripHistoryQueryRequest("UPCOMING", "ABC", null, null, "cursor-1", 10));
 
     assertEquals(1, response.items().size());
     assertEquals("ABC123", response.items().getFirst().pnrCode());
@@ -202,7 +204,10 @@ class BookingsControllerTest {
                         "Nguyen Van A",
                         "ADULT",
                         new UserTripDetailService.TicketView(
-                            1000L, "7381234567890", "ISSUED", OffsetDateTime.parse("2026-05-30T11:00:00+07:00")),
+                            1000L,
+                            "7381234567890",
+                            "ISSUED",
+                            OffsetDateTime.parse("2026-05-30T11:00:00+07:00")),
                         new UserTripDetailService.SeatView(
                             500L, "12A", "BOOKED", new BigDecimal("0.00"), "VND"))),
                 new UserTripDetailService.PaymentView(

@@ -110,9 +110,11 @@ public record TripDetailResponse(
     }
   }
 
-  public record TicketResponse(Long ticketId, String ticketNumber, String status, OffsetDateTime issuedAt) {
+  public record TicketResponse(
+      Long ticketId, String ticketNumber, String status, OffsetDateTime issuedAt) {
     static TicketResponse from(UserTripDetailService.TicketView view) {
-      return new TicketResponse(view.ticketId(), view.ticketNumber(), view.status(), view.issuedAt());
+      return new TicketResponse(
+          view.ticketId(), view.ticketNumber(), view.status(), view.issuedAt());
     }
   }
 

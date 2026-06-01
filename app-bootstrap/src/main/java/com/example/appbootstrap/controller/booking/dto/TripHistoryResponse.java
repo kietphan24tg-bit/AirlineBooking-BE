@@ -6,7 +6,8 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-public record TripHistoryResponse(List<TripHistoryItemResponse> items, TripHistoryPageInfoResponse pageInfo) {
+public record TripHistoryResponse(
+    List<TripHistoryItemResponse> items, TripHistoryPageInfoResponse pageInfo) {
 
   public static TripHistoryResponse from(UserTripHistoryService.UserTripHistoryResult result) {
     return new TripHistoryResponse(
@@ -65,13 +66,15 @@ public record TripHistoryResponse(List<TripHistoryItemResponse> items, TripHisto
       boolean canManageBooking, boolean canCheckIn, boolean canViewDetail) {
 
     static TripActionsResponse from(UserTripHistoryService.TripActionsView view) {
-      return new TripActionsResponse(view.canManageBooking(), view.canCheckIn(), view.canViewDetail());
+      return new TripActionsResponse(
+          view.canManageBooking(), view.canCheckIn(), view.canViewDetail());
     }
   }
 
   public record TripHistoryPageInfoResponse(String nextCursor, boolean hasMore, int limit) {
     static TripHistoryPageInfoResponse from(UserTripHistoryService.PageInfo pageInfo) {
-      return new TripHistoryPageInfoResponse(pageInfo.nextCursor(), pageInfo.hasMore(), pageInfo.limit());
+      return new TripHistoryPageInfoResponse(
+          pageInfo.nextCursor(), pageInfo.hasMore(), pageInfo.limit());
     }
   }
 }
