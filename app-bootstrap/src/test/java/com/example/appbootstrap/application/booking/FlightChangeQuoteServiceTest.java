@@ -36,7 +36,6 @@ import com.example.modulepayment.repository.PaymentRepository;
 import com.example.modulepayment.repository.TicketFinancialSnapshotRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
