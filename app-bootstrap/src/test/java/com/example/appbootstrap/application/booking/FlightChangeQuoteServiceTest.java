@@ -64,8 +64,7 @@ class FlightChangeQuoteServiceTest {
   private static final OffsetDateTime CURRENT_FLIGHT_ARRIVAL =
       CURRENT_FLIGHT_DEPARTURE.plusHours(2).plusMinutes(5);
 
-  private static final OffsetDateTime NEW_FLIGHT_DEPARTURE =
-      CURRENT_FLIGHT_DEPARTURE.minusHours(2);
+  private static final OffsetDateTime NEW_FLIGHT_DEPARTURE = CURRENT_FLIGHT_DEPARTURE.minusHours(2);
 
   private static final OffsetDateTime NEW_FLIGHT_ARRIVAL =
       NEW_FLIGHT_DEPARTURE.plusHours(2).plusMinutes(5);
