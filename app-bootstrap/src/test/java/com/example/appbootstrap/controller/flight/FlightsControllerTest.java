@@ -26,6 +26,7 @@ import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FlightCalendarSearchQuery;
 import com.example.moduleflight.application.FlightCalendarSearchResult;
+import com.example.moduleflight.application.FareFamilyCatalogService;
 import com.example.moduleflight.application.FlightCalendarSearchService;
 import com.example.moduleflight.application.FlightConnectionFilter;
 import com.example.moduleflight.application.FlightSearchFacadeService;
@@ -56,6 +57,7 @@ class FlightsControllerTest {
 
   @Mock private FlightSearchFacadeService flightSearchFacadeService;
   @Mock private FlightCalendarSearchService flightCalendarSearchService;
+  @Mock private FareFamilyCatalogService fareFamilyCatalogService;
   @Mock private BookingRevalidateService bookingRevalidateService;
   @Mock private FlightSeatMapService flightSeatMapService;
   @Mock private PromotionCatalogService promotionCatalogService;
@@ -69,6 +71,7 @@ class FlightsControllerTest {
         new FlightsController(
             flightSearchFacadeService,
             flightCalendarSearchService,
+            fareFamilyCatalogService,
             bookingRevalidateService,
             flightSeatMapService,
             promotionCatalogService,
