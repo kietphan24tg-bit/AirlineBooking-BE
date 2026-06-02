@@ -32,8 +32,7 @@ public class FareFamilyCatalogService {
         .map(
             fareClass ->
                 FareFamilyView.fromEntity(
-                    fareClass,
-                    referencePriceFor(fareClass, resolvedCountryCode, resolvedCurrency)))
+                    fareClass, referencePriceFor(fareClass, resolvedCountryCode, resolvedCurrency)))
         .toList();
   }
 
@@ -46,7 +45,8 @@ public class FareFamilyCatalogService {
   }
 
   private static ReferencePriceView toReferencePrice(FareClassPriceEntity price) {
-    return new ReferencePriceView(price.getCountryCode(), price.getCurrency(), price.getBasePrice());
+    return new ReferencePriceView(
+        price.getCountryCode(), price.getCurrency(), price.getBasePrice());
   }
 
   private static int sortKey(FareClassEntity fareClass) {
@@ -122,7 +122,9 @@ public class FareFamilyCatalogService {
           fareClass.getMealType(),
           fareClass.isWifiIncluded(),
           fareClass.isFastTrackSecurity(),
-          fareClass.getIncludedSeatCategory() != null ? fareClass.getIncludedSeatCategory().getCode() : null,
+          fareClass.getIncludedSeatCategory() != null
+              ? fareClass.getIncludedSeatCategory().getCode()
+              : null,
           referencePrice);
     }
   }
