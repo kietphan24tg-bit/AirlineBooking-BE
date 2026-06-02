@@ -7,6 +7,7 @@ import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
 import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
 import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
+import com.example.appbootstrap.controller.flight.dto.FareFamilyCatalogResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchQueryRequest;
 import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchResponse;
 import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
@@ -18,6 +19,7 @@ import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FlightCalendarSearchQuery;
 import com.example.moduleflight.application.FlightCalendarSearchService;
 import com.example.moduleflight.application.FlightConnectionFilter;
+import com.example.moduleflight.application.FareFamilyCatalogService;
 import com.example.moduleflight.application.FlightSearchFacadeService;
 import com.example.moduleflight.application.FlightSearchQuery;
 import com.example.moduleflight.application.FlightSearchTripType;
@@ -60,6 +62,7 @@ public class FlightsController {
 
   private final FlightSearchFacadeService flightSearchFacadeService;
   private final FlightCalendarSearchService flightCalendarSearchService;
+  private final FareFamilyCatalogService fareFamilyCatalogService;
   private final BookingRevalidateService bookingRevalidateService;
   private final FlightSeatMapService flightSeatMapService;
   private final PromotionCatalogService promotionCatalogService;
@@ -68,16 +71,38 @@ public class FlightsController {
   public FlightsController(
       FlightSearchFacadeService flightSearchFacadeService,
       FlightCalendarSearchService flightCalendarSearchService,
+      FareFamilyCatalogService fareFamilyCatalogService,
       BookingRevalidateService bookingRevalidateService,
       FlightSeatMapService flightSeatMapService,
       PromotionCatalogService promotionCatalogService,
       UserRecentAirportService userRecentAirportService) {
     this.flightSearchFacadeService = flightSearchFacadeService;
     this.flightCalendarSearchService = flightCalendarSearchService;
+    this.fareFamilyCatalogService = fareFamilyCatalogService;
     this.bookingRevalidateService = bookingRevalidateService;
     this.flightSeatMapService = flightSeatMapService;
     this.promotionCatalogService = promotionCatalogService;
     this.userRecentAirportService = userRecentAirportService;
+  }
+
+  @GetMapping("/fare-families")
+  @Operation(
+      summary = "List fare family catalog",
+      description =
+          "Returns fare-class policy data independent of flight inventory, with optional "
+              + "reference pricing by market.")
+  @SecurityRequirements
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Fare family catalog returned",
+        content = @Content(schema = @Schema(implementation = FareFamilyCatalogResponse.class)))
+  })
+  FareFamilyCatalogResponse getFareFamilies(
+      @RequestParam(value = "countryCode", required = false) String countryCode,
+      @RequestParam(value = "currency", required = false) String currency) {
+    return FareFamilyCatalogResponse.from(
+        fareFamilyCatalogService.listFareFamilies(countryCode, currency));
   }
 
   @GetMapping("/search")
