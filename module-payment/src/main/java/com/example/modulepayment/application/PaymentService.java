@@ -66,6 +66,7 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
+
   /** Minimum remaining time (and checkout session length) required to start Stripe checkout. */
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
 
