@@ -25,16 +25,17 @@ Purpose:
 - Re-run verification on the merged commit
 - Build a Docker image
 - Push the image to Docker Hub with the `staging` tag
-- Trigger a **Render** deploy via **Deploy Hook** so the staging Web Service pulls the new image
+- Trigger a Coolify deploy via the environment's deploy webhook
 
 Main steps:
 1. Checkout source
 2. Setup Java 21 and Gradle cache
 3. Run `clean qualityGate :app-bootstrap:bootJar`
 4. Validate Docker Hub secrets
-5. Login to Docker Hub
-6. Build and push the image (`<repository>:staging`)
-7. `POST` to `RENDER_DEPLOY_HOOK_URL` (staging environment secret)
+5. Validate the Coolify deploy webhook secret
+6. Login to Docker Hub
+7. Build and push the image (`<repository>:staging`)
+8. `GET` the `COOLIFY_DEPLOY_WEBHOOK` (staging environment secret)
 
 Published tag:
 - `<repository>:staging`
@@ -48,16 +49,17 @@ Purpose:
 - Re-run verification before publishing
 - Build a Docker image
 - Push the image to Docker Hub with the selected production tag
-- Trigger a **Render** deploy via **Deploy Hook** for the production Web Service
+- Trigger a Coolify deploy via the environment's deploy webhook
 
 Main steps:
 1. Checkout the requested `git_ref`
 2. Setup Java 21 and Gradle cache
 3. Run `clean qualityGate :app-bootstrap:bootJar`
 4. Validate Docker Hub secrets
-5. Login to Docker Hub
-6. Build and push the image
-7. `POST` to `RENDER_DEPLOY_HOOK_URL` (production environment secret)
+5. Validate the Coolify deploy webhook secret
+6. Login to Docker Hub
+7. Build and push the image
+8. `GET` the `COOLIFY_DEPLOY_WEBHOOK` (production environment secret)
 
 Published tags:
 - `<repository>:<image_tag>` (default `production`)
@@ -69,10 +71,10 @@ Published tags:
   - build + test + quality gate
 - Push to `main`
   - `deploy-staging.yml`
-  - build + test + push staging image + Render staging deploy hook
+  - build + test + push staging image + Coolify staging deploy webhook
 - Manual release
   - `deploy-production.yml`
-  - build + test + push production image + Render production deploy hook
+  - build + test + push production image + Coolify production deploy webhook
 
 ## Required GitHub Secrets
 
@@ -84,20 +86,22 @@ Published tags:
 `DOCKERHUB_REPOSITORY` example:
 - `your-dockerhub-username/airline-booking`
 
-### Render (per environment)
+### Coolify (per environment)
 
-Add **`RENDER_DEPLOY_HOOK_URL`** to each GitHub **Environment** that runs deploy workflows:
+Add `COOLIFY_DEPLOY_WEBHOOK` to each GitHub Environment that runs deploy workflows:
 
-| Environment   | Secret                     | Used by                 |
-|---------------|----------------------------|-------------------------|
-| `staging`     | `RENDER_DEPLOY_HOOK_URL`   | `deploy-staging.yml`    |
-| `production`  | `RENDER_DEPLOY_HOOK_URL`   | `deploy-production.yml` |
+| Environment   | Secret                    | Used by                 |
+|---------------|---------------------------|-------------------------|
+| `staging`     | `COOLIFY_DEPLOY_WEBHOOK`  | `deploy-staging.yml`    |
+| `production`  | `COOLIFY_DEPLOY_WEBHOOK`  | `deploy-production.yml` |
 
-Create the URL in the Render Dashboard: **Web Service → Settings → Deploy Hook**. The URL contains a secret key; store it only in GitHub **Environment secrets**, never in the repository.
+Important:
+- This secret must be the full value of Coolify's `Deploy Webhook (auth required)`.
+- Do not use the `GitHub Webhook Secret` from Coolify's manual git webhook section here.
+- Example format: `https://coolify.example.com/api/v1/deploy?uuid=...&force=false`
 
-**Staging and production should use different hooks** (one Deploy Hook per Render service).
-
-Deprecated (Railway-only; remove from GitHub if present):
+Deprecated secrets to remove if present:
+- `RENDER_DEPLOY_HOOK_URL`
 - `RAILWAY_TOKEN`
 - `RAILWAY_SERVICE_ID`
 
@@ -111,24 +115,19 @@ Recommended:
 - add required reviewers to the `production` environment
 - keep `staging` automatic
 
-## Render setup when using Docker Hub images
+## Coolify setup when using Docker Hub images
 
-Configure **separate** Render Web Services for staging and production. Each should use **Existing image** from Docker Hub (not Git-based build), pointing at the same repository your workflows push to.
+Configure separate Coolify applications for staging and production. Each should pull from the same Docker Hub repository your workflows publish to.
 
-**Staging service**
-- Image: `docker.io/<repository>:staging` (match `DOCKERHUB_REPOSITORY` + `:staging`)
-- Environment variables (minimum): `SPRING_PROFILES_ACTIVE=staging` so Springdoc/Swagger and `application-staging.yml` apply; add DB, Redis, JWT, CORS, etc. per `.env.example`
-- Health check path: `/actuator/health`
-- If the Docker Hub repo is private, add registry credentials on Render
+Suggested setup:
+- staging image tag: `staging`
+- production image tag: `production` or your chosen release tag
+- health check path: `/actuator/health`
+- environment variables: set `SPRING_PROFILES_ACTIVE=staging` or `SPRING_PROFILES_ACTIVE=prod` plus DB, Redis, JWT, CORS, mail, and payment secrets
 
-**Production service**
-- Image: `docker.io/<repository>:production` (or your release tag)
-- Environment: `SPRING_PROFILES_ACTIVE=prod` and production secrets
+After each `docker push`, GitHub Actions calls the Coolify deploy webhook so the app redeploys and pulls the latest image digest for that tag.
 
-**Deploy Hook**
-- After each `docker push`, GitHub Actions calls the hook so Render starts a new deploy and pulls the latest digest for that tag.
-
-If a Deploy Hook URL is ever exposed publicly, **revoke it on Render and create a new hook**, then update the GitHub secret.
+If a Coolify deploy webhook is exposed publicly, rotate it in Coolify and update the GitHub environment secret immediately.
 
 ## Recommended Branch Protection For `main`
 
@@ -142,11 +141,11 @@ Recommended required status check:
 
 ## Post-deploy verification (manual)
 
-1. Render logs: deploy succeeded, container healthy.
-2. `GET https://<your-service>.onrender.com/actuator/health` → 200.
+1. Coolify deployment logs show a successful redeploy and healthy container.
+2. `GET https://<your-service>/actuator/health` returns `200`.
 3. Staging with `SPRING_PROFILES_ACTIVE=staging`: optional checks for `/swagger-ui.html` and `/v3/api-docs`.
 
 ## Notes
 
 - The workflows publish Docker images to Docker Hub; the app artifact is built from `:app-bootstrap:bootJar`.
-- Immediate rollout after push is driven by the **Deploy Hook**; ensure the Render service watches the correct image tag.
+- Immediate rollout after push is driven by the Coolify deploy webhook; ensure each Coolify app watches the correct image tag.

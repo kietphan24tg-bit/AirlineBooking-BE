@@ -39,7 +39,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
@@ -60,6 +60,19 @@ jobs:
           test -n "$DOCKERHUB_TOKEN"
           test -n "$DOCKERHUB_REPOSITORY"
 
+      - name: Validate Coolify configuration
+        env:
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+        run: |
+          test -n "$COOLIFY_DEPLOY_WEBHOOK"
+          case "$COOLIFY_DEPLOY_WEBHOOK" in
+            http://*|https://*) ;;
+            *)
+              echo "COOLIFY_DEPLOY_WEBHOOK must be the full Coolify Deploy Webhook URL."
+              exit 1
+              ;;
+          esac
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -76,18 +89,17 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_REPOSITORY }}:${{ inputs.image_tag }}
 
-      - name: Trigger Render deploy (production)
+      - name: Trigger Coolify deploy (production)
         env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
         run: |
           set -e
-          test -n "$RENDER_DEPLOY_HOOK_URL"
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+          curl -fsS "$COOLIFY_DEPLOY_WEBHOOK"
 
-      - name: Explain Render production deploy
+      - name: Explain Coolify production deploy
         run: |
           echo "Production image pushed to Docker Hub."
-          echo "Deploy was triggered via Render Deploy Hook (see Settings → Deploy Hook on the Render service)."
+          echo "Deploy was triggered via the Coolify Deploy Webhook for production."
 
       - name: Upload reports on failure
         if: failure()
