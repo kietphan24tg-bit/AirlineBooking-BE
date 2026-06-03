@@ -66,7 +66,6 @@ public class PaymentService {
   private static final String PAYMENT_ACTION_CHECKOUT = "CHECKOUT";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
   private static final long PAYOS_PAYMENT_WINDOW_MINUTES = 5;
-
   /** Minimum remaining time (and checkout session length) required to start Stripe checkout. */
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
 
@@ -210,12 +209,17 @@ public class PaymentService {
   }
 
   private String iconUrl(String path) {
-    String base = paymentProperties.iconBaseUrl();
-    if (base == null || base.isBlank()) {
-      return path;
+    if (path == null) {
+      return null;
     }
-    String normalizedBase = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
-    return normalizedBase + path;
+    String trimmed = path.trim();
+    if (trimmed.isBlank()) {
+      return null;
+    }
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+    return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
   }
 
   /**
@@ -542,15 +546,14 @@ public class PaymentService {
   private CreatePaymentResult createOrReusePayosPayment(
       BookingEntity booking, List<PaymentEntity> previousPending, OffsetDateTime now) {
     PaymentEntity latestQrPending = findLatestReusablePayosPending(previousPending);
-    OffsetDateTime qrExpireAt =
+    OffsetDateTime qrSessionExpireAt =
         latestQrPending == null
             ? resolveInitialPayosQrExpireAt(booking, now)
-            : resolveSubsequentPayosQrExpireAt(latestQrPending, booking, now);
-    OffsetDateTime bookingExpireAt = maxExpireAt(booking.getPnrExpiresAt(), qrExpireAt);
+            : resolveSubsequentPayosQrExpireAt(latestQrPending, now);
+    OffsetDateTime qrExpireAt = minExpireAt(qrSessionExpireAt, booking.getPnrExpiresAt());
 
     if (latestQrPending != null
-        && Objects.equals(qrExpireAt, resolvePaymentExpireAt(latestQrPending, booking))) {
-      applyEffectiveExpireAt(booking, bookingExpireAt, now);
+        && Objects.equals(qrExpireAt, latestQrPending.getSessionExpiresAt())) {
       resolvePendingPaymentsOnMethodChange(
           previousPending, METHOD_PAYOS, now, latestQrPending.getId());
       latestQrPending.setSessionExpiresAt(qrExpireAt);
@@ -559,7 +562,6 @@ public class PaymentService {
       return buildCreatePaymentResult(latestQrPending, booking, qrExpireAt);
     }
 
-    applyEffectiveExpireAt(booking, bookingExpireAt, now);
     assertPaymentCreationAllowed(booking, METHOD_PAYOS, now);
     resolvePendingPaymentsOnMethodChange(previousPending, METHOD_PAYOS, now, null);
 
@@ -899,11 +901,13 @@ public class PaymentService {
   }
 
   private OffsetDateTime resolveSubsequentPayosQrExpireAt(
-      PaymentEntity previousQrPayment, BookingEntity booking, OffsetDateTime now) {
-    OffsetDateTime previousExpireAt = resolvePaymentExpireAt(previousQrPayment, booking);
+      PaymentEntity previousQrPayment, OffsetDateTime now) {
+    OffsetDateTime previousExpireAt =
+        previousQrPayment == null ? null : previousQrPayment.getSessionExpiresAt();
     if (previousExpireAt == null || !previousExpireAt.isAfter(now)) {
       return now.plusMinutes(PAYOS_PAYMENT_WINDOW_MINUTES);
     }
+
     long remainingSeconds = Duration.between(now, previousExpireAt).getSeconds();
     if (remainingSeconds > PAYOS_PAYMENT_WINDOW_MINUTES * 60L) {
       return previousExpireAt;
@@ -919,6 +923,16 @@ public class PaymentService {
       return left;
     }
     return left.isAfter(right) ? left : right;
+  }
+
+  private OffsetDateTime minExpireAt(OffsetDateTime left, OffsetDateTime right) {
+    if (left == null) {
+      return right;
+    }
+    if (right == null) {
+      return left;
+    }
+    return left.isBefore(right) ? left : right;
   }
 
   private CreatePaymentResult buildCreatePaymentResult(
