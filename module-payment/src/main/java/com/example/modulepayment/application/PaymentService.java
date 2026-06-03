@@ -551,7 +551,7 @@ public class PaymentService {
         latestQrPending == null
             ? resolveInitialPayosQrExpireAt(booking, now)
             : resolveSubsequentPayosQrExpireAt(latestQrPending, now);
-    OffsetDateTime qrExpireAt = minExpireAt(qrSessionExpireAt, booking.getPnrExpiresAt());
+    OffsetDateTime qrExpireAt = qrSessionExpireAt;
 
     if (latestQrPending != null
         && Objects.equals(qrExpireAt, latestQrPending.getSessionExpiresAt())) {
@@ -559,12 +559,14 @@ public class PaymentService {
           previousPending, METHOD_PAYOS, now, latestQrPending.getId());
       latestQrPending.setSessionExpiresAt(qrExpireAt);
       latestQrPending.setUpdatedAt(now);
+      applyEffectiveExpireAt(booking, qrExpireAt, now);
       ensureBookingPendingPayment(booking, now);
       return buildCreatePaymentResult(latestQrPending, booking, qrExpireAt);
     }
 
     assertPaymentCreationAllowed(booking, METHOD_PAYOS, now);
     resolvePendingPaymentsOnMethodChange(previousPending, METHOD_PAYOS, now, null);
+    applyEffectiveExpireAt(booking, qrExpireAt, now);
 
     PaymentEntity payment = new PaymentEntity();
     payment.setBooking(booking);

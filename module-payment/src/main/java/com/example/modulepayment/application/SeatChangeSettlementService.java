@@ -596,12 +596,12 @@ public class SeatChangeSettlementService {
     String type = rawMethod == null ? "" : rawMethod.trim().toUpperCase(Locale.ROOT);
     String label =
         switch (type) {
-          case "CREDIT_CARD", "CARD" -> "Thẻ tín dụng";
-          case "DEBIT_CARD" -> "Thẻ ghi nợ";
-          case "BANK_TRANSFER", "BANK" -> "Chuyển khoản ngân hàng";
-          case "EWALLET", "E_WALLET", "WALLET" -> "Ví điện tử";
+          case "CREDIT_CARD", "CARD" -> "Credit card";
+          case "DEBIT_CARD" -> "Debit card";
+          case "BANK_TRANSFER", "BANK" -> "Bank transfer";
+          case "EWALLET", "E_WALLET", "WALLET" -> "E-wallet";
           case "QR", "QR_CODE" -> "QR Code";
-          default -> type.isEmpty() ? "Hoàn tiền" : rawMethod;
+          default -> type.isEmpty() ? "Refund" : rawMethod;
         };
     String maskedAccount = buildMaskedAccount(payment);
     String estimatedDays = resolveEstimatedDays(provider);
@@ -627,9 +627,9 @@ public class SeatChangeSettlementService {
   private static String resolveEstimatedDays(String provider) {
     String normalized = provider == null ? "" : provider.trim().toUpperCase(Locale.ROOT);
     return switch (normalized) {
-      case "STRIPE" -> "5-10 ngày làm việc";
-      case "PAYOS" -> "Xử lý 24/7";
-      default -> "3-7 ngày làm việc";
+      case "STRIPE" -> "5-10 business days";
+      case "PAYOS" -> "Processed 24/7";
+      default -> "3-7 business days";
     };
   }
 

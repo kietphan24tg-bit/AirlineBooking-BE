@@ -70,7 +70,7 @@ public class BookingCancellationEmailService implements BookingCancellationNotif
       var helper = new MimeMessageHelper(message, true, "UTF-8");
       helper.setFrom(mailProperties.from());
       helper.setTo(recipients.toArray(String[]::new));
-      helper.setSubject("Xác nhận hủy chuyến bay - Mã đặt chỗ " + booking.getPnrCode());
+      helper.setSubject("Flight cancellation confirmation - Booking code " + booking.getPnrCode());
       helper.setText(buildHtml(booking, cancellation), true);
       mailSender.send(message);
     } catch (MailException | jakarta.mail.MessagingException exception) {
@@ -117,23 +117,23 @@ public class BookingCancellationEmailService implements BookingCancellationNotif
         <div style="margin:0;padding:24px;background:#f8f8f8;font-family:Arial,sans-serif;color:#222;">
           <div style="max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #e8e8e8;">
             <div style="background:linear-gradient(90deg,#c8102e 0%,#e31b23 70%,#f4b400 100%);padding:18px 24px;color:#ffffff;">
-              <div style="font-size:28px;font-weight:700;line-height:1.2;">Xác nhận hủy chuyến bay</div>
-              <div style="margin-top:6px;font-size:14px;">Mã đặt chỗ: %s</div>
+              <div style="font-size:28px;font-weight:700;line-height:1.2;">Flight cancellation confirmation</div>
+              <div style="margin-top:6px;font-size:14px;">Booking code: %s</div>
             </div>
             <div style="padding:24px;">
-              <p style="margin:0 0 12px;">Kính gửi Quý khách,</p>
+              <p style="margin:0 0 12px;">Dear Customer,</p>
               <p style="margin:0 0 20px;">
-                Yêu cầu hủy chuyến bay của Quý khách đã được xử lý thành công.
-                Thông tin hoàn tiền được hiển thị dưới đây.
+                Your flight cancellation request has been processed successfully.
+                The refund details are shown below.
               </p>
               <table role="presentation" style="width:100%%;border-collapse:collapse;">
                 <tr>
                   <td style="vertical-align:top;padding:16px;border:1px solid #ededed;">
-                    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">Hành khách hủy</div>
+                    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">Cancelled passengers</div>
                     <ul style="padding-left:18px;margin:0;">%s</ul>
                   </td>
                   <td style="vertical-align:top;padding:16px;border:1px solid #ededed;width:260px;">
-                    <div style="font-size:14px;color:#666;">Tổng tiền hoàn</div>
+                    <div style="font-size:14px;color:#666;">Total refund</div>
                     <div style="font-size:28px;font-weight:700;color:#c8102e;margin:8px 0 16px;">%s %s</div>
                     <div style="font-size:14px;color:#666;">%s</div>
                     <div style="font-size:15px;font-weight:600;margin-top:8px;">%s</div>
@@ -141,7 +141,7 @@ public class BookingCancellationEmailService implements BookingCancellationNotif
                   </td>
                 </tr>
               </table>
-              <p style="margin:20px 0 0;">Cảm ơn Quý khách đã lựa chọn hãng hàng không của chúng tôi.</p>
+              <p style="margin:20px 0 0;">Thank you for choosing our airline.</p>
             </div>
           </div>
         </div>
@@ -157,7 +157,7 @@ public class BookingCancellationEmailService implements BookingCancellationNotif
   }
 
   private String formatMoney(BigDecimal amount) {
-    NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
+    NumberFormat formatter = NumberFormat.getNumberInstance(Locale.US);
     formatter.setMinimumFractionDigits(0);
     formatter.setMaximumFractionDigits(2);
     return formatter.format(amount);

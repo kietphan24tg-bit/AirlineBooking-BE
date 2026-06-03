@@ -12,19 +12,19 @@ public record BookingCancellationRefundEstimate(String title, String message, St
     return switch (normalized) {
       case PROVIDER_STRIPE ->
           new BookingCancellationRefundEstimate(
-              "Thời gian hoàn tiền dự kiến",
-              "Dự kiến tiền hoàn sẽ về trong vòng 5-10 ngày làm việc.",
-              "Thời gian thực tế có thể thay đổi tùy theo ngân hàng phát hành thẻ.");
+              "Estimated refund time",
+              "Your refund is expected to arrive within 5-10 business days.",
+              "Actual timing may vary depending on your card issuer.");
       case PROVIDER_PAYOS ->
           new BookingCancellationRefundEstimate(
-              "Trạng thái hoàn tiền",
-              "Lệnh hoàn tiền đã được tiếp nhận và xử lý 24/7.",
-              "Thời gian nhận tiền thực tế phụ thuộc vào ngân hàng nhận.");
+              "Refund status",
+              "Your refund request has been received and is processed 24/7.",
+              "Actual arrival time depends on the receiving bank.");
       default ->
           new BookingCancellationRefundEstimate(
-              "Trạng thái hoàn tiền",
-              "Yêu cầu hoàn tiền của bạn đã được tiếp nhận thành công.",
-              "Thời gian nhận tiền thực tế phụ thuộc vào đơn vị thanh toán và ngân hàng xử lý.");
+              "Refund status",
+              "Your refund request has been received successfully.",
+              "Actual arrival time depends on the payment provider and processing bank.");
     };
   }
 

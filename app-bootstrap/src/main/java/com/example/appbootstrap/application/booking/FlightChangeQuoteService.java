@@ -223,9 +223,9 @@ public class FlightChangeQuoteService {
                 netAmount),
             impacts,
             List.of(
-                "Quote có hiệu lực trong "
+                "This quote is valid for "
                     + bookingProperties.flightChangeQuoteExpirationMinutes()
-                    + " phút."));
+                    + " minutes."));
     saveQuoteSnapshot(
         new QuoteSnapshot(
             quoteToken,

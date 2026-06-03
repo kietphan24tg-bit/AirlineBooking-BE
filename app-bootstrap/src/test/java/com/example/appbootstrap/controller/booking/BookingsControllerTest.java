@@ -359,7 +359,7 @@ class BookingsControllerTest {
                     new BigDecimal("-580000")),
                 new FlightChangeQuoteResponse.ImpactsResponse(
                     "RESELECT_REQUIRED", "REVIEW_REQUIRED"),
-                List.of("Quote có hiệu lực trong 15 phút.")));
+                List.of("This quote is valid for 15 minutes.")));
 
     FlightChangeQuoteResponse response = controller.quoteFlightChange(principal(), 10L, request);
 
