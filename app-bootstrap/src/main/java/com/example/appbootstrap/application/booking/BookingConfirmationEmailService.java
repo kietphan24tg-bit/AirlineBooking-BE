@@ -260,8 +260,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     String email =
         firstNonBlank(contactEmail(view.primaryContact()), view.booking().getContactEmail(), "--");
     String phone =
-        firstNonBlank(
-            contactPhone(view.primaryContact()), view.booking().getContactPhone(), "--");
+        firstNonBlank(contactPhone(view.primaryContact()), view.booking().getContactPhone(), "--");
     String qrCell =
         hasText(view.booking().getPnrCode())
             ? "<div style=\"font-size:34px;font-weight:800;color:#7d0633;letter-spacing:0.08em;\">"
@@ -601,8 +600,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
   }
 
   private String buildPaymentSection(EmailView view) {
-    String paymentDate =
-        view.payment() == null ? "--" : formatDateTime(view.payment().getPaidAt());
+    String paymentDate = view.payment() == null ? "--" : formatDateTime(view.payment().getPaidAt());
     String paymentMethod =
         view.payment() == null ? "--" : paymentMethodLabel(view.payment().getPaymentMethod());
     String amount =
@@ -673,8 +671,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             new FareLine(
                 leg,
                 passengerName,
-                "Seat selection - "
-                    + nullToBlank(seatAssignment.getFlightSeat().getSeatNumber()),
+                "Seat selection - " + nullToBlank(seatAssignment.getFlightSeat().getSeatNumber()),
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 seatAssignment.getSurchargeAmount(),
@@ -704,8 +701,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
         service.getQuantity() == null || service.getQuantity() <= 1
             ? ""
             : " x" + service.getQuantity();
-    if (service.getServiceOption() != null
-        && hasText(service.getServiceOption().getName())) {
+    if (service.getServiceOption() != null && hasText(service.getServiceOption().getName())) {
       return service.getService().getName()
           + " - "
           + service.getServiceOption().getName()
