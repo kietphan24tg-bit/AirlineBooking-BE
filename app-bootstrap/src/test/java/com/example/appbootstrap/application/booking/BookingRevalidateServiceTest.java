@@ -3,11 +3,11 @@ package com.example.appbootstrap.application.booking;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -626,19 +626,23 @@ class BookingRevalidateServiceTest {
     ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
     verify(valueOperations, times(2))
         .set(keyCaptor.capture(), valueCaptor.capture(), eq(Duration.ofMinutes(15)));
-    String fingerprintKey = keyCaptor.getAllValues().stream()
-        .filter(key -> key.startsWith("revalidate:fingerprint:"))
-        .findFirst()
-        .orElseThrow();
-    String reusedRevalidateId = valueCaptor.getAllValues().stream()
-        .filter(first.revalidateId()::equals)
-        .findFirst()
-        .orElseThrow();
+    String fingerprintKey =
+        keyCaptor.getAllValues().stream()
+            .filter(key -> key.startsWith("revalidate:fingerprint:"))
+            .findFirst()
+            .orElseThrow();
+    String reusedRevalidateId =
+        valueCaptor.getAllValues().stream()
+            .filter(first.revalidateId()::equals)
+            .findFirst()
+            .orElseThrow();
 
     ArgumentCaptor<String> snapshotCaptor = ArgumentCaptor.forClass(String.class);
-    verify(valueOperations).set(eq("revalidate:" + first.revalidateId()), snapshotCaptor.capture(), any());
+    verify(valueOperations)
+        .set(eq("revalidate:" + first.revalidateId()), snapshotCaptor.capture(), any());
     when(valueOperations.get(fingerprintKey)).thenReturn(reusedRevalidateId);
-    when(valueOperations.get("revalidate:" + first.revalidateId())).thenReturn(snapshotCaptor.getValue());
+    when(valueOperations.get("revalidate:" + first.revalidateId()))
+        .thenReturn(snapshotCaptor.getValue());
 
     var second = service.revalidate(new RevalidateFareRequest(11L, 101L, null, summary));
 
