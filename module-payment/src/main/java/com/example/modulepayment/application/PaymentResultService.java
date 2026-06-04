@@ -154,7 +154,8 @@ public class PaymentResultService {
     }
     String paymentMethod = normalize(payment.getPaymentMethod());
     String paymentStatus = normalize(payment.getPaymentStatus());
-    if (!METHOD_STRIPE_CARD.equals(paymentMethod) || !PAYMENT_STATUS_PENDING.equals(paymentStatus)) {
+    if (!METHOD_STRIPE_CARD.equals(paymentMethod)
+        || !PAYMENT_STATUS_PENDING.equals(paymentStatus)) {
       return;
     }
     paymentWebhookService.reconcilePendingStripePayment(payment.getId());

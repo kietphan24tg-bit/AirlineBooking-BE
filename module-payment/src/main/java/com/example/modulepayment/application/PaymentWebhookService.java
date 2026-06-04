@@ -524,12 +524,7 @@ public class PaymentWebhookService {
     }
 
     confirmSuccessfulPayment(
-        payment,
-        booking,
-        now,
-        sessionStatus.sessionId(),
-        sessionStatus.paymentIntentId(),
-        now);
+        payment, booking, now, sessionStatus.sessionId(), sessionStatus.paymentIntentId(), now);
   }
 
   private LookupResult findPaymentForWebhook(NormalizedPayosWebhookEvent event) {

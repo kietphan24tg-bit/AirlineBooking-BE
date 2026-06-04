@@ -119,7 +119,8 @@ class PaymentResultServiceTest {
     payment.setPaymentMethod("STRIPE_CARD");
     payment.setTransactionId("cs_test_123");
 
-    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L))
+        .thenReturn(Optional.of(payment));
 
     service.getResultStatusForUser(5L, 7L);
 
