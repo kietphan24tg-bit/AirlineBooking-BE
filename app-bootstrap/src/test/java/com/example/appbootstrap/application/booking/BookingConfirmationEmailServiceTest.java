@@ -102,15 +102,17 @@ class BookingConfirmationEmailServiceTest {
 
     assertEquals("no-reply@example.com", message.getFrom()[0].toString());
     assertEquals("guest@example.com", message.getAllRecipients()[0].toString());
-    assertEquals("Xac nhan dat cho - Ma dat cho ABC123", message.getSubject());
-    assertTrue(html.contains("1. Thong tin dat cho"));
-    assertTrue(html.contains("2. Thong tin hanh khach"));
-    assertTrue(html.contains("3. Thong tin chuyen bay"));
-    assertTrue(html.contains("Gia ve va le phi"));
-    assertTrue(html.contains("Tinh trang thanh toan"));
+    assertEquals("The Sovereign Booking Confirmation - PNR ABC123", message.getSubject());
+    assertTrue(html.contains("The Sovereign"));
+    assertTrue(html.contains("Booking details"));
+    assertTrue(html.contains("Passengers"));
+    assertTrue(html.contains("Flight summary"));
+    assertTrue(html.contains("Fare and add-ons"));
+    assertTrue(html.contains("Payment"));
     assertTrue(html.contains("ABC123"));
     assertTrue(html.contains("NGUYEN, An"));
     assertTrue(html.contains("12A"));
+    assertTrue(html.contains("Confirmed"));
     assertNotNull(booking.getTicketEmailSentAt());
     verify(bookingRepository).save(booking);
   }
@@ -187,6 +189,7 @@ class BookingConfirmationEmailServiceTest {
     booking.setId(10L);
     booking.setPnrCode("ABC123");
     booking.setContactEmail("guest@example.com");
+    booking.setContactPhone("0901234567");
     booking.setTotalAmount(new BigDecimal("1200000"));
     booking.setCurrency("VND");
     booking.setCreatedAt(OffsetDateTime.parse("2026-04-30T09:00:00+07:00"));

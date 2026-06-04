@@ -44,6 +44,7 @@ public class PaymentResultService {
 
   private static final String BOOKING_STATUS_CONFIRMED = "CONFIRMED";
   private static final String BOOKING_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
+  private static final String METHOD_STRIPE_CARD = "STRIPE_CARD";
   private static final String PAYMENT_STATUS_SUCCESS = "SUCCESS";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
   private static final Set<String> ERROR_PAYMENT_STATUSES =
@@ -57,6 +58,7 @@ public class PaymentResultService {
   private final BookingContactRepository bookingContactRepository;
   private final BookingServiceRepository bookingServiceRepository;
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
+  private final PaymentWebhookService paymentWebhookService;
 
   public PaymentResultService(
       PaymentRepository paymentRepository,
@@ -65,7 +67,8 @@ public class PaymentResultService {
       PassengerRepository passengerRepository,
       BookingContactRepository bookingContactRepository,
       BookingServiceRepository bookingServiceRepository,
-      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository) {
+      PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
+      PaymentWebhookService paymentWebhookService) {
     this.paymentRepository = paymentRepository;
     this.ticketRepository = ticketRepository;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
@@ -73,23 +76,26 @@ public class PaymentResultService {
     this.bookingContactRepository = bookingContactRepository;
     this.bookingServiceRepository = bookingServiceRepository;
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
+    this.paymentWebhookService = paymentWebhookService;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public PaymentResultStatusView getResultStatusPublic(Long paymentId) {
     PaymentEntity payment =
         paymentRepository
-            .findById(paymentId)
+            .findByIdForUpdate(paymentId)
             .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+    reconcilePendingStripePayment(payment);
     return toResultStatus(payment);
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public PaymentResultStatusView getResultStatusForUser(Long paymentId, Long userId) {
     PaymentEntity payment =
         paymentRepository
-            .findByIdAndBookingUserId(paymentId, userId)
+            .findByIdAndBookingUserIdForUpdate(paymentId, userId)
             .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+    reconcilePendingStripePayment(payment);
     return toResultStatus(payment);
   }
 
@@ -140,6 +146,18 @@ public class PaymentResultService {
             "PENDING".equals(resultPage),
             "PENDING".equals(resultPage) ? NEXT_POLL_AFTER_SECONDS : null),
         failure);
+  }
+
+  private void reconcilePendingStripePayment(PaymentEntity payment) {
+    if (payment == null) {
+      return;
+    }
+    String paymentMethod = normalize(payment.getPaymentMethod());
+    String paymentStatus = normalize(payment.getPaymentStatus());
+    if (!METHOD_STRIPE_CARD.equals(paymentMethod) || !PAYMENT_STATUS_PENDING.equals(paymentStatus)) {
+      return;
+    }
+    paymentWebhookService.reconcilePendingStripePayment(payment.getId());
   }
 
   private OffsetDateTime resolvePaymentExpireAt(PaymentEntity payment) {

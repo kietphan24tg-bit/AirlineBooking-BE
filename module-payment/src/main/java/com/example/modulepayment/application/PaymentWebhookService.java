@@ -10,6 +10,8 @@ import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PaymentRefundGateway.PaymentRefundResult;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
 import com.example.modulepayment.gateway.PayosWebhookSupport.NormalizedPayosWebhookEvent;
+import com.example.modulepayment.gateway.StripePaymentGateway;
+import com.example.modulepayment.gateway.StripePaymentGateway.CheckoutSessionStatus;
 import com.example.modulepayment.gateway.StripeWebhookSupport;
 import com.example.modulepayment.gateway.StripeWebhookSupport.NormalizedStripeWebhookEvent;
 import com.example.modulepayment.repository.PaymentRepository;
@@ -55,6 +57,7 @@ public class PaymentWebhookService {
   private final PaymentRepository paymentRepository;
   private final PaymentWebhookEventRepository paymentWebhookEventRepository;
   private final PayosWebhookSupport payosWebhookSupport;
+  private final StripePaymentGateway stripePaymentGateway;
   private final StripeWebhookSupport stripeWebhookSupport;
   private final FlightSeatRepository flightSeatRepository;
   private final BookingFareHoldRepository bookingFareHoldRepository;
@@ -71,6 +74,7 @@ public class PaymentWebhookService {
       PaymentRepository paymentRepository,
       PaymentWebhookEventRepository paymentWebhookEventRepository,
       PayosWebhookSupport payosWebhookSupport,
+      StripePaymentGateway stripePaymentGateway,
       StripeWebhookSupport stripeWebhookSupport,
       FlightSeatRepository flightSeatRepository,
       BookingFareHoldRepository bookingFareHoldRepository,
@@ -85,6 +89,7 @@ public class PaymentWebhookService {
     this.paymentRepository = paymentRepository;
     this.paymentWebhookEventRepository = paymentWebhookEventRepository;
     this.payosWebhookSupport = payosWebhookSupport;
+    this.stripePaymentGateway = stripePaymentGateway;
     this.stripeWebhookSupport = stripeWebhookSupport;
     this.flightSeatRepository = flightSeatRepository;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
@@ -445,6 +450,88 @@ public class PaymentWebhookService {
         OUTCOME_PROCESSED);
   }
 
+  @Transactional
+  public void reconcilePendingStripePayment(Long paymentId) {
+    if (paymentId == null) {
+      return;
+    }
+    PaymentEntity payment = paymentRepository.findByIdForUpdate(paymentId).orElse(null);
+    if (payment == null || !isPendingStripeCardPayment(payment)) {
+      return;
+    }
+
+    CheckoutSessionStatus sessionStatus =
+        stripePaymentGateway.getCheckoutSessionStatus(payment.getTransactionId());
+    if (!STRIPE_PAYMENT_STATUS_PAID.equalsIgnoreCase(sessionStatus.paymentStatus())) {
+      return;
+    }
+
+    BookingEntity booking = payment.getBooking();
+    OffsetDateTime now = OffsetDateTime.now();
+    payment.setUpdatedAt(now);
+
+    if (!matchesStripeAmount(payment, sessionStatus.amountTotal())) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      paymentRepository.save(payment);
+      if (hasSettlement(payment)) {
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_FAILED);
+      }
+      return;
+    }
+
+    if (!matchesStripeCurrency(payment, sessionStatus.currency())) {
+      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      paymentRepository.save(payment);
+      if (hasSettlement(payment)) {
+        handleSettlementPaymentFailure(payment, PAYMENT_STATUS_FAILED);
+      }
+      return;
+    }
+
+    if (hasSettlement(payment)) {
+      payment.setPaymentStatus(PAYMENT_STATUS_SUCCESS);
+      payment.setPaidAt(now);
+      if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
+        payment.setTransactionId(sessionStatus.sessionId());
+      }
+      if (sessionStatus.paymentIntentId() != null && !sessionStatus.paymentIntentId().isBlank()) {
+        payment.setProviderPaymentReference(sessionStatus.paymentIntentId());
+      }
+      paymentRepository.save(payment);
+      closeOtherOpenPaymentsAfterSuccess(payment, booking, now);
+      handleSettlementPaymentSuccess(payment, sessionStatus.paymentIntentId());
+      return;
+    }
+
+    if (bookingExpired(booking, now)) {
+      expirePaymentAndBooking(payment, booking, now);
+      refundLateStripeCapture(
+          payment,
+          new NormalizedStripeWebhookEvent(
+              PROVIDER_STRIPE,
+              STRIPE_EVENT_CHECKOUT_COMPLETED,
+              payment.getId(),
+              sessionStatus.sessionId(),
+              sessionStatus.paymentIntentId(),
+              sessionStatus.amountTotal(),
+              sessionStatus.currency(),
+              sessionStatus.paymentStatus(),
+              now,
+              "reconcile:" + payment.getId(),
+              null,
+              null));
+      return;
+    }
+
+    confirmSuccessfulPayment(
+        payment,
+        booking,
+        now,
+        sessionStatus.sessionId(),
+        sessionStatus.paymentIntentId(),
+        now);
+  }
+
   private LookupResult findPaymentForWebhook(NormalizedPayosWebhookEvent event) {
     PaymentEntity byTransactionId = null;
     PaymentEntity byOrderCode = null;
@@ -502,17 +589,25 @@ public class PaymentWebhookService {
   }
 
   private boolean matchesStripeAmount(PaymentEntity payment, NormalizedStripeWebhookEvent event) {
-    if (event.amount() == null) {
+    return matchesStripeAmount(payment, event.amount());
+  }
+
+  private boolean matchesStripeAmount(PaymentEntity payment, Long amount) {
+    if (amount == null) {
       return false;
     }
-    BigDecimal eventAmount = BigDecimal.valueOf(event.amount());
+    BigDecimal eventAmount = BigDecimal.valueOf(amount);
     return payment.getAmount() != null && payment.getAmount().compareTo(eventAmount) == 0;
   }
 
   private boolean matchesStripeCurrency(PaymentEntity payment, NormalizedStripeWebhookEvent event) {
+    return matchesStripeCurrency(payment, event.currency());
+  }
+
+  private boolean matchesStripeCurrency(PaymentEntity payment, String currency) {
     return payment.getCurrency() != null
-        && event.currency() != null
-        && payment.getCurrency().equalsIgnoreCase(event.currency());
+        && currency != null
+        && payment.getCurrency().equalsIgnoreCase(currency);
   }
 
   private boolean bookingExpired(BookingEntity booking, OffsetDateTime referenceTime) {
@@ -528,6 +623,24 @@ public class PaymentWebhookService {
   private boolean isPending(PaymentEntity payment) {
     String status = payment.getPaymentStatus();
     return status != null && PAYMENT_STATUS_PENDING.equalsIgnoreCase(status.trim());
+  }
+
+  private boolean isPendingStripeCardPayment(PaymentEntity payment) {
+    if (!isPending(payment)) {
+      return false;
+    }
+    String paymentMethod = payment.getPaymentMethod();
+    String transactionId = payment.getTransactionId();
+    return paymentMethod != null
+        && PROVIDER_STRIPE.concat("_CARD").equalsIgnoreCase(paymentMethod.trim())
+        && transactionId != null
+        && !transactionId.isBlank();
+  }
+
+  private boolean hasSettlement(PaymentEntity payment) {
+    return payment.getSeatChangeSettlement() != null
+        || payment.getServiceChangeSettlement() != null
+        || payment.getFlightChangeSettlement() != null;
   }
 
   private void handleSettlementPaymentSuccess(

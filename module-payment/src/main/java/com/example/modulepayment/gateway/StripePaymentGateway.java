@@ -209,6 +209,28 @@ public class StripePaymentGateway {
     }
   }
 
+  public CheckoutSessionStatus getCheckoutSessionStatus(String sessionId) {
+    if (!paymentProperties.isStripeConfigured()) {
+      throw new AppException(
+          "PAYMENT_PROVIDER_MISCONFIGURED", "Stripe provider is not fully configured", 500);
+    }
+    if (sessionId == null || sessionId.isBlank()) {
+      throw new AppException("PAYMENT_REFERENCE_MISSING", "Stripe session id is required", 409);
+    }
+    try {
+      Session session = Session.retrieve(sessionId, requestOptions());
+      return new CheckoutSessionStatus(
+          session.getId(),
+          session.getPaymentIntent(),
+          session.getStatus(),
+          session.getPaymentStatus(),
+          session.getAmountTotal(),
+          session.getCurrency());
+    } catch (StripeException exception) {
+      throw new AppException("PAYMENT_PROVIDER_ERROR", "Stripe rejected status lookup", 502);
+    }
+  }
+
   public RefundResult createRefund(
       String paymentIntentId, BigDecimal amount, String currency, String reason) {
     if (!paymentProperties.isStripeConfigured()) {
@@ -282,6 +304,14 @@ public class StripePaymentGateway {
   private static String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value;
   }
+
+  public record CheckoutSessionStatus(
+      String sessionId,
+      String paymentIntentId,
+      String status,
+      String paymentStatus,
+      Long amountTotal,
+      String currency) {}
 
   public record RefundResult(String refundId, String status) {}
 }

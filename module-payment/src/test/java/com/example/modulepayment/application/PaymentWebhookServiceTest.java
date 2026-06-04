@@ -18,6 +18,8 @@ import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.gateway.PaymentRefundGateway.PaymentRefundResult;
 import com.example.modulepayment.gateway.PayosWebhookSupport;
 import com.example.modulepayment.gateway.PayosWebhookSupport.NormalizedPayosWebhookEvent;
+import com.example.modulepayment.gateway.StripePaymentGateway;
+import com.example.modulepayment.gateway.StripePaymentGateway.CheckoutSessionStatus;
 import com.example.modulepayment.gateway.StripeWebhookSupport;
 import com.example.modulepayment.gateway.StripeWebhookSupport.NormalizedStripeWebhookEvent;
 import com.example.modulepayment.repository.PaymentRepository;
@@ -38,6 +40,7 @@ class PaymentWebhookServiceTest {
   @Mock private PaymentRepository paymentRepository;
   @Mock private PaymentWebhookEventRepository paymentWebhookEventRepository;
   @Mock private PayosWebhookSupport payosWebhookSupport;
+  @Mock private StripePaymentGateway stripePaymentGateway;
   @Mock private StripeWebhookSupport stripeWebhookSupport;
   @Mock private FlightSeatRepository flightSeatRepository;
   @Mock private BookingFareHoldRepository bookingFareHoldRepository;
@@ -59,6 +62,7 @@ class PaymentWebhookServiceTest {
             paymentRepository,
             paymentWebhookEventRepository,
             payosWebhookSupport,
+            stripePaymentGateway,
             stripeWebhookSupport,
             flightSeatRepository,
             bookingFareHoldRepository,
@@ -310,6 +314,29 @@ class PaymentWebhookServiceTest {
     assertEquals("EXPIRED", payment.getBooking().getStatus());
     verify(ticketIssuanceService, never()).issueTicketsForConfirmedBooking(any());
     verify(bookingConfirmationNotifier, never()).sendIfNeeded(any());
+  }
+
+  @Test
+  void shouldReconcilePendingStripePaymentWhenCheckoutIsAlreadyPaid() {
+    PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
+    payment.setPaymentMethod("STRIPE_CARD");
+    payment.setTransactionId("cs_test_123");
+
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(stripePaymentGateway.getCheckoutSessionStatus("cs_test_123"))
+        .thenReturn(
+            new CheckoutSessionStatus(
+                "cs_test_123", "pi_test_123", "complete", "paid", 1200000L, "vnd"));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentWebhookService.reconcilePendingStripePayment(123L);
+
+    assertEquals("SUCCESS", payment.getPaymentStatus());
+    assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    assertEquals("pi_test_123", payment.getProviderPaymentReference());
+    verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(bookingConfirmationNotifier).sendIfNeeded(10L);
   }
 
   @Test

@@ -3,6 +3,7 @@ package com.example.modulepayment.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.modulebooking.entity.BookingContactEntity;
@@ -45,6 +46,7 @@ class PaymentResultServiceTest {
   @Mock private BookingContactRepository bookingContactRepository;
   @Mock private BookingServiceRepository bookingServiceRepository;
   @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
+  @Mock private PaymentWebhookService paymentWebhookService;
 
   private PaymentResultService service;
 
@@ -58,7 +60,8 @@ class PaymentResultServiceTest {
             passengerRepository,
             bookingContactRepository,
             bookingServiceRepository,
-            passengerSeatAssignmentRepository);
+            passengerSeatAssignmentRepository,
+            paymentWebhookService);
   }
 
   @Test
@@ -99,13 +102,28 @@ class PaymentResultServiceTest {
     booking.setPnrExpiresAt(OffsetDateTime.parse("2020-05-17T09:00:00Z"));
     PaymentEntity payment = payment(booking, "PENDING");
 
-    when(paymentRepository.findByIdAndBookingUserId(5L, 7L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L))
+        .thenReturn(Optional.of(payment));
 
     PaymentResultStatusView result = service.getResultStatusForUser(5L, 7L);
 
     assertEquals("ERROR", result.resultPage());
     assertEquals("Booking payment window has expired", result.failure().message());
     assertEquals(Boolean.FALSE, result.polling().shouldPoll());
+  }
+
+  @Test
+  void shouldAttemptStripeReconciliationBeforeReturningPendingStatus() {
+    BookingEntity booking = booking("PENDING_PAYMENT");
+    PaymentEntity payment = payment(booking, "PENDING");
+    payment.setPaymentMethod("STRIPE_CARD");
+    payment.setTransactionId("cs_test_123");
+
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L)).thenReturn(Optional.of(payment));
+
+    service.getResultStatusForUser(5L, 7L);
+
+    verify(paymentWebhookService).reconcilePendingStripePayment(5L);
   }
 
   private static BookingEntity booking(String status) {
