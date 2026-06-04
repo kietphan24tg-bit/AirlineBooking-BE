@@ -46,6 +46,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
@@ -170,6 +171,22 @@ public class BookingRevalidateService {
     String normalizedTripType = normalizeTripType(request.tripType());
     List<RevalidateItineraryRequest.SegmentRequest> segmentRequests =
         normalizeAndValidateSegmentRequests(normalizedTripType, request.segments());
+    String normalizedPromoCode = normalizePromoCode(request.promoCode());
+    String revalidateFingerprint =
+        buildRevalidateFingerprint(
+            normalizedTripType, normalizedPromoCode, canonicalSummary, segmentRequests);
+    RevalidateSnapshot reusableSnapshot =
+        findReusableRevalidateSnapshot(revalidateFingerprint, canonicalSummary);
+    if (reusableSnapshot != null) {
+      LOG.info(
+          "revalidate itinerary reused id={} tripType={} segments={} promoCode={} expiresAt={}",
+          reusableSnapshot.revalidateId(),
+          reusableSnapshot.tripType(),
+          reusableSnapshot.segments().size(),
+          reusableSnapshot.promoCode(),
+          reusableSnapshot.expiresAt());
+      return toRevalidateItineraryResponse(reusableSnapshot);
+    }
 
     List<SegmentRuntime> segmentRuntimes = new ArrayList<>(segmentRequests.size());
     for (RevalidateItineraryRequest.SegmentRequest segmentRequest : segmentRequests) {
@@ -223,7 +240,6 @@ public class BookingRevalidateService {
             originalTotalPrice,
             pricingCurrency,
             segmentRuntimes.getFirst().countryCode());
-    String normalizedPromoCode = normalizePromoCode(request.promoCode());
     Long promotionId = resolvePromotionId(normalizedPromoCode, preview);
     BigDecimal discountAmount =
         "APPLIED".equals(preview.status())
@@ -288,7 +304,7 @@ public class BookingRevalidateService {
             segmentSnapshots,
             OffsetDateTime.now().plus(REVALIDATE_TTL),
             "ACTIVE");
-    saveRevalidateSnapshot(snapshot);
+    saveRevalidateSnapshot(snapshot, revalidateFingerprint);
     LOG.info(
         "revalidate itinerary created id={} tripType={} segments={} promoCode={} promotionId={} expiresAt={}",
         snapshot.revalidateId(),
@@ -298,6 +314,10 @@ public class BookingRevalidateService {
         snapshot.promotionId(),
         snapshot.expiresAt());
 
+    return toRevalidateItineraryResponse(snapshot);
+  }
+
+  private RevalidateItineraryResponse toRevalidateItineraryResponse(RevalidateSnapshot snapshot) {
     return new RevalidateItineraryResponse(
         snapshot.revalidateId(),
         REVALIDATE_TTL.toSeconds(),
@@ -1059,8 +1079,15 @@ public class BookingRevalidateService {
     return "revalidate:" + revalidateId;
   }
 
-  private void saveRevalidateSnapshot(RevalidateSnapshot snapshot) {
+  private String revalidateFingerprintKey(String fingerprint) {
+    return "revalidate:fingerprint:" + fingerprint;
+  }
+
+  private void saveRevalidateSnapshot(RevalidateSnapshot snapshot, String fingerprint) {
     writeValue(revalidateKey(snapshot.revalidateId()), snapshot, REVALIDATE_TTL);
+    redisTemplate
+        .opsForValue()
+        .set(revalidateFingerprintKey(fingerprint), snapshot.revalidateId(), REVALIDATE_TTL);
   }
 
   private RevalidateSnapshot loadRevalidateSnapshot(String revalidateId) {
@@ -1075,8 +1102,70 @@ public class BookingRevalidateService {
     }
   }
 
+  private RevalidateSnapshot loadRevalidateSnapshotOrNull(String revalidateId) {
+    String value = redisTemplate.opsForValue().get(revalidateKey(revalidateId));
+    if (!StringUtils.hasText(value)) {
+      return null;
+    }
+    try {
+      return objectMapper.readValue(value, RevalidateSnapshot.class);
+    } catch (JsonProcessingException e) {
+      throw new AppException("REVALIDATE_FAILED", "Failed to read revalidate snapshot", 500);
+    }
+  }
+
   private void deleteRevalidateSnapshot(String revalidateId) {
     redisTemplate.delete(revalidateKey(revalidateId));
+  }
+
+  private RevalidateSnapshot findReusableRevalidateSnapshot(
+      String fingerprint, PassengerSummary passengerSummary) {
+    String revalidateId = redisTemplate.opsForValue().get(revalidateFingerprintKey(fingerprint));
+    if (!StringUtils.hasText(revalidateId)) {
+      return null;
+    }
+    RevalidateSnapshot snapshot = loadRevalidateSnapshotOrNull(revalidateId);
+    if (snapshot == null) {
+      redisTemplate.delete(revalidateFingerprintKey(fingerprint));
+      return null;
+    }
+    if (!isReusableSnapshot(snapshot, passengerSummary)) {
+      redisTemplate.delete(revalidateFingerprintKey(fingerprint));
+      return null;
+    }
+    return snapshot;
+  }
+
+  private boolean isReusableSnapshot(
+      RevalidateSnapshot snapshot, PassengerSummary expectedPassengerSummary) {
+    if (!"ACTIVE".equals(snapshot.status())) {
+      return false;
+    }
+    if (snapshot.expiresAt() == null || !snapshot.expiresAt().isAfter(OffsetDateTime.now())) {
+      return false;
+    }
+    return Objects.equals(snapshot.passengerSummary(), expectedPassengerSummary);
+  }
+
+  private String buildRevalidateFingerprint(
+      String tripType,
+      String normalizedPromoCode,
+      PassengerSummary passengerSummary,
+      List<RevalidateItineraryRequest.SegmentRequest> segmentRequests) {
+    List<RevalidateSegmentFingerprint> segments =
+        segmentRequests.stream()
+            .map(
+                segment ->
+                    new RevalidateSegmentFingerprint(
+                        normalizeSegmentDirection(segment.direction()),
+                        segment.flightId(),
+                        segment.fareId()))
+            .sorted(Comparator.comparing(RevalidateSegmentFingerprint::direction))
+            .toList();
+    return hash(
+        toJson(
+            new RevalidateFingerprintPayload(
+                tripType, normalizedPromoCode, passengerSummary, segments)));
   }
 
   private IdempotencyResult acquireIdempotency(String idempotencyKey, String requestHash) {
@@ -1192,6 +1281,14 @@ public class BookingRevalidateService {
       PassengerSummary passengerSummary,
       List<NormalizedContact> contacts,
       List<NormalizedPassenger> passengers) {}
+
+  private record RevalidateSegmentFingerprint(String direction, Long flightId, Long fareId) {}
+
+  private record RevalidateFingerprintPayload(
+      String tripType,
+      String promoCode,
+      PassengerSummary passengerSummary,
+      List<RevalidateSegmentFingerprint> segments) {}
 
   private record PricingSnapshot(
       String currency,

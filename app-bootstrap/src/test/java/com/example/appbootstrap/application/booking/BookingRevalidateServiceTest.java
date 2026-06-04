@@ -3,6 +3,7 @@ package com.example.appbootstrap.application.booking;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -44,6 +45,7 @@ import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -599,6 +601,52 @@ class BookingRevalidateServiceTest {
 
     assertEquals(new BigDecimal("298805"), response.pricing().discountAmount());
     assertEquals(new BigDecimal("2509249"), response.pricing().discountedTotalPrice());
+  }
+
+  @Test
+  void revalidate_reusesExistingSnapshotForIdenticalPayload() {
+    PassengerSummaryRequest summary = new PassengerSummaryRequest(1, 0, 0);
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));
+    when(flightInventoryAvailabilityService.countAvailableSeats(11L, 5L)).thenReturn(1L);
+    when(flightPricingService.calculateTotalPrice(
+            new BigDecimal("1500000.00"), summary.adult(), summary.child(), summary.infant()))
+        .thenReturn(new BigDecimal("1500000.00"));
+    when(countryCurrencyResolver.resolveCountryCode(fare)).thenReturn("VN");
+    when(countryCurrencyResolver.resolveCurrency("VN")).thenReturn("VND");
+    when(promotionPreviewService.preview(
+            eq(null), eq(new BigDecimal("1500000")), eq("VND"), eq("VN"), eq(true)))
+        .thenReturn(
+            PromotionPreviewService.PromoPreview.notApplicable(
+                "No promo code provided", new BigDecimal("1500000.00")));
+
+    var first = service.revalidate(new RevalidateFareRequest(11L, 101L, null, summary));
+
+    ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+    verify(valueOperations, times(2))
+        .set(keyCaptor.capture(), valueCaptor.capture(), eq(Duration.ofMinutes(15)));
+    String fingerprintKey = keyCaptor.getAllValues().stream()
+        .filter(key -> key.startsWith("revalidate:fingerprint:"))
+        .findFirst()
+        .orElseThrow();
+    String reusedRevalidateId = valueCaptor.getAllValues().stream()
+        .filter(first.revalidateId()::equals)
+        .findFirst()
+        .orElseThrow();
+
+    ArgumentCaptor<String> snapshotCaptor = ArgumentCaptor.forClass(String.class);
+    verify(valueOperations).set(eq("revalidate:" + first.revalidateId()), snapshotCaptor.capture(), any());
+    when(valueOperations.get(fingerprintKey)).thenReturn(reusedRevalidateId);
+    when(valueOperations.get("revalidate:" + first.revalidateId())).thenReturn(snapshotCaptor.getValue());
+
+    var second = service.revalidate(new RevalidateFareRequest(11L, 101L, null, summary));
+
+    assertEquals(first.revalidateId(), second.revalidateId());
+    verify(flightFareRepository, times(1)).findByIdWithDetails(101L);
+    verify(valueOperations, times(1)).set(eq("revalidate:" + first.revalidateId()), any(), any());
+    verify(valueOperations, times(1)).set(eq(fingerprintKey), any(), any());
+    verify(valueOperations, times(2)).get(contains("revalidate:fingerprint:"));
   }
 
   private void stubBookingPersistence(
