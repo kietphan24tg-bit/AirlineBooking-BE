@@ -195,17 +195,26 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
 
   private String buildHtml(EmailView view) {
     String intro =
-        "Your booking has been confirmed successfully. Please review your itinerary, passenger details, and payment summary below.";
+        "Your booking has been confirmed successfully. "
+            + "Please review your itinerary, passenger details, "
+            + "and payment summary below.";
 
     return """
         <div style="margin:0;padding:32px 16px;background:#f5f1ed;font-family:Arial,sans-serif;color:#1f2937;">
-          <div style="max-width:760px;margin:0 auto;background:#fffdf9;border:1px solid #eadfce;border-radius:28px;overflow:hidden;box-shadow:0 18px 44px rgba(62,16,30,0.10);">
-            <div style="background:linear-gradient(135deg,#5e1025 0%%,#7d0633 72%%,#b38728 100%%);padding:24px 28px;color:#ffffff;">
+          <div
+            style="max-width:760px;margin:0 auto;background:#fffdf9;border:1px solid #eadfce;
+              border-radius:28px;overflow:hidden;box-shadow:0 18px 44px rgba(62,16,30,0.10);">
+            <div
+              style="background:linear-gradient(135deg,#5e1025 0%%,#7d0633 72%%,#b38728 100%%);padding:24px 28px;color:#ffffff;">
               <table role="presentation" style="width:100%%;border-collapse:collapse;">
                 <tr>
                   <td>
-                    <div style="font-size:30px;font-weight:800;letter-spacing:-0.4px;">The Sovereign</div>
-                    <div style="margin-top:6px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:#f4df9d;">Booking Confirmation</div>
+                    <div style="font-size:30px;font-weight:800;letter-spacing:-0.4px;">
+                      The Sovereign
+                    </div>
+                    <div style="margin-top:6px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:#f4df9d;">
+                      Booking Confirmation
+                    </div>
                   </td>
                   <td style="text-align:right;font-size:13px;line-height:1.6;font-weight:700;vertical-align:middle;color:#f9e8b7;">
                     Premium Guest Services<br>
@@ -215,8 +224,13 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               </table>
             </div>
             <div style="padding:24px 28px 8px;">
-              <div style="border:1px solid #eadfce;border-radius:22px;background:linear-gradient(180deg,#fffaf2 0%%,#fffdf9 100%%);padding:20px 22px;">
-                <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Confirmed and ticketed</div>
+              <div
+                style="border:1px solid #eadfce;border-radius:22px;
+                  background:linear-gradient(180deg,#fffaf2 0%%,#fffdf9 100%%);
+                  padding:20px 22px;">
+                <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">
+                  Confirmed and ticketed
+                </div>
                 <p style="margin:10px 0 0;font-size:15px;line-height:1.7;color:#4b5563;">%s</p>
               </div>
             </div>
@@ -245,7 +259,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     String contactName = passengerName(view.leadPassenger());
     String email =
         firstNonBlank(contactEmail(view.primaryContact()), view.booking().getContactEmail(), "--");
-    String phone = firstNonBlank(contactPhone(view.primaryContact()), view.booking().getContactPhone(), "--");
+    String phone =
+        firstNonBlank(
+            contactPhone(view.primaryContact()), view.booking().getContactPhone(), "--");
     String qrCell =
         hasText(view.booking().getPnrCode())
             ? "<div style=\"font-size:34px;font-weight:800;color:#7d0633;letter-spacing:0.08em;\">"
@@ -256,42 +272,74 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
         view.payment() != null && hasText(view.payment().getQrImageUrl())
             ? "<img src=\""
                 + escapeHtml(view.payment().getQrImageUrl())
-                + "\" alt=\"Booking QR code\" width=\"108\" height=\"108\" style=\"display:block;border:0;outline:none;text-decoration:none;\">"
-            : "<div style=\"width:108px;height:108px;border:1px dashed #d2b77a;border-radius:18px;"
+                + "\" alt=\"Booking QR code\" width=\"108\" height=\"108\" "
+                + "style=\"display:block;border:0;outline:none;text-decoration:none;\">"
+            : "<div style=\"width:108px;height:108px;border:1px dashed #d2b77a;"
+                + "border-radius:18px;"
                 + "color:#a68a57;font-size:11px;display:flex;align-items:center;"
                 + "justify-content:center;background:#fff8e8;\">Reference QR</div>";
 
     return """
         <div style="padding:16px 28px 0;">
           <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Booking details</div>
-          <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0 14px;">
+          <table
+            role="presentation"
+            style="width:100%%;border-collapse:separate;border-spacing:0 14px;">
             <tr>
               <td style="width:56%%;vertical-align:top;">
                 <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;">
                   <tr>
-                    <td style="width:34%%;background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;border:1px solid #eadfce;border-right:0;border-radius:16px 0 0 0;">
+                    <td
+                      style="width:34%%;background:#f7f1e7;color:#6b4f19;padding:12px 14px;
+                        font-weight:700;border:1px solid #eadfce;border-right:0;border-radius:16px 0 0 0;">
                       Booking status
                     </td>
-                    <td style="background:#fffdf9;padding:12px 14px;border:1px solid #eadfce;border-radius:0 16px 0 0;">
+                    <td
+                      style="background:#fffdf9;padding:12px 14px;border:1px solid #eadfce;
+                        border-radius:0 16px 0 0;">
                       <div style="font-weight:800;color:#111827;">Confirmed</div>
                       <div style="color:#7d0633;font-size:13px;margin-top:4px;">%s</div>
                     </td>
                   </tr>
                   <tr>
-                    <td style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;border-left:1px solid #eadfce;border-right:0;">Booked on</td>
-                    <td style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">%s</td>
+                    <td
+                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
+                        border-left:1px solid #eadfce;border-right:0;">Booked on</td>
+                    <td
+                      style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">
+                      %s
+                    </td>
                   </tr>
                   <tr>
-                    <td style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;border-left:1px solid #eadfce;border-right:0;">Lead passenger</td>
-                    <td style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">%s</td>
+                    <td
+                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
+                        border-left:1px solid #eadfce;border-right:0;">Lead passenger</td>
+                    <td
+                      style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">
+                      %s
+                    </td>
                   </tr>
                   <tr>
-                    <td style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;border-left:1px solid #eadfce;border-right:0;">Contact email</td>
-                    <td style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">%s</td>
+                    <td
+                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
+                        border-left:1px solid #eadfce;border-right:0;">Contact email</td>
+                    <td
+                      style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">
+                      %s
+                    </td>
                   </tr>
                   <tr>
-                    <td style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;border:1px solid #eadfce;border-right:0;border-top:0;border-radius:0 0 0 16px;">Contact phone</td>
-                    <td style="background:#fffdf9;padding:12px 14px;border:1px solid #eadfce;border-top:0;border-radius:0 0 16px 0;">%s</td>
+                    <td
+                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
+                        border:1px solid #eadfce;border-right:0;border-top:0;
+                        border-radius:0 0 0 16px;">
+                      Contact phone
+                    </td>
+                    <td
+                      style="background:#fffdf9;padding:12px 14px;border:1px solid #eadfce;
+                        border-top:0;border-radius:0 0 16px 0;">
+                      %s
+                    </td>
                   </tr>
                 </table>
               </td>
@@ -300,16 +348,25 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                   <tr>
                     <td
                       colspan="2"
-                      style="background:#fff7e7;color:#7d0633;padding:12px 14px;font-size:13px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;border:1px solid #eadfce;border-radius:16px 16px 0 0;">
+                      style="background:#fff7e7;color:#7d0633;padding:12px 14px;font-size:13px;
+                        font-weight:800;letter-spacing:0.14em;text-transform:uppercase;
+                        border:1px solid #eadfce;border-radius:16px 16px 0 0;">
                       Reference
                     </td>
                   </tr>
                   <tr>
                     <td
-                      style="width:58%%;background:#fffdf9;padding:18px 16px;border-left:1px solid #eadfce;border-bottom:1px solid #eadfce;vertical-align:middle;text-align:center;border-right:0;border-radius:0 0 0 16px;">
+                      style="width:58%%;background:#fffdf9;padding:18px 16px;
+                        border-left:1px solid #eadfce;border-bottom:1px solid #eadfce;
+                        vertical-align:middle;text-align:center;border-right:0;border-radius:0 0 0 16px;">
                       %s
                     </td>
-                    <td style="background:#fffdf9;padding:16px;border-right:1px solid #eadfce;border-bottom:1px solid #eadfce;vertical-align:middle;text-align:center;border-radius:0 0 16px 0;">%s</td>
+                    <td
+                      style="background:#fffdf9;padding:16px;border-right:1px solid #eadfce;
+                        border-bottom:1px solid #eadfce;vertical-align:middle;text-align:center;
+                        border-radius:0 0 16px 0;">
+                      %s
+                    </td>
                   </tr>
                 </table>
               </td>
@@ -332,7 +389,8 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     for (TicketEntity ticket : view.tickets()) {
       PassengerEntity passenger = ticket.getPassenger();
       FlightSeatEntity seat = resolvedSeat(view.seatAssignments(), ticket);
-      String seatLabel = seat == null || !hasText(seat.getSeatNumber()) ? "Not selected" : seat.getSeatNumber();
+      String seatLabel =
+          seat == null || !hasText(seat.getSeatNumber()) ? "Not selected" : seat.getSeatNumber();
       rows.append(
           """
           <tr>
@@ -350,12 +408,17 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     return """
         <div style="padding:20px 28px 0;">
           <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Passengers</div>
-          <table role="presentation" style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+          <table
+            role="presentation"
+            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
+              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
             <tr>
               <td style="width:48%%;background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
                 Passenger
               </td>
-              <td style="width:24%%;background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Flight</td>
+              <td style="width:24%%;background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+                Flight
+              </td>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Seat</td>
             </tr>
             %s
@@ -404,20 +467,39 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                   escapeHtml(route),
                   escapeHtml(formatDate(flight.getDepartureTime())),
                   escapeHtml(nullToBlank(ticket.getFareClass().getCode())),
-                  escapeHtml(formatFlightMoment(flight.getDepartureTime(), flight.getDepartureAirport().getTimeZone(), flight.getDepartureAirport().getCity(), flight.getDepartureAirport().getCode(), flight.getDepartureTerminal())),
-                  escapeHtml(formatFlightMoment(flight.getArrivalTime(), flight.getArrivalAirport().getTimeZone(), flight.getArrivalAirport().getCity(), flight.getArrivalAirport().getCode(), flight.getArrivalTerminal()))));
+                  escapeHtml(
+                      formatFlightMoment(
+                          flight.getDepartureTime(),
+                          flight.getDepartureAirport().getTimeZone(),
+                          flight.getDepartureAirport().getCity(),
+                          flight.getDepartureAirport().getCode(),
+                          flight.getDepartureTerminal())),
+                  escapeHtml(
+                      formatFlightMoment(
+                          flight.getArrivalTime(),
+                          flight.getArrivalAirport().getTimeZone(),
+                          flight.getArrivalAirport().getCity(),
+                          flight.getArrivalAirport().getCode(),
+                          flight.getArrivalTerminal()))));
     }
 
     return """
         <div style="padding:20px 28px 0;">
           <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Flight summary</div>
-          <table role="presentation" style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+          <table
+            role="presentation"
+            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
+              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
             <tr>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Flight</td>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Date</td>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Fare</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Departure</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Arrival</td>
+              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+                Departure
+              </td>
+              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+                Arrival
+              </td>
             </tr>
             %s
           </table>
@@ -464,7 +546,11 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     rows.append(
         """
         <tr>
-          <td colspan="3" style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">Total paid</td>
+          <td
+            colspan="3"
+            style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">
+            Total paid
+          </td>
           <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
           <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
           <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
@@ -480,17 +566,32 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     return """
         <div style="padding:20px 28px 0;">
           <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Fare and add-ons</div>
-          <table role="presentation" style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+          <table
+            role="presentation"
+            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
+              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
             <tr>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;">Leg</td>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;">Passenger</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;">Description</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;text-align:right;">
+              <td
+                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #eadfce;">Description</td>
+              <td
+                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #eadfce;text-align:right;">
                 Base fare
               </td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;text-align:right;">Taxes</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;text-align:right;">Seat / services</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;text-align:right;">Total</td>
+              <td
+                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #eadfce;text-align:right;">Taxes</td>
+              <td
+                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #eadfce;text-align:right;">
+                Seat / services
+              </td>
+              <td
+                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #eadfce;text-align:right;">Total</td>
             </tr>
             %s
           </table>
@@ -500,7 +601,8 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
   }
 
   private String buildPaymentSection(EmailView view) {
-    String paymentDate = view.payment() == null ? "--" : formatDateTime(view.payment().getPaidAt());
+    String paymentDate =
+        view.payment() == null ? "--" : formatDateTime(view.payment().getPaidAt());
     String paymentMethod =
         view.payment() == null ? "--" : paymentMethodLabel(view.payment().getPaymentMethod());
     String amount =
@@ -511,7 +613,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     return """
         <div style="padding:20px 28px 28px;">
           <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Payment</div>
-          <table role="presentation" style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+          <table
+            role="presentation"
+            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
+              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
             <tr>
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
                 Paid at
@@ -519,7 +624,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
                 Method
               </td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;text-align:right;">
+              <td
+                style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;
+                  border-bottom:1px solid #eadfce;text-align:right;">
                 Amount
               </td>
             </tr>
@@ -566,7 +673,8 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             new FareLine(
                 leg,
                 passengerName,
-                "Seat selection - " + nullToBlank(seatAssignment.getFlightSeat().getSeatNumber()),
+                "Seat selection - "
+                    + nullToBlank(seatAssignment.getFlightSeat().getSeatNumber()),
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 seatAssignment.getSurchargeAmount(),
@@ -596,8 +704,12 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
         service.getQuantity() == null || service.getQuantity() <= 1
             ? ""
             : " x" + service.getQuantity();
-    if (service.getServiceOption() != null && hasText(service.getServiceOption().getName())) {
-      return service.getService().getName() + " - " + service.getServiceOption().getName() + quantity;
+    if (service.getServiceOption() != null
+        && hasText(service.getServiceOption().getName())) {
+      return service.getService().getName()
+          + " - "
+          + service.getServiceOption().getName()
+          + quantity;
     }
     return service.getService().getName() + quantity;
   }
@@ -687,7 +799,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
       return "";
     }
     try {
-      return value.atZoneSameInstant(ZoneId.of(timeZone)).format(DateTimeFormatter.ofPattern("xxx"));
+      return value
+          .atZoneSameInstant(ZoneId.of(timeZone))
+          .format(DateTimeFormatter.ofPattern("xxx"));
     } catch (DateTimeException ignored) {
       return "";
     }
