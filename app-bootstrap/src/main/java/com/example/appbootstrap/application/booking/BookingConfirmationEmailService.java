@@ -237,7 +237,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                       <tr>
                         <td style="vertical-align:top;">
                           <div style="font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.1;color:#f1d58c;">
-                            Dat cho thanh cong!
+                            Booking confirmed!
                           </div>
                           <div style="margin-top:8px;font-size:13px;line-height:1.7;color:#f3e5cb;">%s</div>
                         </td>
@@ -273,7 +273,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             %s
             <div style="padding:0 18px 18px;text-align:center;font-size:10px;line-height:1.6;color:#c9a980;">
               &copy; 2026 The Sovereign Airlines. All rights reserved.<br>
-              Day la email tu dong, vui long khong tra loi.
+              This is an automated email. Please do not reply.
             </div>
           </div>
         </div>
@@ -320,7 +320,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                 colspan="4"
                 style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
                   font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
-                THONG TIN LIEN HE
+                CONTACT DETAILS
               </td>
             </tr>
             <tr>
@@ -389,7 +389,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                 colspan="3"
                 style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
                   font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
-                THONG TIN HANH KHACH
+                PASSENGER DETAILS
               </td>
             </tr>
             <tr>
@@ -476,7 +476,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                 colspan="5"
                 style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
                   font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
-                THONG TIN CHUYEN BAY
+                FLIGHT DETAILS
               </td>
             </tr>
             <tr>
@@ -499,24 +499,31 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
 
   private String buildFareSection(EmailView view) {
     List<FareLine> lines = fareLines(view);
+    List<FareLine> fareBreakdown =
+        lines.stream().filter(line -> "FARE".equals(line.category())).toList();
+    List<FareLine> ancillaryBreakdown =
+        lines.stream().filter(line -> "ANCILLARY".equals(line.category())).toList();
     BigDecimal fareSubtotal = BigDecimal.ZERO;
     BigDecimal tax = BigDecimal.ZERO;
     BigDecimal ancillary = BigDecimal.ZERO;
     BigDecimal total = BigDecimal.ZERO;
-    StringBuilder rows = new StringBuilder();
+    StringBuilder fareRows = new StringBuilder();
+    StringBuilder ancillaryRows = new StringBuilder();
 
     for (FareLine line : lines) {
       fareSubtotal = fareSubtotal.add(nonNullMoney(line.baseAmount()));
       tax = tax.add(nonNullMoney(line.tax()));
       ancillary = ancillary.add(nonNullMoney(line.ancillaryAmount()));
       total = total.add(nonNullMoney(line.total()));
-      rows.append(
+    }
+
+    for (FareLine line : fareBreakdown) {
+      fareRows.append(
           """
           <tr>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
             <td
@@ -530,29 +537,89 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                   escapeHtml(line.description()),
                   escapeHtml(formatMoney(line.baseAmount(), line.currency())),
                   escapeHtml(formatMoney(line.tax(), line.currency())),
-                  escapeHtml(formatMoney(line.ancillaryAmount(), line.currency())),
                   escapeHtml(formatMoney(line.total(), line.currency()))));
     }
 
-    rows.append(
+    for (FareLine line : ancillaryBreakdown) {
+      ancillaryRows.append(
+          """
+          <tr>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td
+              style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;
+                text-align:right;font-weight:700;color:#241616;">%s</td>
+          </tr>
+          """
+              .formatted(
+                  escapeHtml(line.description()),
+                  escapeHtml(line.passengerName()),
+                  escapeHtml(line.leg()),
+                  escapeHtml(line.detail()),
+                  escapeHtml(formatMoney(line.total(), line.currency()))));
+    }
+
+    String ancillarySection =
+        ancillaryBreakdown.isEmpty()
+            ? ""
+            : """
+        <div style="padding:0 14px 10px;">
+          <table
+            role="presentation"
+            style="width:100%%;border-collapse:separate;border-spacing:0;
+              background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td
+                colspan="5"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                ANCILLARIES & ADD-ONS
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Type</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Passenger</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Flight</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Details</td>
+              <td
+                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;text-align:right;">Amount</td>
+            </tr>
+            %s
+          </table>
+        </div>
+        """
+                .formatted(ancillaryRows);
+
+    String summaryRows =
         """
         <tr>
+          <td style="padding:12px 14px;border-bottom:1px solid #e7d2ad;background:#fbf3e6;color:#241616;font-weight:700;">Base fare</td>
+          <td style="padding:12px 14px;border-bottom:1px solid #e7d2ad;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 14px;border-bottom:1px solid #e7d2ad;background:#fbf3e6;color:#241616;font-weight:700;">Taxes</td>
+          <td style="padding:12px 14px;border-bottom:1px solid #e7d2ad;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
+        </tr>
+        <tr>
           <td
-            colspan="3"
-            style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">
-            Total paid
+            style="padding:12px 14px;border-bottom:1px solid #e7d2ad;background:#fbf3e6;color:#241616;font-weight:700;">
+            Ancillaries / add-ons
           </td>
-          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
-          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
-          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
-          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
+          <td style="padding:12px 14px;border-bottom:1px solid #e7d2ad;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
+        </tr>
+        <tr>
+          <td style="padding:14px;background:#f7ead3;color:#6a132c;font-weight:800;">Total paid</td>
+          <td style="padding:14px;background:#f7ead3;text-align:right;color:#6a132c;font-weight:800;">%s</td>
         </tr>
         """
             .formatted(
                 escapeHtml(formatMoney(fareSubtotal, view.booking().getCurrency())),
                 escapeHtml(formatMoney(tax, view.booking().getCurrency())),
                 escapeHtml(formatMoney(ancillary, view.booking().getCurrency())),
-                escapeHtml(formatMoney(total, view.booking().getCurrency()))));
+                escapeHtml(formatMoney(total, view.booking().getCurrency())));
 
     return """
         <div style="padding:0 14px 10px;">
@@ -562,10 +629,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
               <td
-                colspan="7"
+                colspan="6"
                 style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
                   font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
-                CHI TIET GIA VE
+                FARE BREAKDOWN
               </td>
             </tr>
             <tr>
@@ -573,7 +640,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Passenger</td>
               <td
                 style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #e7d2ad;">Description</td>
+                  border-bottom:1px solid #e7d2ad;">Fare</td>
               <td
                 style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
                   border-bottom:1px solid #e7d2ad;text-align:right;">
@@ -584,18 +651,30 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                   border-bottom:1px solid #e7d2ad;text-align:right;">Taxes</td>
               <td
                 style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #e7d2ad;text-align:right;">
-                Seat / services
-              </td>
-              <td
-                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
                   border-bottom:1px solid #e7d2ad;text-align:right;">Total</td>
             </tr>
             %s
           </table>
         </div>
+        %s
+        <div style="padding:0 14px 10px;">
+          <table
+            role="presentation"
+            style="width:100%%;border-collapse:separate;border-spacing:0;
+              background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td
+                colspan="2"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                PAYMENT SUMMARY
+              </td>
+            </tr>
+            %s
+          </table>
+        </div>
         """
-        .formatted(rows);
+        .formatted(fareRows, ancillarySection, summaryRows);
   }
 
   private String buildPaymentSection(EmailView view) {
@@ -618,7 +697,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                 colspan="3"
                 style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
                   font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
-                THONG TIN THANH TOAN
+                PAYMENT DETAILS
               </td>
             </tr>
             <tr>
@@ -654,15 +733,15 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               border:1px solid rgba(230,196,114,0.24);border-radius:12px;overflow:hidden;">
             <tr>
               <td style="padding:14px 16px;color:#f3e5cb;">
-                <div style="font-size:12px;font-weight:800;color:#f1d58c;">Can ho tro?</div>
+                <div style="font-size:12px;font-weight:800;color:#f1d58c;">Need help?</div>
                 <div style="margin-top:6px;font-size:12px;line-height:1.6;">
-                  Lien he tong dai 1900 1886<br>
-                  hoac truy cap thesovereign.com
+                  Contact our hotline at 1900 1886<br>
+                  or visit thesovereign.com
                 </div>
               </td>
               <td style="width:180px;padding:14px 16px;text-align:right;">
                 <a href="https://thesovereign.com" style="display:inline-block;background:#7a1532;border:1px solid #d9b467;border-radius:999px;padding:10px 16px;color:#f8ebcf;text-decoration:none;font-size:12px;font-weight:800;">
-                  Quan ly dat cho
+                  Manage booking
                 </a>
               </td>
             </tr>
@@ -682,11 +761,13 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
 
       lines.add(
           new FareLine(
+              "FARE",
               leg,
               passengerName,
               firstNonBlank(ticket.getFareClass().getCode(), "Fare")
                   + " - "
                   + firstNonBlank(ticket.getFareClass().getName(), "Standard fare"),
+              firstNonBlank(ticket.getFareClass().getName(), "Standard fare"),
               nonNullMoney(ticket.getFlightFare().getBasePrice()),
               nonNullMoney(ticket.getFlightFare().getTotalTaxAmount()),
               BigDecimal.ZERO,
@@ -701,9 +782,11 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
           && seatAssignment.getSurchargeAmount().compareTo(BigDecimal.ZERO) > 0) {
         lines.add(
             new FareLine(
+                "ANCILLARY",
                 leg,
                 passengerName,
-                "Seat selection - " + nullToBlank(seatAssignment.getFlightSeat().getSeatNumber()),
+                "Seat selection",
+                nullToBlank(seatAssignment.getFlightSeat().getSeatNumber()),
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 seatAssignment.getSurchargeAmount(),
@@ -715,8 +798,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     for (BookingServiceEntity service : view.services()) {
       lines.add(
           new FareLine(
+              "ANCILLARY",
               "Add-on",
               passengerName(service.getPassenger()),
+              firstNonBlank(service.getService().getName(), "Add-on"),
               serviceDescription(service),
               BigDecimal.ZERO,
               BigDecimal.ZERO,
@@ -907,9 +992,11 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
       PassengerEntity leadPassenger) {}
 
   private record FareLine(
+      String category,
       String leg,
       String passengerName,
       String description,
+      String detail,
       BigDecimal baseAmount,
       BigDecimal tax,
       BigDecimal ancillaryAmount,

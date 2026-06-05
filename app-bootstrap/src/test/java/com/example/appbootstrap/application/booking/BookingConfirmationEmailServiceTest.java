@@ -13,6 +13,7 @@ import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.FlightSeatEntity;
 import com.example.modulebooking.entity.PassengerEntity;
+import com.example.modulebooking.entity.PassengerSeatAssignmentEntity;
 import com.example.modulebooking.entity.TicketEntity;
 import com.example.modulebooking.repository.BookingContactRepository;
 import com.example.modulebooking.repository.BookingRepository;
@@ -104,18 +105,54 @@ class BookingConfirmationEmailServiceTest {
     assertEquals("guest@example.com", message.getAllRecipients()[0].toString());
     assertEquals("The Sovereign Booking Confirmation - PNR ABC123", message.getSubject());
     assertTrue(html.contains("The Sovereign"));
-    assertTrue(html.contains("Dat cho thanh cong!"));
-    assertTrue(html.contains("THONG TIN LIEN HE"));
-    assertTrue(html.contains("THONG TIN HANH KHACH"));
-    assertTrue(html.contains("THONG TIN CHUYEN BAY"));
-    assertTrue(html.contains("CHI TIET GIA VE"));
-    assertTrue(html.contains("THONG TIN THANH TOAN"));
+    assertTrue(html.contains("Booking confirmed!"));
+    assertTrue(html.contains("CONTACT DETAILS"));
+    assertTrue(html.contains("PASSENGER DETAILS"));
+    assertTrue(html.contains("FLIGHT DETAILS"));
+    assertTrue(html.contains("FARE BREAKDOWN"));
+    assertTrue(html.contains("PAYMENT SUMMARY"));
+    assertTrue(html.contains("PAYMENT DETAILS"));
     assertTrue(html.contains("ABC123"));
     assertTrue(html.contains("NGUYEN, An"));
     assertTrue(html.contains("12A"));
     assertTrue(html.contains("color:#7a4f17"));
+    assertTrue(!html.contains("ANCILLARIES & ADD-ONS"));
+    assertTrue(!html.contains("Seat / services"));
     assertNotNull(booking.getTicketEmailSentAt());
     verify(bookingRepository).save(booking);
+  }
+
+  @Test
+  void shouldRenderAncillarySectionWhenSeatSurchargeExists() throws Exception {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking);
+    PassengerSeatAssignmentEntity seatAssignment = seatAssignment(booking, ticket, "5B", "40000");
+    MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(ticketRepository.findByBookingIdWithDetails(10L)).thenReturn(List.of(ticket));
+    when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
+        .thenReturn(List.of(contact("guest@example.com", true)));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInOrderByLatest(10L, List.of("SUCCESS")))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(10L, List.of("BOOKED")))
+        .thenReturn(List.of(seatAssignment));
+    when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+    service.sendIfNeeded(10L);
+
+    ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(mailSender).send(captor.capture());
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    captor.getValue().writeTo(output);
+    String html = output.toString(StandardCharsets.UTF_8);
+
+    assertTrue(html.contains("ANCILLARIES & ADD-ONS"));
+    assertTrue(html.contains("Seat selection"));
+    assertTrue(html.contains("5B"));
+    assertTrue(html.contains("40.000 VND"));
+    assertTrue(html.contains("PAYMENT SUMMARY"));
   }
 
   @Test
@@ -243,5 +280,23 @@ class BookingConfirmationEmailServiceTest {
     ticket.setFareClass(fareClass);
     ticket.setFlightFare(flightFare);
     return ticket;
+  }
+
+  private PassengerSeatAssignmentEntity seatAssignment(
+      BookingEntity booking, TicketEntity ticket, String seatNumber, String surchargeAmount) {
+    FlightSeatEntity seat = new FlightSeatEntity();
+    seat.setFlight(ticket.getFlight());
+    seat.setSeatNumber(seatNumber);
+
+    PassengerSeatAssignmentEntity assignment = new PassengerSeatAssignmentEntity();
+    assignment.setBooking(booking);
+    assignment.setPassenger(ticket.getPassenger());
+    assignment.setFlightSeat(seat);
+    assignment.setStatus("BOOKED");
+    assignment.setSurchargeAmount(new BigDecimal(surchargeAmount));
+    assignment.setCurrency("VND");
+    assignment.setCreatedAt(OffsetDateTime.parse("2026-04-30T09:00:00Z"));
+    assignment.setUpdatedAt(OffsetDateTime.parse("2026-04-30T09:00:00Z"));
+    return assignment;
   }
 }
