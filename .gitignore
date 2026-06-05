@@ -43,6 +43,7 @@ out/
 
 ### Logs & temp ###
 *.log
+*.pid
 tmp/
 *.pdf
 

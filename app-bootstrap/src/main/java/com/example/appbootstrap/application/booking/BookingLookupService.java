@@ -279,8 +279,8 @@ public class BookingLookupService {
         pendingPayment || confirmed,
         pendingPayment || confirmed,
         confirmed,
-        pendingPayment,
-        pendingPayment);
+        confirmed,
+        confirmed || pendingPayment);
   }
 
   private boolean matchesPassengerLastName(

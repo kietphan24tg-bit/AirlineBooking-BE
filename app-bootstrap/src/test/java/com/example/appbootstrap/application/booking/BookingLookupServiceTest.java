@@ -137,6 +137,32 @@ class BookingLookupServiceTest {
     assertEquals(true, response.actions().canCheckIn());
   }
 
+  @Test
+  void lookup_returnsAllManageActionsForConfirmedBooking() {
+    BookingEntity booking = booking(10L, "ABC123", "CONFIRMED");
+    PassengerEntity passenger = passenger(1L, booking, "Nguyen");
+
+    when(bookingRepository.findByPnrCode("ABC123")).thenReturn(Optional.of(booking));
+    when(passengerRepository.findByBookingIdOrderById(10L)).thenReturn(List.of(passenger));
+    when(bookingContactRepository.findByBookingIdOrderByPrimaryDescIdAsc(10L))
+        .thenReturn(List.of());
+    when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L)).thenReturn(List.of());
+    when(bookingServiceRepository.sumPriceByBookingId(10L)).thenReturn(BigDecimal.ZERO);
+    when(passengerSeatAssignmentRepository.sumActiveSurchargeByBookingId(10L))
+        .thenReturn(BigDecimal.ZERO);
+    when(passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(eq(10L), any()))
+        .thenReturn(List.of());
+    when(bookingServiceRepository.findDetailedByBookingId(10L)).thenReturn(List.of());
+
+    BookingLookupResponse response = service.lookup(new BookingLookupRequest("ABC123", "Nguyen"));
+
+    assertTrue(response.actions().canSelectSeat());
+    assertTrue(response.actions().canBuyAncillaries());
+    assertTrue(response.actions().canCheckIn());
+    assertTrue(response.actions().canChangeFlight());
+    assertTrue(response.actions().canCancel());
+  }
+
   private BookingEntity booking(Long id, String pnrCode, String status) {
     BookingEntity booking = new BookingEntity();
     booking.setId(id);
