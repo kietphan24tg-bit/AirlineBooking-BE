@@ -199,7 +199,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             + firstNonBlank(passengerName(view.leadPassenger()), "quy khach")
             + ". Chung toi da gui xac nhan dat cho den "
             + firstNonBlank(
-                contactEmail(view.primaryContact()), view.booking().getContactEmail(), "email dang ky")
+                contactEmail(view.primaryContact()),
+                view.booking().getContactEmail(),
+                "email dang ky")
             + ".";
 
     return """
@@ -215,7 +217,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               <div style="margin-top:6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#d9b467;">
                 Booking Confirmation
               </div>
-              <div style="margin:12px auto 0;width:140px;height:1px;background:linear-gradient(90deg,rgba(230,196,114,0),#e6c472,rgba(230,196,114,0));"></div>
+              <div
+                style="margin:12px auto 0;width:140px;height:1px;
+                  background:linear-gradient(90deg,rgba(230,196,114,0),#e6c472,rgba(230,196,114,0));"></div>
               <div style="margin-top:7px;font-size:14px;color:#c9a25b;">&#9671;</div>
             </div>
             <div style="padding:0 14px 14px;">
@@ -241,7 +245,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                           <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#e7c87e;">
                             Ma dat cho (PNR)
                           </div>
-                          <div style="margin-top:6px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.1;color:#f1d58c;">
+                          <div
+                            style="margin-top:6px;font-family:Georgia,'Times New Roman',serif;
+                              font-size:28px;line-height:1.1;color:#f1d58c;">
                             %s
                           </div>
                           <div style="margin-top:10px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#d6b676;">
@@ -305,22 +311,38 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
 
     return """
         <div style="padding:0 14px 10px;">
-          <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
+          <table
+            role="presentation"
+            style="width:100%%;border-collapse:separate;border-spacing:0;background:#fbf3e6;
+              border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td colspan="4" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+              <td
+                colspan="4"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
                 THONG TIN LIEN HE
               </td>
             </tr>
             <tr>
-              <td style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;">Hanh khach</td>
-              <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;font-weight:700;">%s</td>
-              <td style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;">So dien thoai</td>
+              <td
+                style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;
+                  font-size:11px;text-transform:uppercase;font-weight:700;">Hanh khach</td>
+              <td
+                style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;
+                  font-weight:700;">%s</td>
+              <td
+                style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;
+                  font-size:11px;text-transform:uppercase;font-weight:700;">So dien thoai</td>
               <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;">%s</td>
             </tr>
             <tr>
-              <td style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Email</td>
+              <td
+                style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;
+                  text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Email</td>
               <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;border-top:1px solid #e7d2ad;">%s</td>
-              <td style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Ngay dat cho</td>
+              <td
+                style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;
+                  text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Ngay dat cho</td>
               <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;border-top:1px solid #e7d2ad;">%s</td>
             </tr>
           </table>
@@ -343,7 +365,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
       rows.append(
           """
           <tr>
-            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;font-size:15px;font-weight:700;color:#241616;">%s</td>
+            <td
+              style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;
+                font-size:15px;font-weight:700;color:#241616;">%s</td>
             <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;font-size:14px;color:#241616;">%s</td>
             <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;font-size:14px;color:#241616;">%s</td>
           </tr>
@@ -361,7 +385,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             style="width:100%%;border-collapse:separate;border-spacing:0;
               background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td colspan="3" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+              <td
+                colspan="3"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
                 THONG TIN HANH KHACH
               </td>
             </tr>
@@ -372,7 +399,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               <td style="width:24%%;background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Flight
               </td>
-              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">Seat</td>
+              <td
+                style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;">Seat</td>
             </tr>
             %s
           </table>
@@ -443,7 +472,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             style="width:100%%;border-collapse:separate;border-spacing:0;
               background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td colspan="5" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+              <td
+                colspan="5"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
                 THONG TIN CHUYEN BAY
               </td>
             </tr>
@@ -487,7 +519,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
             <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;font-weight:700;color:#241616;">%s</td>
+            <td
+              style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;
+                text-align:right;font-weight:700;color:#241616;">%s</td>
           </tr>
           """
               .formatted(
@@ -527,7 +561,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             style="width:100%%;border-collapse:separate;border-spacing:0;
               background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td colspan="7" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+              <td
+                colspan="7"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
                 CHI TIET GIA VE
               </td>
             </tr>
@@ -577,7 +614,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             style="width:100%%;border-collapse:separate;border-spacing:0;
               background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td colspan="3" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+              <td
+                colspan="3"
+                style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;
+                  font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
                 THONG TIN THANH TOAN
               </td>
             </tr>
@@ -608,7 +648,10 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
   private String buildFooterSection() {
     return """
         <div style="padding:0 14px 16px;">
-          <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;background:#5e1027;border:1px solid rgba(230,196,114,0.24);border-radius:12px;overflow:hidden;">
+          <table
+            role="presentation"
+            style="width:100%%;border-collapse:separate;border-spacing:0;background:#5e1027;
+              border:1px solid rgba(230,196,114,0.24);border-radius:12px;overflow:hidden;">
             <tr>
               <td style="padding:14px 16px;color:#f3e5cb;">
                 <div style="font-size:12px;font-weight:800;color:#f1d58c;">Can ho tro?</div>
