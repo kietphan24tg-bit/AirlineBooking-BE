@@ -195,192 +195,142 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
 
   private String buildHtml(EmailView view) {
     String intro =
-        "Your booking has been confirmed successfully. "
-            + "Please review your itinerary, passenger details, "
-            + "and payment summary below.";
+        "Cam on "
+            + firstNonBlank(passengerName(view.leadPassenger()), "quy khach")
+            + ". Chung toi da gui xac nhan dat cho den "
+            + firstNonBlank(
+                contactEmail(view.primaryContact()), view.booking().getContactEmail(), "email dang ky")
+            + ".";
 
     return """
-        <div style="margin:0;padding:32px 16px;background:#f5f1ed;font-family:Arial,sans-serif;color:#1f2937;">
+        <div style="margin:0;padding:24px 12px;background:#1d1412;font-family:Arial,sans-serif;color:#f6ead6;">
           <div
-            style="max-width:760px;margin:0 auto;background:#fffdf9;border:1px solid #eadfce;
-              border-radius:28px;overflow:hidden;box-shadow:0 18px 44px rgba(62,16,30,0.10);">
-            <div
-              style="background:linear-gradient(135deg,#5e1025 0%%,#7d0633 72%%,#b38728 100%%);padding:24px 28px;color:#ffffff;">
-              <table role="presentation" style="width:100%%;border-collapse:collapse;">
+            style="max-width:640px;margin:0 auto;background:linear-gradient(180deg,#5b0d25 0%%,#45101c 100%%);
+              border:1px solid #8f6a33;border-radius:24px;overflow:hidden;
+              box-shadow:0 24px 54px rgba(0,0,0,0.35);">
+            <div style="padding:18px 22px 14px;color:#ffffff;text-align:center;">
+              <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:500;color:#e6c472;">
+                The Sovereign
+              </div>
+              <div style="margin-top:6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#d9b467;">
+                Booking Confirmation
+              </div>
+              <div style="margin:12px auto 0;width:140px;height:1px;background:linear-gradient(90deg,rgba(230,196,114,0),#e6c472,rgba(230,196,114,0));"></div>
+              <div style="margin-top:7px;font-size:14px;color:#c9a25b;">&#9671;</div>
+            </div>
+            <div style="padding:0 14px 14px;">
+              <table
+                role="presentation"
+                style="width:100%%;border-collapse:separate;border-spacing:0;background:#6a132c;
+                  border:1px solid rgba(230,196,114,0.22);border-radius:16px;overflow:hidden;">
                 <tr>
-                  <td>
-                    <div style="font-size:30px;font-weight:800;letter-spacing:-0.4px;">
-                      The Sovereign
-                    </div>
-                    <div style="margin-top:6px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:#f4df9d;">
-                      Booking Confirmation
-                    </div>
+                  <td style="width:78px;padding:18px 0 18px 18px;vertical-align:top;">
+                    <div style="width:48px;height:48px;border-radius:999px;border:1px solid #d7b164;color:#d7b164;
+                      text-align:center;line-height:48px;font-size:28px;font-weight:700;">&#10003;</div>
                   </td>
-                  <td style="text-align:right;font-size:13px;line-height:1.6;font-weight:700;vertical-align:middle;color:#f9e8b7;">
-                    Premium Guest Services<br>
-                    1900 1886
+                  <td style="padding:18px 14px 18px 0;vertical-align:top;">
+                    <table role="presentation" style="width:100%%;border-collapse:collapse;">
+                      <tr>
+                        <td style="vertical-align:top;">
+                          <div style="font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.1;color:#f1d58c;">
+                            Dat cho thanh cong!
+                          </div>
+                          <div style="margin-top:8px;font-size:13px;line-height:1.7;color:#f3e5cb;">%s</div>
+                        </td>
+                        <td style="width:180px;vertical-align:top;text-align:right;padding-left:10px;">
+                          <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#e7c87e;">
+                            Ma dat cho (PNR)
+                          </div>
+                          <div style="margin-top:6px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.1;color:#f1d58c;">
+                            %s
+                          </div>
+                          <div style="margin-top:10px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#d6b676;">
+                            Ngay dat cho
+                          </div>
+                          <div style="margin-top:4px;font-size:13px;color:#fff7e6;">%s</div>
+                          <div style="margin-top:10px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#d6b676;">
+                            Thanh toan xac nhan luc
+                          </div>
+                          <div style="margin-top:4px;font-size:13px;color:#fff7e6;">%s</div>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
             </div>
-            <div style="padding:24px 28px 8px;">
-              <div
-                style="border:1px solid #eadfce;border-radius:22px;
-                  background:linear-gradient(180deg,#fffaf2 0%%,#fffdf9 100%%);
-                  padding:20px 22px;">
-                <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">
-                  Confirmed and ticketed
-                </div>
-                <p style="margin:10px 0 0;font-size:15px;line-height:1.7;color:#4b5563;">%s</p>
-              </div>
+            %s
+            %s
+            %s
+            %s
+            %s
+            %s
+            <div style="padding:0 18px 18px;text-align:center;font-size:10px;line-height:1.6;color:#c9a980;">
+              &copy; 2026 The Sovereign Airlines. All rights reserved.<br>
+              Day la email tu dong, vui long khong tra loi.
             </div>
-            %s
-            %s
-            %s
-            %s
-            %s
           </div>
         </div>
         """
         .formatted(
             escapeHtml(intro),
+            escapeHtml(firstNonBlank(view.booking().getPnrCode(), "--")),
+            escapeHtml(formatDate(view.booking().getCreatedAt())),
+            escapeHtml(
+                view.payment() != null && view.payment().getPaidAt() != null
+                    ? formatDateTime(view.payment().getPaidAt())
+                    : "--"),
             buildBookingSection(view),
-            buildPassengerSection(view),
             buildFlightSection(view),
+            buildPassengerSection(view),
             buildFareSection(view),
-            buildPaymentSection(view));
+            buildPaymentSection(view),
+            buildFooterSection());
   }
 
   private String buildBookingSection(EmailView view) {
-    String statusNote =
-        view.payment() != null && view.payment().getPaidAt() != null
-            ? "Payment completed at " + formatDateTime(view.payment().getPaidAt())
-            : "Payment details have been recorded.";
     String contactName = passengerName(view.leadPassenger());
     String email =
         firstNonBlank(contactEmail(view.primaryContact()), view.booking().getContactEmail(), "--");
     String phone =
         firstNonBlank(contactPhone(view.primaryContact()), view.booking().getContactPhone(), "--");
-    String qrCell =
-        hasText(view.booking().getPnrCode())
-            ? "<div style=\"font-size:34px;font-weight:800;color:#7d0633;letter-spacing:0.08em;\">"
-                + escapeHtml(view.booking().getPnrCode())
-                + "</div>"
-            : "<div style=\"font-size:18px;color:#6b7280;\">--</div>";
-    String qrImage =
-        view.payment() != null && hasText(view.payment().getQrImageUrl())
-            ? "<img src=\""
-                + escapeHtml(view.payment().getQrImageUrl())
-                + "\" alt=\"Booking QR code\" width=\"108\" height=\"108\" "
-                + "style=\"display:block;border:0;outline:none;text-decoration:none;\">"
-            : "<div style=\"width:108px;height:108px;border:1px dashed #d2b77a;"
-                + "border-radius:18px;"
-                + "color:#a68a57;font-size:11px;display:flex;align-items:center;"
-                + "justify-content:center;background:#fff8e8;\">Reference QR</div>";
+    String emailMarkup =
+        hasText(email)
+            ? "<a href=\"mailto:"
+                + escapeHtml(email)
+                + "\" style=\"color:#7a4f17;text-decoration:none;font-weight:700;\">"
+                + escapeHtml(email)
+                + "</a>"
+            : "--";
 
     return """
-        <div style="padding:16px 28px 0;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Booking details</div>
-          <table
-            role="presentation"
-            style="width:100%%;border-collapse:separate;border-spacing:0 14px;">
+        <div style="padding:0 14px 10px;">
+          <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td style="width:56%%;vertical-align:top;">
-                <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;">
-                  <tr>
-                    <td
-                      style="width:34%%;background:#f7f1e7;color:#6b4f19;padding:12px 14px;
-                        font-weight:700;border:1px solid #eadfce;border-right:0;border-radius:16px 0 0 0;">
-                      Booking status
-                    </td>
-                    <td
-                      style="background:#fffdf9;padding:12px 14px;border:1px solid #eadfce;
-                        border-radius:0 16px 0 0;">
-                      <div style="font-weight:800;color:#111827;">Confirmed</div>
-                      <div style="color:#7d0633;font-size:13px;margin-top:4px;">%s</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td
-                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
-                        border-left:1px solid #eadfce;border-right:0;">Booked on</td>
-                    <td
-                      style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">
-                      %s
-                    </td>
-                  </tr>
-                  <tr>
-                    <td
-                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
-                        border-left:1px solid #eadfce;border-right:0;">Lead passenger</td>
-                    <td
-                      style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">
-                      %s
-                    </td>
-                  </tr>
-                  <tr>
-                    <td
-                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
-                        border-left:1px solid #eadfce;border-right:0;">Contact email</td>
-                    <td
-                      style="background:#fffdf9;padding:12px 14px;border-right:1px solid #eadfce;">
-                      %s
-                    </td>
-                  </tr>
-                  <tr>
-                    <td
-                      style="background:#f7f1e7;color:#6b4f19;padding:12px 14px;font-weight:700;
-                        border:1px solid #eadfce;border-right:0;border-top:0;
-                        border-radius:0 0 0 16px;">
-                      Contact phone
-                    </td>
-                    <td
-                      style="background:#fffdf9;padding:12px 14px;border:1px solid #eadfce;
-                        border-top:0;border-radius:0 0 16px 0;">
-                      %s
-                    </td>
-                  </tr>
-                </table>
+              <td colspan="4" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                THONG TIN LIEN HE
               </td>
-              <td style="width:44%%;vertical-align:top;">
-                <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;">
-                  <tr>
-                    <td
-                      colspan="2"
-                      style="background:#fff7e7;color:#7d0633;padding:12px 14px;font-size:13px;
-                        font-weight:800;letter-spacing:0.14em;text-transform:uppercase;
-                        border:1px solid #eadfce;border-radius:16px 16px 0 0;">
-                      Reference
-                    </td>
-                  </tr>
-                  <tr>
-                    <td
-                      style="width:58%%;background:#fffdf9;padding:18px 16px;
-                        border-left:1px solid #eadfce;border-bottom:1px solid #eadfce;
-                        vertical-align:middle;text-align:center;border-right:0;border-radius:0 0 0 16px;">
-                      %s
-                    </td>
-                    <td
-                      style="background:#fffdf9;padding:16px;border-right:1px solid #eadfce;
-                        border-bottom:1px solid #eadfce;vertical-align:middle;text-align:center;
-                        border-radius:0 0 16px 0;">
-                      %s
-                    </td>
-                  </tr>
-                </table>
-              </td>
+            </tr>
+            <tr>
+              <td style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;">Hanh khach</td>
+              <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;font-weight:700;">%s</td>
+              <td style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;">So dien thoai</td>
+              <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;">%s</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Email</td>
+              <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;border-top:1px solid #e7d2ad;">%s</td>
+              <td style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Ngay dat cho</td>
+              <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;border-top:1px solid #e7d2ad;">%s</td>
             </tr>
           </table>
         </div>
         """
         .formatted(
-            escapeHtml(statusNote),
-            escapeHtml(formatDate(view.booking().getCreatedAt())),
             escapeHtml(contactName),
-            escapeHtml(email),
             escapeHtml(phone),
-            qrCell,
-            qrImage);
+            emailMarkup,
+            escapeHtml(formatDate(view.booking().getCreatedAt())));
   }
 
   private String buildPassengerSection(EmailView view) {
@@ -393,9 +343,9 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
       rows.append(
           """
           <tr>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;font-size:15px;font-weight:700;">%s</td>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;font-size:14px;">%s</td>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;font-size:14px;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;font-size:15px;font-weight:700;color:#241616;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;font-size:14px;color:#241616;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;font-size:14px;color:#241616;">%s</td>
           </tr>
           """
               .formatted(
@@ -405,20 +355,24 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     }
 
     return """
-        <div style="padding:20px 28px 0;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Passengers</div>
+        <div style="padding:0 14px 10px;">
           <table
             role="presentation"
-            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
-              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+            style="width:100%%;border-collapse:separate;border-spacing:0;
+              background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td style="width:48%%;background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+              <td colspan="3" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                THONG TIN HANH KHACH
+              </td>
+            </tr>
+            <tr>
+              <td style="width:48%%;background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Passenger
               </td>
-              <td style="width:24%%;background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+              <td style="width:24%%;background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Flight
               </td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Seat</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">Seat</td>
             </tr>
             %s
           </table>
@@ -451,14 +405,14 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
       rows.append(
           """
           <tr>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;">
-              <div style="font-weight:800;color:#111827;">%s</div>
-              <div style="margin-top:4px;font-size:12px;color:#6b7280;">%s</div>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;">
+              <div style="font-weight:800;color:#241616;">%s</div>
+              <div style="margin-top:4px;font-size:12px;color:#6e5843;">%s</div>
             </td>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
-            <td style="padding:14px 16px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:14px 16px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
           </tr>
           """
               .formatted(
@@ -483,20 +437,24 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
     }
 
     return """
-        <div style="padding:20px 28px 0;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Flight summary</div>
+        <div style="padding:0 14px 10px;">
           <table
             role="presentation"
-            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
-              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+            style="width:100%%;border-collapse:separate;border-spacing:0;
+              background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Flight</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Date</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">Fare</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+              <td colspan="5" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                THONG TIN CHUYEN BAY
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">Flight</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">Date</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">Fare</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Departure
               </td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Arrival
               </td>
             </tr>
@@ -523,13 +481,13 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
       rows.append(
           """
           <tr>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;text-align:right;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;text-align:right;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;text-align:right;">%s</td>
-            <td style="padding:12px 14px;border-bottom:1px solid #f0e7da;background:#fffdf9;text-align:right;font-weight:700;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;color:#241616;">%s</td>
+            <td style="padding:12px 14px;border-bottom:1px solid #efe0c5;background:#fbf3e6;text-align:right;font-weight:700;color:#241616;">%s</td>
           </tr>
           """
               .formatted(
@@ -547,13 +505,13 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
         <tr>
           <td
             colspan="3"
-            style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">
+            style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">
             Total paid
           </td>
-          <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
-          <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
-          <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
-          <td style="padding:14px;border-bottom:0;background:#fff7e7;font-weight:800;text-align:right;color:#7d0633;">%s</td>
+          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
+          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
+          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
+          <td style="padding:14px;border-bottom:0;background:#f7ead3;font-weight:800;text-align:right;color:#6a132c;">%s</td>
         </tr>
         """
             .formatted(
@@ -563,34 +521,38 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                 escapeHtml(formatMoney(total, view.booking().getCurrency()))));
 
     return """
-        <div style="padding:20px 28px 0;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Fare and add-ons</div>
+        <div style="padding:0 14px 10px;">
           <table
             role="presentation"
-            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
-              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+            style="width:100%%;border-collapse:separate;border-spacing:0;
+              background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;">Leg</td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;border-bottom:1px solid #eadfce;">Passenger</td>
+              <td colspan="7" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                CHI TIET GIA VE
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Leg</td>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;border-bottom:1px solid #e7d2ad;">Passenger</td>
               <td
-                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #eadfce;">Description</td>
+                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;">Description</td>
               <td
-                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #eadfce;text-align:right;">
+                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;text-align:right;">
                 Base fare
               </td>
               <td
-                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #eadfce;text-align:right;">Taxes</td>
+                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;text-align:right;">Taxes</td>
               <td
-                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #eadfce;text-align:right;">
+                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;text-align:right;">
                 Seat / services
               </td>
               <td
-                style="background:#fff7e7;color:#6b4f19;padding:12px 14px;font-weight:800;
-                  border-bottom:1px solid #eadfce;text-align:right;">Total</td>
+                style="background:#f7ead3;color:#7a4f17;padding:12px 14px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;text-align:right;">Total</td>
             </tr>
             %s
           </table>
@@ -609,34 +571,61 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             : formatMoney(view.payment().getAmount(), view.payment().getCurrency());
 
     return """
-        <div style="padding:20px 28px 28px;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#7d0633;">Payment</div>
+        <div style="padding:0 14px 10px;">
           <table
             role="presentation"
-            style="width:100%%;margin-top:12px;border-collapse:separate;border-spacing:0;
-              background:#fffdf9;border:1px solid #eadfce;border-radius:20px;overflow:hidden;">
+            style="width:100%%;border-collapse:separate;border-spacing:0;
+              background:#fbf3e6;border:1px solid #d4b06a;border-radius:12px;overflow:hidden;">
             <tr>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+              <td colspan="3" style="padding:12px 14px;border-bottom:1px solid #e7d2ad;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6a132c;">
+                THONG TIN THANH TOAN
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Paid at
               </td>
-              <td style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;border-bottom:1px solid #eadfce;">
+              <td style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;border-bottom:1px solid #e7d2ad;">
                 Method
               </td>
               <td
-                style="background:#fff7e7;color:#6b4f19;padding:12px 16px;font-weight:800;
-                  border-bottom:1px solid #eadfce;text-align:right;">
+                style="background:#f7ead3;color:#7a4f17;padding:12px 16px;font-weight:800;
+                  border-bottom:1px solid #e7d2ad;text-align:right;">
                 Amount
               </td>
             </tr>
             <tr>
-              <td style="padding:14px 16px;background:#fffdf9;">%s</td>
-              <td style="padding:14px 16px;background:#fffdf9;">%s</td>
-              <td style="padding:14px 16px;background:#fffdf9;text-align:right;font-weight:800;color:#7d0633;">%s</td>
+              <td style="padding:14px 16px;background:#fbf3e6;color:#241616;">%s</td>
+              <td style="padding:14px 16px;background:#fbf3e6;color:#241616;">%s</td>
+              <td style="padding:14px 16px;background:#fbf3e6;text-align:right;font-weight:800;color:#6a132c;">%s</td>
             </tr>
           </table>
         </div>
         """
         .formatted(escapeHtml(paymentDate), escapeHtml(paymentMethod), escapeHtml(amount));
+  }
+
+  private String buildFooterSection() {
+    return """
+        <div style="padding:0 14px 16px;">
+          <table role="presentation" style="width:100%%;border-collapse:separate;border-spacing:0;background:#5e1027;border:1px solid rgba(230,196,114,0.24);border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="padding:14px 16px;color:#f3e5cb;">
+                <div style="font-size:12px;font-weight:800;color:#f1d58c;">Can ho tro?</div>
+                <div style="margin-top:6px;font-size:12px;line-height:1.6;">
+                  Lien he tong dai 1900 1886<br>
+                  hoac truy cap thesovereign.com
+                </div>
+              </td>
+              <td style="width:180px;padding:14px 16px;text-align:right;">
+                <a href="https://thesovereign.com" style="display:inline-block;background:#7a1532;border:1px solid #d9b467;border-radius:999px;padding:10px 16px;color:#f8ebcf;text-decoration:none;font-size:12px;font-weight:800;">
+                  Quan ly dat cho
+                </a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        """;
   }
 
   private List<FareLine> fareLines(EmailView view) {

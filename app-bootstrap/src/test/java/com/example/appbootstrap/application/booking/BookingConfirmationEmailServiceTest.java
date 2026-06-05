@@ -104,15 +104,16 @@ class BookingConfirmationEmailServiceTest {
     assertEquals("guest@example.com", message.getAllRecipients()[0].toString());
     assertEquals("The Sovereign Booking Confirmation - PNR ABC123", message.getSubject());
     assertTrue(html.contains("The Sovereign"));
-    assertTrue(html.contains("Booking details"));
-    assertTrue(html.contains("Passengers"));
-    assertTrue(html.contains("Flight summary"));
-    assertTrue(html.contains("Fare and add-ons"));
-    assertTrue(html.contains("Payment"));
+    assertTrue(html.contains("Dat cho thanh cong!"));
+    assertTrue(html.contains("THONG TIN LIEN HE"));
+    assertTrue(html.contains("THONG TIN HANH KHACH"));
+    assertTrue(html.contains("THONG TIN CHUYEN BAY"));
+    assertTrue(html.contains("CHI TIET GIA VE"));
+    assertTrue(html.contains("THONG TIN THANH TOAN"));
     assertTrue(html.contains("ABC123"));
     assertTrue(html.contains("NGUYEN, An"));
     assertTrue(html.contains("12A"));
-    assertTrue(html.contains("Confirmed"));
+    assertTrue(html.contains("color:#7a4f17"));
     assertNotNull(booking.getTicketEmailSentAt());
     verify(bookingRepository).save(booking);
   }
