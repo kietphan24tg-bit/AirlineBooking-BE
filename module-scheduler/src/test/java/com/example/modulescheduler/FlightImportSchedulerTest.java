@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.SyncTaskExecutor;
 
 @ExtendWith(MockitoExtension.class)
 class FlightImportSchedulerTest {
@@ -20,7 +21,8 @@ class FlightImportSchedulerTest {
     FlightImportProperties properties =
         new FlightImportProperties(
             false, false, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
-    FlightImportScheduler scheduler = new FlightImportScheduler(flightImportService, properties);
+    FlightImportScheduler scheduler =
+        new FlightImportScheduler(flightImportService, properties, new SyncTaskExecutor());
 
     scheduler.runFlightImportOnStartup();
 
@@ -32,7 +34,8 @@ class FlightImportSchedulerTest {
     FlightImportProperties properties =
         new FlightImportProperties(
             false, true, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
-    FlightImportScheduler scheduler = new FlightImportScheduler(flightImportService, properties);
+    FlightImportScheduler scheduler =
+        new FlightImportScheduler(flightImportService, properties, new SyncTaskExecutor());
 
     scheduler.runFlightImport();
 
@@ -44,7 +47,8 @@ class FlightImportSchedulerTest {
     FlightImportProperties properties =
         new FlightImportProperties(
             true, true, "https://airlabs.co", "key", "0 0 2 * * *", 30, 2, "VN,VJ,QH", 7);
-    FlightImportScheduler scheduler = new FlightImportScheduler(flightImportService, properties);
+    FlightImportScheduler scheduler =
+        new FlightImportScheduler(flightImportService, properties, new SyncTaskExecutor());
 
     scheduler.runFlightImport();
 

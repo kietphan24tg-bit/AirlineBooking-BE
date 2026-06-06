@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.SyncTaskExecutor;
 
 @ExtendWith(MockitoExtension.class)
 class AirlineImportSchedulerTest {
@@ -30,7 +31,8 @@ class AirlineImportSchedulerTest {
             true,
             "code,name");
     AirlineImportScheduler scheduler =
-        new AirlineImportScheduler(airlineImportService, properties, false);
+        new AirlineImportScheduler(
+            airlineImportService, properties, false, new SyncTaskExecutor());
 
     scheduler.runAirlineImport();
 
@@ -43,7 +45,8 @@ class AirlineImportSchedulerTest {
         new AirlineImportProperties(
             true, "https://airlabs.co", "key", "0 30 3 * * *", 20, 2, false, "", true, "code,name");
     AirlineImportScheduler scheduler =
-        new AirlineImportScheduler(airlineImportService, properties, false);
+        new AirlineImportScheduler(
+            airlineImportService, properties, false, new SyncTaskExecutor());
 
     scheduler.runAirlineImport();
 

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.SyncTaskExecutor;
 
 @ExtendWith(MockitoExtension.class)
 class FlightMaintenanceSchedulerTest {
@@ -20,7 +21,8 @@ class FlightMaintenanceSchedulerTest {
     FlightMaintenanceScheduler scheduler =
         new FlightMaintenanceScheduler(
             flightDataMaintenanceService,
-            new FlightMaintenanceProperties("0 30 2 * * *", false, true));
+            new FlightMaintenanceProperties("0 30 2 * * *", false, true),
+            new SyncTaskExecutor());
 
     scheduler.runMaintenanceOnStartup();
 
@@ -32,7 +34,8 @@ class FlightMaintenanceSchedulerTest {
     FlightMaintenanceScheduler scheduler =
         new FlightMaintenanceScheduler(
             flightDataMaintenanceService,
-            new FlightMaintenanceProperties("0 30 2 * * *", true, true));
+            new FlightMaintenanceProperties("0 30 2 * * *", true, true),
+            new SyncTaskExecutor());
 
     scheduler.runMaintenanceOnStartup();
 
