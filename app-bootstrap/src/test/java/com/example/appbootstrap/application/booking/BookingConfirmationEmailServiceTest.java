@@ -106,6 +106,9 @@ class BookingConfirmationEmailServiceTest {
     assertEquals("The Sovereign Booking Confirmation - PNR ABC123", message.getSubject());
     assertTrue(html.contains("The Sovereign"));
     assertTrue(html.contains("Booking confirmed!"));
+    assertTrue(html.contains("Thank you, NGUYEN, An"));
+    assertTrue(html.contains("Booking Code (PNR)"));
+    assertTrue(html.contains("Payment Confirmed At"));
     assertTrue(html.contains("CONTACT DETAILS"));
     assertTrue(html.contains("PASSENGER DETAILS"));
     assertTrue(html.contains("FLIGHT DETAILS"));

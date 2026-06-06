@@ -195,13 +195,13 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
 
   private String buildHtml(EmailView view) {
     String intro =
-        "Cam on "
-            + firstNonBlank(passengerName(view.leadPassenger()), "quy khach")
-            + ". Chung toi da gui xac nhan dat cho den "
+        "Thank you, "
+            + firstNonBlank(passengerName(view.leadPassenger()), "valued guest")
+            + ". We have sent this booking confirmation to "
             + firstNonBlank(
                 contactEmail(view.primaryContact()),
                 view.booking().getContactEmail(),
-                "email dang ky")
+                "your registered email")
             + ".";
 
     return """
@@ -243,19 +243,19 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
                         </td>
                         <td style="width:180px;vertical-align:top;text-align:right;padding-left:10px;">
                           <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#e7c87e;">
-                            Ma dat cho (PNR)
+                            Booking Code (PNR)
                           </div>
                           <div
-                            style="margin-top:6px;font-family:Georgia,'Times New Roman',serif;
-                              font-size:28px;line-height:1.1;color:#f1d58c;">
+                            style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:21px;
+                              font-weight:700;letter-spacing:0.12em;line-height:1.4;color:#f1d58c;word-break:break-all;">
                             %s
                           </div>
                           <div style="margin-top:10px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#d6b676;">
-                            Ngay dat cho
+                            Booking Date
                           </div>
                           <div style="margin-top:4px;font-size:13px;color:#fff7e6;">%s</div>
                           <div style="margin-top:10px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#d6b676;">
-                            Thanh toan xac nhan luc
+                            Payment Confirmed At
                           </div>
                           <div style="margin-top:4px;font-size:13px;color:#fff7e6;">%s</div>
                         </td>
@@ -326,13 +326,13 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
             <tr>
               <td
                 style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;
-                  font-size:11px;text-transform:uppercase;font-weight:700;">Hanh khach</td>
+                  font-size:11px;text-transform:uppercase;font-weight:700;">Passenger</td>
               <td
                 style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;
                   font-weight:700;">%s</td>
               <td
                 style="width:23%%;padding:12px 14px;background:#f7ead3;color:#7a4f17;
-                  font-size:11px;text-transform:uppercase;font-weight:700;">So dien thoai</td>
+                  font-size:11px;text-transform:uppercase;font-weight:700;">Phone Number</td>
               <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;">%s</td>
             </tr>
             <tr>
@@ -342,7 +342,7 @@ public class BookingConfirmationEmailService implements BookingConfirmationNotif
               <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;border-top:1px solid #e7d2ad;">%s</td>
               <td
                 style="padding:12px 14px;background:#f7ead3;color:#7a4f17;font-size:11px;
-                  text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Ngay dat cho</td>
+                  text-transform:uppercase;font-weight:700;border-top:1px solid #e7d2ad;">Booking Date</td>
               <td style="padding:12px 14px;background:#fbf3e6;color:#241616;font-size:14px;border-top:1px solid #e7d2ad;">%s</td>
             </tr>
           </table>
