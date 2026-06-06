@@ -133,8 +133,7 @@ public class CheckInSuccessEmailService {
     }
     if (cards.isEmpty()) {
       log.warn(
-          "Check-in success email skipped: no boarding pass cards built bookingId={}",
-          bookingId);
+          "Check-in success email skipped: no boarding pass cards built bookingId={}", bookingId);
       return;
     }
 
@@ -349,10 +348,8 @@ public class CheckInSuccessEmailService {
               .formatted(
                   escapeHtml(airportCode(flight.getDepartureAirport())),
                   escapeHtml(cityName(flight.getDepartureAirport())),
-                  escapeHtml(
-                      formatTime(flight.getDepartureTime(), flight.getDepartureAirport())),
-                  escapeHtml(
-                      formatDate(flight.getDepartureTime(), flight.getDepartureAirport())),
+                  escapeHtml(formatTime(flight.getDepartureTime(), flight.getDepartureAirport())),
+                  escapeHtml(formatDate(flight.getDepartureTime(), flight.getDepartureAirport())),
                   escapeHtml(firstNonBlank(flight.getFlightNumber(), "--")),
                   escapeHtml(airportCode(flight.getArrivalAirport())),
                   escapeHtml(cityName(flight.getArrivalAirport())),
@@ -370,8 +367,7 @@ public class CheckInSuccessEmailService {
             new MetaCell(
                 "Date", formatDate(flight.getDepartureTime(), flight.getDepartureAirport())),
             new MetaCell(
-                "Departure",
-                formatTime(flight.getDepartureTime(), flight.getDepartureAirport())),
+                "Departure", formatTime(flight.getDepartureTime(), flight.getDepartureAirport())),
             new MetaCell("Terminal", formatTerminal(flight.getDepartureTerminal())),
             new MetaCell(
                 "Arrival", formatTime(flight.getArrivalTime(), flight.getArrivalAirport())));
@@ -549,9 +545,7 @@ public class CheckInSuccessEmailService {
                 "Arrive early",
                 "Please be at the airport at least 90 minutes before departure."),
             renderNoteCell(
-                "&#128717;",
-                "Carry-on",
-                "Cabin baggage rules still apply at the boarding gate."),
+                "&#128717;", "Carry-on", "Cabin baggage rules still apply at the boarding gate."),
             renderNoteCell(
                 "&#128179;",
                 "Travel documents",
@@ -613,16 +607,12 @@ public class CheckInSuccessEmailService {
           </div>
         </div>
         """
-        .formatted(
-            escapeHtml(buildCheckInUrl(ticket)),
-            escapeHtml(buildManageBookingUrl()));
+        .formatted(escapeHtml(buildCheckInUrl(ticket)), escapeHtml(buildManageBookingUrl()));
   }
 
   private String buildQrImageUrl(String qrCode) {
     String encoded = URLEncoder.encode(firstNonBlank(qrCode, "--"), StandardCharsets.UTF_8);
-    return "https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl="
-        + encoded
-        + "&choe=UTF-8";
+    return "https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=" + encoded + "&choe=UTF-8";
   }
 
   private String buildManageBookingUrl() {
