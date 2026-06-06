@@ -1,8 +1,10 @@
 package com.example.appbootstrap.controller.checkin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.appbootstrap.application.checkin.CheckInSuccessEmailService;
 import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmRequest;
 import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmResponse;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueRequest;
@@ -27,13 +29,16 @@ class CheckInControllerTest {
 
   @Mock private CheckInConfirmService checkInConfirmService;
   @Mock private CheckInContinueService checkInContinueService;
+  @Mock private CheckInSuccessEmailService checkInSuccessEmailService;
 
   private CheckInController controller;
   private Validator validator;
 
   @BeforeEach
   void setUp() {
-    controller = new CheckInController(checkInContinueService, checkInConfirmService);
+    controller =
+        new CheckInController(
+            checkInContinueService, checkInConfirmService, checkInSuccessEmailService);
     validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 
@@ -113,5 +118,6 @@ class CheckInControllerTest {
 
     assertEquals("CHECKED_IN_COMPLETED", actual.booking().status());
     assertEquals(1, actual.boardingPasses().size());
+    verify(checkInSuccessEmailService).sendSuccess(response);
   }
 }

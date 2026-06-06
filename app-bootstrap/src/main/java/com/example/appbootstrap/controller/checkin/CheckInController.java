@@ -1,6 +1,7 @@
 package com.example.appbootstrap.controller.checkin;
 
 import com.example.appbootstrap.api.ApiSuccessMessage;
+import com.example.appbootstrap.application.checkin.CheckInSuccessEmailService;
 import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmRequest;
 import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmResponse;
 import com.example.appbootstrap.controller.checkin.dto.CheckInContinueRequest;
@@ -31,11 +32,15 @@ public class CheckInController {
 
   private final CheckInConfirmService checkInConfirmService;
   private final CheckInContinueService checkInContinueService;
+  private final CheckInSuccessEmailService checkInSuccessEmailService;
 
   public CheckInController(
-      CheckInContinueService checkInContinueService, CheckInConfirmService checkInConfirmService) {
+      CheckInContinueService checkInContinueService,
+      CheckInConfirmService checkInConfirmService,
+      CheckInSuccessEmailService checkInSuccessEmailService) {
     this.checkInContinueService = checkInContinueService;
     this.checkInConfirmService = checkInConfirmService;
+    this.checkInSuccessEmailService = checkInSuccessEmailService;
   }
 
   @PostMapping("/continue")
@@ -109,6 +114,7 @@ public class CheckInController {
                             new CheckInConfirmCommand.SegmentSelection(
                                 segment.flightId(), segment.passengerIds()))
                     .toList()));
+    checkInSuccessEmailService.sendSuccess(view);
     return toConfirmResponse(view);
   }
 
