@@ -31,8 +31,7 @@ class AirlineImportSchedulerTest {
             true,
             "code,name");
     AirlineImportScheduler scheduler =
-        new AirlineImportScheduler(
-            airlineImportService, properties, false, new SyncTaskExecutor());
+        new AirlineImportScheduler(airlineImportService, properties, false, new SyncTaskExecutor());
 
     scheduler.runAirlineImport();
 
@@ -45,8 +44,7 @@ class AirlineImportSchedulerTest {
         new AirlineImportProperties(
             true, "https://airlabs.co", "key", "0 30 3 * * *", 20, 2, false, "", true, "code,name");
     AirlineImportScheduler scheduler =
-        new AirlineImportScheduler(
-            airlineImportService, properties, false, new SyncTaskExecutor());
+        new AirlineImportScheduler(airlineImportService, properties, false, new SyncTaskExecutor());
 
     scheduler.runAirlineImport();
 

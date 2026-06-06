@@ -23,8 +23,7 @@ public class FlightMaintenanceScheduler {
   public FlightMaintenanceScheduler(
       FlightDataMaintenanceService flightDataMaintenanceService,
       FlightMaintenanceProperties properties,
-      @Qualifier("applicationTaskExecutor")
-      TaskExecutor taskExecutor) {
+      @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
     this.flightDataMaintenanceService = flightDataMaintenanceService;
     this.properties = properties;
     this.taskExecutor = taskExecutor;

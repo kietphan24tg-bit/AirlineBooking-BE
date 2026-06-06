@@ -33,8 +33,7 @@ class AirportImportSchedulerTest {
             "UNKNOWN",
             "UTC");
     AirportImportScheduler scheduler =
-        new AirportImportScheduler(
-            airportImportService, properties, false, new SyncTaskExecutor());
+        new AirportImportScheduler(airportImportService, properties, false, new SyncTaskExecutor());
 
     scheduler.runAirportImport();
 
@@ -58,8 +57,7 @@ class AirportImportSchedulerTest {
             "UNKNOWN",
             "UTC");
     AirportImportScheduler scheduler =
-        new AirportImportScheduler(
-            airportImportService, properties, false, new SyncTaskExecutor());
+        new AirportImportScheduler(airportImportService, properties, false, new SyncTaskExecutor());
 
     scheduler.runAirportImport();
 

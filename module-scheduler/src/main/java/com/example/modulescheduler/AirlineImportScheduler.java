@@ -26,8 +26,7 @@ public class AirlineImportScheduler {
       AirlineImportService airlineImportService,
       AirlineImportProperties properties,
       @Value("${app.airline-import.run-on-startup:false}") boolean runOnStartup,
-      @Qualifier("applicationTaskExecutor")
-      TaskExecutor taskExecutor) {
+      @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
     this.airlineImportService = airlineImportService;
     this.properties = properties;
     this.runOnStartup = runOnStartup;

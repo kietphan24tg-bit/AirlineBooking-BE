@@ -23,8 +23,7 @@ public class FlightImportScheduler {
   public FlightImportScheduler(
       FlightImportService flightImportService,
       FlightImportProperties properties,
-      @Qualifier("applicationTaskExecutor")
-      TaskExecutor taskExecutor) {
+      @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
     this.flightImportService = flightImportService;
     this.properties = properties;
     this.taskExecutor = taskExecutor;

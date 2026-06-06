@@ -23,8 +23,7 @@ public class FlightMockDataScheduler {
   public FlightMockDataScheduler(
       FlightMockDataService flightMockDataService,
       FlightMockDataProperties properties,
-      @Qualifier("applicationTaskExecutor")
-      TaskExecutor taskExecutor) {
+      @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
     this.flightMockDataService = flightMockDataService;
     this.properties = properties;
     this.taskExecutor = taskExecutor;
