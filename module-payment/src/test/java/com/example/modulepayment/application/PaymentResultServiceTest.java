@@ -24,7 +24,9 @@ import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.modulepayment.entity.PaymentEntity;
+import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.repository.PaymentRepository;
+import com.example.modulepayment.repository.PaymentWebhookEventRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -47,6 +49,7 @@ class PaymentResultServiceTest {
   @Mock private BookingServiceRepository bookingServiceRepository;
   @Mock private PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
   @Mock private PaymentWebhookService paymentWebhookService;
+  @Mock private PaymentWebhookEventRepository paymentWebhookEventRepository;
 
   private PaymentResultService service;
 
@@ -61,7 +64,8 @@ class PaymentResultServiceTest {
             bookingContactRepository,
             bookingServiceRepository,
             passengerSeatAssignmentRepository,
-            paymentWebhookService);
+            paymentWebhookService,
+            paymentWebhookEventRepository);
   }
 
   @Test
@@ -110,6 +114,24 @@ class PaymentResultServiceTest {
     assertEquals("ERROR", result.resultPage());
     assertEquals("Booking payment window has expired", result.failure().message());
     assertEquals(Boolean.FALSE, result.polling().shouldPoll());
+  }
+
+  @Test
+  void shouldReturnWebhookFailureMessageWhenAvailable() {
+    BookingEntity booking = booking("PENDING_PAYMENT");
+    PaymentEntity payment = payment(booking, "FAILED");
+    PaymentWebhookEventEntity webhookEvent = new PaymentWebhookEventEntity();
+    webhookEvent.setErrorMessage("Webhook amount does not match payment amount");
+
+    when(paymentRepository.findByIdAndBookingUserIdForUpdate(5L, 7L))
+        .thenReturn(Optional.of(payment));
+    when(paymentWebhookEventRepository.findTopByPaymentIdOrderByReceivedAtDesc(5L))
+        .thenReturn(Optional.of(webhookEvent));
+
+    PaymentResultStatusView result = service.getResultStatusForUser(5L, 7L);
+
+    assertEquals("ERROR", result.resultPage());
+    assertEquals("Webhook amount does not match payment amount", result.failure().message());
   }
 
   @Test

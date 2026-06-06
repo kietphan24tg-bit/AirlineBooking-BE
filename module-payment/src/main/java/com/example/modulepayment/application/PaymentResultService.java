@@ -20,8 +20,10 @@ import com.example.moduleflight.entity.FareClassEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.moduleflight.entity.FlightFareEntity;
 import com.example.modulepayment.entity.PaymentEntity;
+import com.example.modulepayment.entity.PaymentWebhookEventEntity;
 import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.repository.PaymentRepository;
+import com.example.modulepayment.repository.PaymentWebhookEventRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -59,6 +61,7 @@ public class PaymentResultService {
   private final BookingServiceRepository bookingServiceRepository;
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
   private final PaymentWebhookService paymentWebhookService;
+  private final PaymentWebhookEventRepository paymentWebhookEventRepository;
 
   public PaymentResultService(
       PaymentRepository paymentRepository,
@@ -68,7 +71,8 @@ public class PaymentResultService {
       BookingContactRepository bookingContactRepository,
       BookingServiceRepository bookingServiceRepository,
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
-      PaymentWebhookService paymentWebhookService) {
+      PaymentWebhookService paymentWebhookService,
+      PaymentWebhookEventRepository paymentWebhookEventRepository) {
     this.paymentRepository = paymentRepository;
     this.ticketRepository = ticketRepository;
     this.bookingFareHoldRepository = bookingFareHoldRepository;
@@ -77,6 +81,7 @@ public class PaymentResultService {
     this.bookingServiceRepository = bookingServiceRepository;
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
     this.paymentWebhookService = paymentWebhookService;
+    this.paymentWebhookEventRepository = paymentWebhookEventRepository;
   }
 
   @Transactional
@@ -125,7 +130,8 @@ public class PaymentResultService {
     PaymentResultStatusView.FailureView failure =
         "ERROR".equals(resultPage)
             ? new PaymentResultStatusView.FailureView(
-                "PAYMENT_RESULT_ERROR", buildFailureMessage(booking, paymentStatus, bookingStatus))
+                "PAYMENT_RESULT_ERROR",
+                buildFailureMessage(payment, booking, paymentStatus, bookingStatus))
             : null;
     return new PaymentResultStatusView(
         payment.getId(),
@@ -630,15 +636,35 @@ public class PaymentResultService {
   }
 
   private String buildFailureMessage(
-      BookingEntity booking, String paymentStatus, String bookingStatus) {
+      PaymentEntity payment, BookingEntity booking, String paymentStatus, String bookingStatus) {
     if ("EXPIRED".equalsIgnoreCase(bookingStatus)
         || isPendingPaymentExpired(booking, bookingStatus)) {
       return "Booking payment window has expired";
+    }
+    String webhookFailureMessage = resolveWebhookFailureMessage(payment);
+    if (webhookFailureMessage != null) {
+      return webhookFailureMessage;
     }
     if (ERROR_PAYMENT_STATUSES.contains(paymentStatus)) {
       return "Payment ended with status " + paymentStatus;
     }
     return "Booking is in status " + bookingStatus;
+  }
+
+  private String resolveWebhookFailureMessage(PaymentEntity payment) {
+    if (payment == null || payment.getId() == null) {
+      return null;
+    }
+    Optional<PaymentWebhookEventEntity> latestEvent =
+        paymentWebhookEventRepository.findTopByPaymentIdOrderByReceivedAtDesc(payment.getId());
+    if (latestEvent.isEmpty()) {
+      return null;
+    }
+    String errorMessage = latestEvent.get().getErrorMessage();
+    if (errorMessage == null || errorMessage.isBlank()) {
+      return null;
+    }
+    return errorMessage.trim();
   }
 
   private boolean isPendingPaymentExpired(BookingEntity booking, String bookingStatus) {

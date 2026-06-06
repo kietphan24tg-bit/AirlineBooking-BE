@@ -238,6 +238,45 @@ class PaymentWebhookServiceTest {
   }
 
   @Test
+  void shouldMarkStripeThbCheckoutPaymentSuccessAndConfirmBooking() {
+    NormalizedStripeWebhookEvent event =
+        new NormalizedStripeWebhookEvent(
+            "STRIPE",
+            "checkout.session.completed",
+            123L,
+            "cs_test_thb_123",
+            "pi_test_thb_123",
+            181500L,
+            "thb",
+            "paid",
+            OffsetDateTime.parse("2025-08-10T03:03:09Z"),
+            "evt_thb_123",
+            "t=1,v1=sig",
+            "{\"id\":\"evt_thb_123\"}");
+    PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
+    payment.setPaymentMethod("STRIPE_CARD");
+    payment.setTransactionId("cs_test_thb_123");
+    payment.setAmount(new BigDecimal("1815.00"));
+    payment.setCurrency("THB");
+
+    when(stripeWebhookSupport.parseAndVerify("payload", "signature")).thenReturn(event);
+    when(paymentWebhookEventRepository.existsByProviderAndIdempotencyKey("STRIPE", "evt_thb_123"))
+        .thenReturn(false);
+    when(paymentRepository.findByTransactionIdForUpdate("cs_test_thb_123"))
+        .thenReturn(Optional.of(payment));
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentWebhookService.handleStripeWebhook("payload", "signature");
+
+    assertEquals("SUCCESS", payment.getPaymentStatus());
+    assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(bookingConfirmationNotifier).sendIfNeeded(10L);
+  }
+
+  @Test
   void shouldRefundLateStripeSuccessWhenBookingAlreadyExpired() {
     NormalizedStripeWebhookEvent event =
         new NormalizedStripeWebhookEvent(
@@ -335,6 +374,31 @@ class PaymentWebhookServiceTest {
     assertEquals("SUCCESS", payment.getPaymentStatus());
     assertEquals("CONFIRMED", payment.getBooking().getStatus());
     assertEquals("pi_test_123", payment.getProviderPaymentReference());
+    verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
+    verify(bookingConfirmationNotifier).sendIfNeeded(10L);
+  }
+
+  @Test
+  void shouldReconcilePendingStripeThbPaymentWhenCheckoutIsAlreadyPaid() {
+    PaymentEntity payment = payment("PENDING", "PENDING_PAYMENT");
+    payment.setPaymentMethod("STRIPE_CARD");
+    payment.setTransactionId("cs_test_thb_123");
+    payment.setAmount(new BigDecimal("1815.00"));
+    payment.setCurrency("THB");
+
+    when(paymentRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(payment));
+    when(stripePaymentGateway.getCheckoutSessionStatus("cs_test_thb_123"))
+        .thenReturn(
+            new CheckoutSessionStatus(
+                "cs_test_thb_123", "pi_test_thb_123", "complete", "paid", 181500L, "thb"));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    paymentWebhookService.reconcilePendingStripePayment(123L);
+
+    assertEquals("SUCCESS", payment.getPaymentStatus());
+    assertEquals("CONFIRMED", payment.getBooking().getStatus());
+    assertEquals("pi_test_thb_123", payment.getProviderPaymentReference());
     verify(ticketIssuanceService).issueTicketsForConfirmedBooking(10L);
     verify(bookingConfirmationNotifier).sendIfNeeded(10L);
   }

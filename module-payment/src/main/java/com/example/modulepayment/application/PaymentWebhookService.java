@@ -591,7 +591,8 @@ public class PaymentWebhookService {
     if (amount == null) {
       return false;
     }
-    BigDecimal eventAmount = BigDecimal.valueOf(amount);
+    BigDecimal eventAmount =
+        fromStripeMinorUnits(amount, payment == null ? null : payment.getCurrency());
     return payment.getAmount() != null && payment.getAmount().compareTo(eventAmount) == 0;
   }
 
@@ -603,6 +604,21 @@ public class PaymentWebhookService {
     return payment.getCurrency() != null
         && currency != null
         && payment.getCurrency().equalsIgnoreCase(currency);
+  }
+
+  private BigDecimal fromStripeMinorUnits(Long amount, String currency) {
+    BigDecimal rawAmount = BigDecimal.valueOf(amount);
+    if (currency == null || currency.isBlank()) {
+      return rawAmount;
+    }
+    if (isZeroDecimalStripeCurrency(currency)) {
+      return rawAmount.setScale(0);
+    }
+    return rawAmount.movePointLeft(2).setScale(2);
+  }
+
+  private boolean isZeroDecimalStripeCurrency(String currency) {
+    return "VND".equalsIgnoreCase(currency.trim());
   }
 
   private boolean bookingExpired(BookingEntity booking, OffsetDateTime referenceTime) {
