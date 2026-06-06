@@ -47,6 +47,7 @@ import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
@@ -72,6 +73,8 @@ public class BookingRevalidateService {
   private static final int ADULT_MIN_AGE = 12;
   private static final BigDecimal CHILD_RATE = new BigDecimal("0.75");
   private static final BigDecimal INFANT_RATE = new BigDecimal("0.10");
+  private static final String FALLBACK_CACHE_LOG_MESSAGE =
+      "Redis unavailable for booking revalidation key={}; falling back to in-memory cache";
   private final FlightFareRepository flightFareRepository;
   private final FlightPricingService flightPricingService;
   private final PromotionPreviewService promotionPreviewService;
@@ -87,6 +90,8 @@ public class BookingRevalidateService {
   private final FlightSeatRepository flightSeatRepository;
   private final FlightInventoryAvailabilityService flightInventoryAvailabilityService;
   private final PasswordEncoder passwordEncoder;
+  private final ConcurrentHashMap<String, FallbackCacheEntry> fallbackCache =
+      new ConcurrentHashMap<>();
 
   public BookingRevalidateService(
       FlightFareRepository flightFareRepository,
@@ -1085,13 +1090,12 @@ public class BookingRevalidateService {
 
   private void saveRevalidateSnapshot(RevalidateSnapshot snapshot, String fingerprint) {
     writeValue(revalidateKey(snapshot.revalidateId()), snapshot, REVALIDATE_TTL);
-    redisTemplate
-        .opsForValue()
-        .set(revalidateFingerprintKey(fingerprint), snapshot.revalidateId(), REVALIDATE_TTL);
+    writeStringValue(
+        revalidateFingerprintKey(fingerprint), snapshot.revalidateId(), REVALIDATE_TTL);
   }
 
   private RevalidateSnapshot loadRevalidateSnapshot(String revalidateId) {
-    String value = redisTemplate.opsForValue().get(revalidateKey(revalidateId));
+    String value = readStringValue(revalidateKey(revalidateId));
     if (!StringUtils.hasText(value)) {
       throw new AppException("REVALIDATE_EXPIRED", "Revalidate session expired", 410);
     }
@@ -1103,7 +1107,7 @@ public class BookingRevalidateService {
   }
 
   private RevalidateSnapshot loadRevalidateSnapshotOrNull(String revalidateId) {
-    String value = redisTemplate.opsForValue().get(revalidateKey(revalidateId));
+    String value = readStringValue(revalidateKey(revalidateId));
     if (!StringUtils.hasText(value)) {
       return null;
     }
@@ -1115,22 +1119,22 @@ public class BookingRevalidateService {
   }
 
   private void deleteRevalidateSnapshot(String revalidateId) {
-    redisTemplate.delete(revalidateKey(revalidateId));
+    deleteValue(revalidateKey(revalidateId));
   }
 
   private RevalidateSnapshot findReusableRevalidateSnapshot(
       String fingerprint, PassengerSummary passengerSummary) {
-    String revalidateId = redisTemplate.opsForValue().get(revalidateFingerprintKey(fingerprint));
+    String revalidateId = readStringValue(revalidateFingerprintKey(fingerprint));
     if (!StringUtils.hasText(revalidateId)) {
       return null;
     }
     RevalidateSnapshot snapshot = loadRevalidateSnapshotOrNull(revalidateId);
     if (snapshot == null) {
-      redisTemplate.delete(revalidateFingerprintKey(fingerprint));
+      deleteValue(revalidateFingerprintKey(fingerprint));
       return null;
     }
     if (!isReusableSnapshot(snapshot, passengerSummary)) {
-      redisTemplate.delete(revalidateFingerprintKey(fingerprint));
+      deleteValue(revalidateFingerprintKey(fingerprint));
       return null;
     }
     return snapshot;
@@ -1173,11 +1177,11 @@ public class BookingRevalidateService {
     IdempotencyPayload processingPayload =
         new IdempotencyPayload("PROCESSING", requestHash, null, null, null);
     String processingJson = toJson(processingPayload);
-    Boolean created = redisTemplate.opsForValue().setIfAbsent(key, processingJson, IDEMPOTENCY_TTL);
+    Boolean created = writeStringIfAbsent(key, processingJson, IDEMPOTENCY_TTL);
     if (Boolean.TRUE.equals(created)) {
       return new IdempotencyResult(null);
     }
-    String existingJson = redisTemplate.opsForValue().get(key);
+    String existingJson = readStringValue(key);
     if (!StringUtils.hasText(existingJson)) {
       throw new AppException("REQUEST_IN_PROGRESS", "Booking request is processing", 409);
     }
@@ -1241,7 +1245,78 @@ public class BookingRevalidateService {
   }
 
   private void writeValue(String key, Object payload, Duration ttl) {
-    redisTemplate.opsForValue().set(key, toJson(payload), ttl);
+    writeStringValue(key, toJson(payload), ttl);
+  }
+
+  private void writeStringValue(String key, String value, Duration ttl) {
+    try {
+      redisTemplate.opsForValue().set(key, value, ttl);
+      fallbackCache.remove(key);
+    } catch (RuntimeException ex) {
+      LOG.warn(FALLBACK_CACHE_LOG_MESSAGE, key, ex);
+      fallbackWrite(key, value, ttl);
+    }
+  }
+
+  private String readStringValue(String key) {
+    try {
+      String value = redisTemplate.opsForValue().get(key);
+      if (value != null) {
+        fallbackCache.remove(key);
+      }
+      return value;
+    } catch (RuntimeException ex) {
+      LOG.warn(FALLBACK_CACHE_LOG_MESSAGE, key, ex);
+      return fallbackRead(key);
+    }
+  }
+
+  private void deleteValue(String key) {
+    try {
+      redisTemplate.delete(key);
+    } catch (RuntimeException ex) {
+      LOG.warn(FALLBACK_CACHE_LOG_MESSAGE, key, ex);
+    } finally {
+      fallbackCache.remove(key);
+    }
+  }
+
+  private Boolean writeStringIfAbsent(String key, String value, Duration ttl) {
+    try {
+      Boolean created = redisTemplate.opsForValue().setIfAbsent(key, value, ttl);
+      if (Boolean.TRUE.equals(created)) {
+        fallbackCache.remove(key);
+      }
+      return created;
+    } catch (RuntimeException ex) {
+      LOG.warn(FALLBACK_CACHE_LOG_MESSAGE, key, ex);
+      return fallbackWriteIfAbsent(key, value, ttl);
+    }
+  }
+
+  private void fallbackWrite(String key, String value, Duration ttl) {
+    fallbackCache.put(key, new FallbackCacheEntry(value, OffsetDateTime.now().plus(ttl)));
+  }
+
+  private String fallbackRead(String key) {
+    FallbackCacheEntry entry = fallbackCache.get(key);
+    if (entry == null) {
+      return null;
+    }
+    if (!entry.expiresAt().isAfter(OffsetDateTime.now())) {
+      fallbackCache.remove(key, entry);
+      return null;
+    }
+    return entry.value();
+  }
+
+  private Boolean fallbackWriteIfAbsent(String key, String value, Duration ttl) {
+    FallbackCacheEntry existing = fallbackCache.get(key);
+    if (existing != null && existing.expiresAt().isAfter(OffsetDateTime.now())) {
+      return false;
+    }
+    fallbackCache.put(key, new FallbackCacheEntry(value, OffsetDateTime.now().plus(ttl)));
+    return true;
   }
 
   private record PricingBreakdown(
@@ -1257,6 +1332,8 @@ public class BookingRevalidateService {
       return adult + child;
     }
   }
+
+  private record FallbackCacheEntry(String value, OffsetDateTime expiresAt) {}
 
   private record NormalizedContact(String email, String phone, boolean primary) {}
 
