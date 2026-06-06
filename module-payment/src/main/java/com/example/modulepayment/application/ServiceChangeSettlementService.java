@@ -65,6 +65,7 @@ public class ServiceChangeSettlementService {
   private static final String SETTLEMENT_STATUS_PAYMENT_REQUIRED = "PAYMENT_REQUIRED";
   private static final String SETTLEMENT_STATUS_REFUND_PENDING = "REFUND_PENDING";
   private static final String VND = "VND";
+  private static final String STRIPE_CARD = "STRIPE_CARD";
   private static final List<String> ACTIVE_HOLD_STATUSES = List.of("HELD", "CONFIRMED");
   private static final List<String> REFUNDABLE_PAYMENT_STATUSES =
       List.of("SUCCESS", "PARTIALLY_REFUNDED");
@@ -446,12 +447,6 @@ public class ServiceChangeSettlementService {
           continue;
         }
         if (delta.signum() > 0) {
-          if (!VND.equalsIgnoreCase(booking.getCurrency())) {
-            throw new AppException(
-                "SERVICE_SURCHARGE_CURRENCY_UNSUPPORTED",
-                "Service surcharge is only supported for VND bookings",
-                409);
-          }
           additionalAmount = normalizeMoney(additionalAmount.add(delta));
         } else if (delta.signum() < 0) {
           refundAmount = normalizeMoney(refundAmount.add(delta.abs()));
@@ -908,21 +903,23 @@ public class ServiceChangeSettlementService {
 
   private List<ServiceChangeConfirmView.PaymentMethodItemView> supportedPaymentMethods(
       String currency) {
-    if (!VND.equalsIgnoreCase(currency)) {
-      return List.of();
-    }
+    String normalizedCurrency = currency == null ? "" : currency.trim().toUpperCase(Locale.ROOT);
     List<ServiceChangeConfirmView.PaymentMethodItemView> methods = new ArrayList<>();
-    if (paymentProperties.isPayosConfigured()) {
+    if (paymentProperties.isPayosConfigured() && VND.equalsIgnoreCase(normalizedCurrency)) {
       methods.add(
           new ServiceChangeConfirmView.PaymentMethodItemView(
               "PAYOS_QR", "Mobile Banking (VietQR)", "PAYOS", null, true));
     }
-    if (paymentProperties.isStripeConfigured()) {
+    if (paymentProperties.isStripeConfigured() && supportsStripeCurrency(normalizedCurrency)) {
       methods.add(
           new ServiceChangeConfirmView.PaymentMethodItemView(
-              "STRIPE_CARD", "International credit or debit card", "STRIPE", null, true));
+              STRIPE_CARD, "International credit or debit card", "STRIPE", null, true));
     }
     return List.copyOf(methods);
+  }
+
+  private boolean supportsStripeCurrency(String currency) {
+    return !currency.isBlank() && currency.matches("^[A-Z]{3}$");
   }
 
   private Map<Long, PassengerSelectionsCommand> restoreCommands(

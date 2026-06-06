@@ -64,6 +64,7 @@ public class SeatChangeSettlementService {
   private static final String SETTLEMENT_STATUS_PAYMENT_REQUIRED = "PAYMENT_REQUIRED";
   private static final String SETTLEMENT_STATUS_REFUND_PENDING = "REFUND_PENDING";
   private static final String VND = "VND";
+  private static final String STRIPE_CARD = "STRIPE_CARD";
   private static final List<String> ACTIVE_ASSIGNMENT_STATUSES = List.of("RESERVED", "BOOKED");
   private static final List<String> ACTIVE_HOLD_STATUSES = List.of("HELD", "CONFIRMED");
   private static final List<String> REFUNDABLE_PAYMENT_STATUSES =
@@ -405,12 +406,6 @@ public class SeatChangeSettlementService {
                   toSeat, selectionPolicy, fareClass.getIncludedSeatCategory());
       BigDecimal delta = normalizeMoney(newAmount.subtract(oldAmount));
       if (delta.signum() > 0) {
-        if (!VND.equalsIgnoreCase(booking.getCurrency())) {
-          throw new AppException(
-              "SEAT_SURCHARGE_CURRENCY_UNSUPPORTED",
-              "Seat surcharge is only supported for VND bookings",
-              409);
-        }
         if ("CONFIRMED".equalsIgnoreCase(booking.getStatus())) {
           throw new AppException(
               "SEAT_PAYMENT_REQUIRED",
@@ -678,21 +673,23 @@ public class SeatChangeSettlementService {
 
   private List<SeatChangeConfirmView.PaymentMethodItemView> supportedPaymentMethods(
       String currency) {
-    if (!VND.equalsIgnoreCase(currency)) {
-      return List.of();
-    }
+    String normalizedCurrency = currency == null ? "" : currency.trim().toUpperCase(Locale.ROOT);
     List<SeatChangeConfirmView.PaymentMethodItemView> methods = new ArrayList<>();
-    if (paymentProperties.isPayosConfigured()) {
+    if (paymentProperties.isPayosConfigured() && VND.equalsIgnoreCase(normalizedCurrency)) {
       methods.add(
           new SeatChangeConfirmView.PaymentMethodItemView(
               "PAYOS_QR", "Mobile Banking (VietQR)", "PAYOS", null, true));
     }
-    if (paymentProperties.isStripeConfigured()) {
+    if (paymentProperties.isStripeConfigured() && supportsStripeCurrency(normalizedCurrency)) {
       methods.add(
           new SeatChangeConfirmView.PaymentMethodItemView(
-              "STRIPE_CARD", "International credit or debit card", "STRIPE", null, true));
+              STRIPE_CARD, "International credit or debit card", "STRIPE", null, true));
     }
     return List.copyOf(methods);
+  }
+
+  private boolean supportsStripeCurrency(String currency) {
+    return !currency.isBlank() && currency.matches("^[A-Z]{3}$");
   }
 
   private void rollbackSettlement(SeatChangeSettlementEntity settlement) {
