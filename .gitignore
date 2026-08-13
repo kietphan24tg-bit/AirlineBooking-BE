@@ -47,7 +47,11 @@ out/
 tmp/
 *.pdf
 
-/docs/
+/docs/*
+!/docs/specs/
+/docs/specs/*
+!/docs/specs/rag/
+!/docs/specs/rag/**
 
 ### Env files ###
 .env

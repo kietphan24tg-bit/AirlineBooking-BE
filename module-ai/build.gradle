@@ -1,0 +1,18 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    implementation project(':common')
+    implementation project(':module-booking')
+    implementation project(':module-payment')
+    implementation project(':module-flight')
+    implementation project(':module-checkin')
+
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

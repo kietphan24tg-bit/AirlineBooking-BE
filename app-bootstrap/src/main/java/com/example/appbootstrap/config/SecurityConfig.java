@@ -87,6 +87,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/bookings")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/chatbot/messages")
+                    .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/bookings/lookup")
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/check-in/continue")

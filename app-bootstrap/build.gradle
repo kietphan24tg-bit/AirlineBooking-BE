@@ -14,6 +14,7 @@ dependencies {
     implementation project(':module-checkin')
     implementation project(':module-notification')
     implementation project(':module-scheduler')
+    implementation project(':module-ai')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
