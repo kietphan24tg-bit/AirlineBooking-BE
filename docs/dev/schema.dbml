@@ -1,0 +1,648 @@
+Table aircraft {
+  id bigint [pk, increment]
+  model varchar [not null]
+  manufacturer varchar [not null]
+  total_seats integer [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table aircraft_icao_mappings {
+  id bigint [pk, increment]
+  icao_code varchar [not null, unique]
+  aircraft_id bigint [not null, ref: > aircraft.id]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table aircraft_layout {
+  id bigint [pk, increment]
+  aircraft_id bigint [not null, ref: > aircraft.id]
+  total_rows integer [not null]
+  columns varchar [not null]
+  business_rows integer [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table airlines {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  name varchar [not null]
+  logo_url varchar
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  country_code varchar
+  country varchar
+  city varchar
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table airports {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  name varchar [not null]
+  city varchar [not null]
+  country varchar [not null]
+  time_zone varchar [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  country_code varchar
+}
+
+Table seat_categories {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  name varchar [not null]
+  pricing_rank integer [not null]
+  surcharge_amount numeric [not null, default: 0]
+}
+
+Table seat_types {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  surcharge_amount numeric [not null, default: 0]
+}
+
+Table seat_classes {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  name varchar [not null]
+}
+
+Table aircraft_layout_seat_category_zones {
+  id bigint [pk, increment]
+  aircraft_layout_id bigint [not null, ref: > aircraft_layout.id]
+  seat_category_id bigint [not null, ref: > seat_categories.id]
+  row_start integer [not null]
+  row_end integer [not null]
+  columns varchar
+}
+
+Table aircraft_layout_seat_type_zones {
+  id bigint [pk, increment]
+  aircraft_layout_id bigint [not null, ref: > aircraft_layout.id]
+  seat_type_id bigint [not null, ref: > seat_types.id]
+  row_start integer [not null]
+  row_end integer [not null]
+  columns varchar
+}
+
+Table aircraft_layout_zones {
+  id bigint [pk, increment]
+  aircraft_layout_id bigint [not null, ref: > aircraft_layout.id]
+  seat_class_id bigint [not null, ref: > seat_classes.id]
+  row_start integer [not null]
+  row_end integer [not null]
+  columns varchar
+}
+
+Table users {
+  id bigint [pk, increment]
+  email varchar [not null, unique]
+  first_name varchar [not null]
+  last_name varchar [not null]
+  phone varchar [unique]
+  dob timestamp
+  password_hash varchar [not null]
+  nationality varchar
+  identify_number varchar
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  role varchar [not null, default: 'USER']
+  accept_terms boolean [not null, default: false]
+  token_invalid_before timestamp
+}
+
+Table user_recent_airports {
+  id bigint [pk, increment]
+  user_id bigint [not null, ref: > users.id]
+  airport_id bigint [not null, ref: > airports.id]
+  usage_type varchar [not null]
+  last_used_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  search_count integer [not null, default: 1]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table flights {
+  id bigint [pk, increment]
+  airline_id bigint [not null, ref: > airlines.id]
+  flight_number varchar [not null]
+  flight_date date [not null]
+  aircraft_id bigint [not null, ref: > aircraft.id]
+  departure_airport_id bigint [not null, ref: > airports.id]
+  arrival_airport_id bigint [not null, ref: > airports.id]
+  departure_time timestamp [not null]
+  arrival_time timestamp [not null]
+  departure_terminal varchar
+  departure_gate varchar
+  arrival_terminal varchar
+  arrival_gate varchar
+  status varchar [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  flight_source varchar [not null, default: 'AIRLABS']
+}
+
+Table promotions {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  description text
+  discount_type varchar [not null]
+  discount_value numeric [not null]
+  max_discount numeric
+  min_booking_amount numeric
+  usage_limit integer
+  used_count integer [not null, default: 0]
+  is_active boolean [not null, default: true]
+  starts_at timestamp
+  expires_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table promotion_values {
+  id bigint [pk, increment]
+  promotion_id bigint [not null, ref: > promotions.id]
+  currency varchar [not null]
+  country_code varchar [not null, default: 'GL']
+  fixed_discount_value numeric
+  max_discount_value numeric
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table bookings {
+  id bigint [pk, increment]
+  user_id bigint [not null, ref: > users.id]
+  pnr_code varchar [not null, unique]
+  contact_email varchar [not null]
+  contact_phone varchar [not null]
+  total_amount numeric [not null, default: 0]
+  currency varchar [not null, default: 'VND']
+  status varchar [not null]
+  pnr_expires_at timestamp
+  promotion_id bigint [ref: > promotions.id]
+  discount_amount numeric [not null, default: 0]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  payment_window_extended_at timestamp
+  ticket_email_sent_at timestamp
+}
+
+Table booking_contacts {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  email varchar
+  phone varchar
+  is_primary boolean [not null, default: false]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table passengers {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  first_name varchar [not null]
+  last_name varchar [not null]
+  date_of_birth date [not null]
+  gender varchar [not null]
+  nationality varchar
+  passenger_type varchar [not null]
+  identify_type varchar
+  identify_number varchar
+  expiry_date date
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table services {
+  id bigint [pk, increment]
+  name varchar [not null]
+  type varchar [not null]
+  icon_url varchar
+  is_active boolean [not null, default: true]
+}
+
+Table service_options {
+  id bigint [pk, increment]
+  service_id bigint [not null, ref: > services.id]
+  name varchar [not null]
+  description text
+  price numeric [not null, default: 0]
+  image_url varchar
+  is_active boolean [not null, default: true]
+}
+
+Table booking_services {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  passenger_id bigint [not null, ref: > passengers.id]
+  service_id bigint [not null, ref: > services.id]
+  quantity integer [not null, default: 1]
+  price numeric [not null, default: 0]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  service_option_id bigint [ref: > service_options.id]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table payments {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  seat_change_settlement_id bigint [ref: > seat_change_settlements.id]
+  service_change_settlement_id bigint [ref: > service_change_settlements.id]
+  flight_change_settlement_id bigint [ref: > flight_change_settlements.id]
+  amount numeric [not null]
+  currency varchar [not null, default: 'VND']
+  payment_method varchar [not null]
+  payment_status varchar [not null]
+  transaction_id varchar [unique]
+  qr_data text
+  qr_image_url varchar
+  type varchar
+  session_expires_at timestamp
+  paid_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  checkout_url varchar
+  provider_payment_reference varchar
+  refund_counter_account_bank_id varchar
+  refund_counter_account_bank_name varchar
+  refund_counter_account_name varchar
+  refund_counter_account_number varchar
+}
+
+Table seat_change_settlements {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  preview_token varchar
+  idempotency_key varchar
+  settlement_type varchar [not null]
+  status varchar [not null]
+  additional_amount numeric [not null]
+  refund_amount numeric [not null]
+  net_amount numeric [not null]
+  currency varchar [not null]
+  provider varchar
+  provider_refund_id varchar
+  error_code varchar
+  error_message varchar
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table seat_change_settlement_items {
+  id bigint [pk, increment]
+  settlement_id bigint [not null, ref: > seat_change_settlements.id]
+  passenger_id bigint [not null]
+  flight_id bigint [not null]
+  from_seat_id bigint
+  from_seat_number varchar
+  to_seat_id bigint
+  to_seat_number varchar
+  old_amount numeric [not null]
+  new_amount numeric [not null]
+  delta_amount numeric [not null]
+}
+
+Table service_change_settlements {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  preview_token varchar
+  idempotency_key varchar
+  settlement_type varchar [not null]
+  status varchar [not null]
+  additional_amount numeric [not null]
+  refund_amount numeric [not null]
+  net_amount numeric [not null]
+  currency varchar [not null]
+  provider varchar
+  provider_refund_id varchar
+  error_code varchar
+  error_message varchar
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table service_change_settlement_items {
+  id bigint [pk, increment]
+  settlement_id bigint [not null, ref: > service_change_settlements.id]
+  passenger_id bigint [not null]
+  service_id bigint [not null]
+  option_id bigint [not null]
+  quantity integer [not null]
+  service_type varchar
+  service_name varchar
+  option_name varchar
+  old_amount numeric [not null]
+  new_amount numeric [not null]
+  delta_amount numeric [not null]
+}
+
+Table flight_change_settlements {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  quote_token varchar
+  idempotency_key varchar
+  current_flight_id bigint [not null]
+  new_flight_id bigint [not null]
+  new_fare_id bigint [not null]
+  settlement_type varchar [not null]
+  status varchar [not null]
+  additional_amount numeric [not null]
+  refund_amount numeric [not null]
+  net_amount numeric [not null]
+  currency varchar [not null]
+  provider varchar
+  provider_refund_id varchar
+  provider_payment_reference varchar
+  error_code varchar
+  error_message varchar
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table flight_change_settlement_items {
+  id bigint [pk, increment]
+  settlement_id bigint [not null, ref: > flight_change_settlements.id]
+  ticket_id bigint [not null]
+  passenger_id bigint [not null]
+  passenger_name varchar
+  passenger_type varchar
+  original_fare_amount numeric [not null]
+  new_fare_amount numeric [not null]
+  fare_difference numeric [not null]
+  change_fee numeric [not null]
+  tax_difference numeric [not null]
+  net_amount numeric [not null]
+}
+
+Table fare_classes {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  name varchar [not null]
+  cabin_class varchar [not null]
+  baggage_checkin_kg integer [not null, default: 0]
+  baggage_hand_kg integer [not null, default: 0]
+  change_fee numeric [not null, default: 0]
+  refund_fee numeric [not null, default: 0]
+  is_refundable boolean [not null, default: false]
+  is_changeable boolean [not null, default: false]
+  is_priority_checkin boolean [not null, default: false]
+  is_priority_boarding boolean [not null, default: false]
+  mileage_rate numeric [not null, default: 0]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  lounge_access boolean [not null, default: false]
+  seat_selection boolean [not null, default: false]
+  meal_type varchar [not null, default: 'NONE']
+  wifi_included boolean [not null, default: false]
+  fast_track_security boolean [not null, default: false]
+  seat_selection_policy varchar [not null, default: 'NOT_ALLOWED']
+  included_seat_category_id bigint [ref: > seat_categories.id]
+}
+
+Table fare_class_prices {
+  id bigint [pk, increment]
+  fare_class_id bigint [not null, ref: > fare_classes.id]
+  currency varchar [not null]
+  country_code varchar [not null, default: 'GL']
+  base_price numeric [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table fare_class_seat_classes {
+  id bigint [pk, increment]
+  fare_class_id bigint [not null, ref: > fare_classes.id]
+  seat_class_id bigint [not null, ref: > seat_classes.id]
+}
+
+Table flight_fares {
+  id bigint [pk, increment]
+  flight_id bigint [not null, ref: > flights.id]
+  fare_class_id bigint [not null, ref: > fare_classes.id]
+  base_price numeric [not null]
+  tax_breakdown jsonb
+  total_tax_amount numeric [not null, default: 0]
+  total_price numeric [not null]
+  status varchar [not null]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table booking_fare_holds {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  flight_fare_id bigint [not null, ref: > flight_fares.id]
+  quantity integer [not null]
+  status varchar [not null]
+  expires_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table flight_seats {
+  id bigint [pk, increment]
+  flight_id bigint [not null, ref: > flights.id]
+  status varchar [not null]
+  fare_class_id bigint [ref: > fare_classes.id]
+  booking_id bigint [ref: > bookings.id]
+  reserved_until timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  seat_number varchar [not null]
+  seat_class_id bigint [not null, ref: > seat_classes.id]
+  seat_type_id bigint [not null, ref: > seat_types.id]
+  seat_category_id bigint [not null, ref: > seat_categories.id]
+}
+
+Table passenger_seat_assignments {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  passenger_id bigint [not null, ref: > passengers.id]
+  flight_seat_id bigint [not null, ref: > flight_seats.id]
+  status varchar [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  surcharge_amount numeric [not null, default: 0]
+  currency varchar
+  flight_id bigint [not null, ref: > flights.id]
+}
+
+Table tickets {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  flight_fare_id bigint [not null, ref: > flight_fares.id]
+  passenger_id bigint [not null, ref: > passengers.id]
+  flight_id bigint [not null, ref: > flights.id]
+  flight_seat_id bigint [ref: > flight_seats.id]
+  fare_class_id bigint [not null, ref: > fare_classes.id]
+  ticket_number varchar [not null, unique]
+  status varchar [not null]
+  issued_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table boarding_passes {
+  id bigint [pk, increment]
+  ticket_id bigint [not null, unique, ref: > tickets.id]
+  qr_code text [not null]
+  gate varchar
+  boarding_time timestamp
+  sequence_number integer
+  seat_label varchar
+  is_boarded boolean [not null, default: false]
+  boarded_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table booking_cancellations {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  payment_id bigint [not null, ref: > payments.id]
+  requested_by_user_id bigint [not null, ref: > users.id]
+  idempotency_key varchar [not null]
+  request_hash varchar [not null]
+  reason varchar
+  provider varchar [not null]
+  provider_refund_id varchar
+  provider_status varchar
+  refund_status varchar [not null]
+  error_code varchar
+  error_message varchar
+  currency varchar [not null]
+  fare_gross_total numeric [not null]
+  promo_allocated_total numeric [not null]
+  fare_net_total numeric [not null]
+  seat_refund_total numeric [not null]
+  service_refund_total numeric [not null]
+  refund_fee_total numeric [not null]
+  net_refund_total numeric [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  processed_at timestamp
+}
+
+Table booking_cancellation_items {
+  id bigint [pk, increment]
+  cancellation_id bigint [not null, ref: > booking_cancellations.id]
+  ticket_id bigint [not null, ref: > tickets.id]
+  passenger_id bigint [not null, ref: > passengers.id]
+  fare_gross_amount numeric [not null]
+  promo_allocated_amount numeric [not null]
+  fare_net_amount numeric [not null]
+  seat_refund_amount numeric [not null]
+  service_refund_amount numeric [not null]
+  refund_fee_amount numeric [not null]
+  net_refund_amount numeric [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table fare_class_multipliers {
+  id bigint [pk, increment]
+  fare_code varchar [not null]
+  trip_scope varchar [not null]
+  multiplier numeric [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table market_base_prices {
+  id bigint [pk, increment]
+  origin_country_code varchar [not null]
+  destination_country_code varchar [not null]
+  currency varchar [not null]
+  base_economy_price numeric [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table password_reset_tokens {
+  id bigint [pk, increment]
+  user_id bigint [not null, ref: > users.id]
+  token_hash varchar [not null, unique]
+  expires_at timestamp [not null]
+  used boolean [not null, default: false]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  used_at timestamp
+}
+
+Table payment_webhook_events {
+  id bigint [pk, increment]
+  provider varchar [not null]
+  idempotency_key varchar [not null]
+  payment_id bigint [ref: > payments.id]
+  booking_id bigint [ref: > bookings.id]
+  transaction_id varchar
+  order_code bigint
+  event_type varchar [not null]
+  processing_status varchar [not null]
+  is_final boolean [not null, default: true]
+  signature varchar
+  signature_valid boolean [not null]
+  raw_payload text [not null]
+  error_code varchar
+  error_message varchar
+  received_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  processed_at timestamp
+}
+
+Table pricing_market_profiles {
+  country_code varchar [not null, pk]
+  currency varchar [not null]
+  allow_first boolean [not null, default: false]
+  tax_profile_code varchar [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table refresh_token_sessions {
+  id bigint [pk, increment]
+  user_id bigint [not null, ref: > users.id]
+  refresh_token_hash text [not null, unique]
+  revoked boolean [not null, default: false]
+  expires_at timestamp [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table route_base_prices {
+  id bigint [pk, increment]
+  origin_airport_code varchar [not null]
+  destination_airport_code varchar [not null]
+  currency varchar [not null]
+  base_economy_price numeric [not null]
+  active_from date
+  active_until date
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table tax_fees {
+  id bigint [pk, increment]
+  code varchar [not null, unique]
+  name varchar [not null]
+  amount_type varchar [not null]
+  value numeric [not null]
+  apply_to varchar [not null]
+  description text
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  tax_profile_code varchar
+}
+
+Table ticket_financial_snapshots {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > bookings.id]
+  ticket_id bigint [not null, unique, ref: > tickets.id]
+  passenger_id bigint [not null, ref: > passengers.id]
+  fare_gross_amount numeric [not null]
+  promo_allocated_amount numeric [not null]
+  fare_net_amount numeric [not null]
+  seat_refund_amount numeric [not null]
+  service_refund_amount numeric [not null]
+  refund_fee_amount numeric [not null]
+  is_refundable boolean [not null]
+  passenger_type varchar [not null]
+  currency varchar [not null]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}

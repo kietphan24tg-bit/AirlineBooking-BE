@@ -1,0 +1,71 @@
+Bước 1 — User nhập search + promo
+From: SGN
+To: HAN
+Date: 10/04
+Promo: SAVE20
+
+🔹 Bước 2 — Validate promo (NHẸ)
+👉 Backend KHÔNG check full rule ngay
+ chỉ check nhanh:
+code có tồn tại không
+còn hạn không
+có bị disable không
+if invalid:
+   ignore promo (hoặc báo lỗi nhẹ)
+Bước 3 — Lấy danh sách flight
+Inventory Service:
+   return list flights
+
+🔹 Bước 4 — Tính giá hiển thị (QUAN TRỌNG NHẤT)
+👉 Đây là chỗ quyết định UX
+
+✅ Cách làm chuẩn (airline thường dùng)
+👉 Với mỗi flight:
+lấy fare rẻ nhất (min fare)
+👉 Sau đó:
+Case 1: Promo chắc chắn áp được
+→ apply luôn
+minFare = 1.500.000
+promo -20%
+
+=> hiển thị: 1.200.000
+Case 2: Promo có thể áp (chưa chắc)
+→ KHÔNG trừ cứng
+👉 hiển thị kiểu:
+“From 1.5M”
+badge: “Promo available”
+
+Case 3: Promo không áp dụng
+→ ignore
+🔹 Bước 5 — Trả về UI
+UI mỗi flight sẽ có:
+✔️ Giá hiển thị
+đã discount (nếu chắc chắn)
+hoặc giá gốc
+
+✔️ Badge (rất quan trọng)
+Ví dụ:
+“Promo applied”
+“-20% with code SAVE20”
+“Promo available”
+🎨 Ví dụ UI thực tế
+Case A — Apply được chắc chắn
+VN123 - Vietnam Airlines
+
+~~1.500.000~~
+1.200.000
+
+[Promo applied - SAVE20]
+
+Case B — Chưa chắc apply
+VN123 - Vietnam Airlines
+
+From 1.500.000
+
+[Promo may apply]
+
+Case C — Không apply
+VN123
+
+1.500.000
+

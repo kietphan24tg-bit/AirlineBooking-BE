@@ -1,0 +1,476 @@
+QUẢN LÝ VERSION - VERSION CONTROL (GIT) CHO DỰ ÁN AIRLINEBOOKING
+
+Mục tiêu
+
+Tài liệu này mô tả cách quản lý version của dự án AirlineBooking dựa trên hiện trạng thực tế của mã nguồn. Hiện tại dự án được tách thành 2 Git repository riêng:
+
+Frontend: AirlineBooking-fe
+Backend: AirlineBooking-be/airline-booking
+
+Nội dung bên dưới gồm 2 phần:
+
+Phần quan sát thực tế từ repository
+Phần quy ước đề xuất để nhóm thống nhất sử dụng
+
+
+1. Hiện trạng dự án
+
+1.1. Cấu trúc repository
+
+Dự án hiện không dùng một repository chung cho toàn bộ hệ thống mà tách thành hai repository độc lập:
+
+AirlineBooking-fe dùng cho frontend
+AirlineBooking-be/airline-booking dùng cho backend
+
+Cách tách này phù hợp với tình trạng hiện tại vì frontend và backend có cấu hình phụ thuộc, workflow CI/CD và luồng triển khai riêng.
+
+
+1.2. Các branch đang tồn tại
+
+Ở frontend, các branch quan sát được gồm có:
+
+main
+dev
+kim
+reference/manage-booking-real-api
+reference/remove-mock
+
+Từ đó có thể thấy:
+
+Branch dev đang đóng vai trò là nhánh tích hợp chính cho frontend.
+Branch main là nhánh ổn định hơn.
+Các branch reference/* đang được dùng cho mục đích thử nghiệm, thay mock bằng API thật, hoặc làm theo một hướng tham chiếu riêng.
+Branch kim nhiều khả năng là branch cá nhân.
+
+Ở backend, các branch quan sát được gồm có:
+
+main
+feature/auth
+feature/flights
+
+Từ đó có thể thấy:
+
+Backend đang dùng mô hình đơn giản hơn, tức là tách branch tính năng rồi merge về main.
+Hiện chưa thấy branch dev ở backend.
+
+
+1.3. Quy ước commit đang được dùng thực tế
+
+Cả frontend và backend đều đang dùng kiểu commit gần với Conventional Commits. Các tiền tố xuất hiện nhiều gồm:
+
+feat
+fix
+chore
+ci
+style
+test
+
+Ví dụ commit thực tế:
+
+Frontend:
+fix(manage-booking): restore frontend mock lookup flow
+feat(frontend): add deploy workflows and asset fixes
+
+Backend:
+fix(booking): allow public manage options lookup
+test(app-bootstrap): add FareFamilyCatalogService mock to FlightsControllerTest
+style(module-payment): fix spotless formatting in PaymentService
+
+Nhận xét:
+
+Commit message đang viết ngắn gọn, tập trung vào phần bị ảnh hưởng.
+Đã có sử dụng scope, thường theo module, page, flow hoặc lớp kỹ thuật.
+Tần suất commit khá dày, nhiều commit nhỏ trong cùng ngày, điều này tốt cho việc theo dõi thay đổi và rollback khi cần.
+
+
+1.4. Kiểm tra chất lượng trước khi push và merge
+
+Đối với frontend:
+
+Có pre-commit chạy lint-staged.
+Có pre-push chạy npm run typecheck.
+CI chạy khi push hoặc pull request vào dev và main.
+Staging deploy khi push vào dev.
+Production deploy chạy thủ công bằng workflow_dispatch.
+
+Ý nghĩa:
+
+Frontend đang vận hành theo mô hình dev là nhánh tích hợp và staging.
+Main là nhánh ổn định hơn và được kiểm soát chặt hơn trước khi dùng cho production.
+
+Đối với backend:
+
+Có shared pre-push hook chạy ./gradlew qualityGate.
+CI chạy khi tạo hoặc cập nhật pull request vào main.
+Staging deploy khi push vào main.
+Production deploy chạy thủ công bằng workflow_dispatch.
+Trong tài liệu workflow của backend đã nêu khuyến nghị bật branch protection cho main.
+
+Ý nghĩa:
+
+Backend hiện đang xem main là nhánh tích hợp chính.
+Việc staging backend bám trực tiếp vào main có thể gây nhầm lẫn giữa nhánh tích hợp và nhánh ổn định phát hành.
+
+
+2. Quy ước commit đề xuất
+
+Quy ước này bám rất sát với cách commit hiện tại của dự án, nên có thể áp dụng mà không làm thay đổi quá nhiều thói quen làm việc.
+
+Mẫu commit đề xuất:
+
+<type>(<scope>): <mô tả ngắn>
+
+Ví dụ:
+
+feat(payment): add qr session polling
+fix(frontend): preserve checkout search state
+test(app-bootstrap): cover booking cancellation
+ci(frontend): verify build on dev and main
+
+Các type nên dùng:
+
+feat: thêm tính năng mới
+fix: sửa lỗi
+refactor: thay đổi cấu trúc code nhưng không đổi hành vi
+test: thêm hoặc sửa test
+style: format code, import order, spotless, prettier
+docs: cập nhật tài liệu
+chore: việc phụ trợ, dọn dẹp, cấu hình
+ci: thay đổi liên quan đến CI/CD
+
+Quy ước scope nên bám theo module hoặc flow thật sự có trong dự án.
+
+Frontend có thể dùng các scope như:
+frontend
+booking
+checkout
+manage-booking
+account
+auth
+
+Backend có thể dùng các scope như:
+app-bootstrap
+booking
+payment
+flight
+account
+email
+module-payment
+
+Không nên để scope quá chung chung nếu đã xác định được khu vực bị ảnh hưởng.
+
+
+2.1. Quy ước thời gian commit
+
+Dựa trên lịch sử hiện tại, dự án đang theo mô hình commit nhỏ và liên tục trong ngày. Vì vậy nên thống nhất:
+
+Commit ngay sau khi hoàn thành một đơn vị công việc nhỏ có thể kiểm tra được.
+Không dồn toàn bộ thay đổi đến cuối ngày rồi tạo một commit rất lớn.
+Mỗi commit chỉ nên xử lý một mục tiêu chính.
+Trước khi push phải đi qua hook và bước kiểm tra local của repository tương ứng.
+
+Nếu cần phục vụ báo cáo nhóm hoặc báo cáo môn học thì có thể bổ sung quy ước mềm:
+
+Mỗi task lớn nên có commit trong ngày thực hiện.
+Thời gian commit nên thống nhất theo múi giờ làm việc của nhóm, hiện log đang thể hiện +0700.
+
+
+3. Quy ước branch đề xuất
+
+Do frontend và backend hiện đang dùng hai mô hình hơi khác nhau, nên cần thống nhất để quản lý dễ hơn.
+
+Branch chính nên gồm:
+
+main: nhánh ổn định, dùng cho bản release hoặc chốt milestone
+dev: nhánh tích hợp chung của nhóm
+
+Khuyến nghị:
+
+Frontend giữ nguyên vì hiện tại đã dùng dev.
+Backend nên bổ sung dev để đồng bộ với frontend, vì hiện tại staging đang deploy từ main, dễ gây nhập nhằng giữa môi trường kiểm thử tích hợp và nhánh ổn định.
+
+
+3.1. Quy ước branch chức năng
+
+Nên dùng các mẫu tên branch sau:
+
+feature/<ten-ngan>
+fix/<ten-ngan>
+hotfix/<ten-ngan>
+refactor/<ten-ngan>
+docs/<ten-ngan>
+reference/<ten-ngan>
+
+Trong đó:
+
+feature/* dùng cho tính năng mới
+fix/* dùng cho sửa lỗi thông thường
+hotfix/* dùng cho lỗi gấp cần xử lý nhanh
+refactor/* dùng cho cải tổ code
+docs/* dùng cho tài liệu
+reference/* chỉ dùng cho thử nghiệm, spike, đổi mock, hoặc làm theo hướng tham chiếu
+
+Ví dụ:
+
+feature/manage-booking-seat-change
+fix/payment-expire-window
+reference/remove-mock
+
+
+3.2. Branch cá nhân
+
+Không nên duy trì lâu dài branch đặt theo tên người như kim nếu branch đó không gắn với một mục tiêu công việc cụ thể.
+
+Nếu cần dùng branch cá nhân, nên đặt theo dạng:
+
+feature/kim-auth-ui
+fix/kim-checkout-toast
+
+Như vậy khi nhìn tên branch sẽ biết được branch đó dùng để làm gì, không chỉ biết ai đang làm.
+
+
+4. Chức năng của từng loại branch
+
+Branch main:
+
+Chỉ chứa code đã qua review và verification.
+Chỉ nên nhận merge từ dev hoặc hotfix/*.
+Dùng cho release hoặc production deploy có kiểm soát.
+
+Branch dev:
+
+Nhận merge từ feature/*, fix/*, refactor/*, docs/*.
+Dùng để tích hợp công việc của các thành viên.
+Là nguồn phù hợp để deploy staging.
+
+Branch feature/*:
+
+Dùng để phát triển tính năng mới.
+Sau khi hoàn thành thì tạo pull request vào dev.
+
+Branch fix/*:
+
+Dùng để sửa lỗi thông thường.
+Sau khi hoàn thành thì tạo pull request vào dev.
+
+Branch hotfix/*:
+
+Dùng cho lỗi gấp ở production hoặc lỗi ảnh hưởng trực tiếp tới milestone.
+Có thể merge vào main trước, sau đó phải merge ngược lại dev.
+
+Branch reference/*:
+
+Dùng cho thử nghiệm, remove mock, kết nối API thật, spike hoặc redesign.
+Không nên merge trực tiếp vào main.
+Nếu kết quả tốt thì nên tách lại thành branch feature/* hoặc fix/* sạch sẽ để merge chính thức.
+
+
+5. Quy trình merge đề xuất
+
+Luồng làm việc thông thường:
+
+Bước 1: Tạo branch từ dev.
+Bước 2: Thực hiện công việc và commit nhỏ theo đúng quy ước commit.
+Bước 3: Push branch lên remote.
+Bước 4: Tạo Pull Request vào dev.
+Bước 5: Đảm bảo CI chạy thành công.
+Bước 6: Được review và approve.
+Bước 7: Merge vào dev.
+Bước 8: Khi dev ổn định thì tạo Pull Request từ dev sang main.
+Bước 9: Sau khi merge vào main mới được xem là đủ điều kiện release hoặc production deploy.
+
+Luồng hotfix:
+
+Bước 1: Tạo hotfix/* từ main.
+Bước 2: Sửa lỗi, kiểm tra, tạo Pull Request vào main.
+Bước 3: Merge vào main.
+Bước 4: Merge ngược main về dev để tránh lệch nhánh.
+
+
+6. Ai có quyền merge
+
+Từ source code hiện tại không thể xác định chính xác danh sách thành viên có quyền merge. Tuy nhiên có thể rút ra:
+
+Backend đã có tài liệu khuyến nghị bật branch protection cho main.
+Production workflow ở cả hai repo đều chạy thủ công, cho thấy việc release nên do người có quyền cao hơn thực hiện.
+Hai remote hiện đang nằm dưới owner GitHub kietphan24tg-bit, nên ít nhất chủ repository hoặc maintainer là người có quyền merge và release.
+
+Quy ước nên chốt cho nhóm:
+
+Chỉ repo owner, maintainer hoặc team lead được merge vào main.
+Các thành viên có thể merge vào dev sau khi có ít nhất 1 review hợp lệ.
+Nếu đây là dự án làm nhóm, nên phân công rõ:
+
+Một người phụ trách merge frontend
+Một người phụ trách merge backend
+Một người cuối cùng phụ trách chốt main
+
+Nếu dùng GitHub Branch Protection thì nên bật:
+
+Yêu cầu pull request trước khi merge
+Yêu cầu ít nhất 1 approval
+Yêu cầu status checks phải pass
+Không cho push trực tiếp vào main
+
+
+7. Quy ước theo từng repository
+
+Đối với frontend:
+
+Nên giữ mô hình hiện tại:
+dev là nhánh tích hợp và staging
+main là nhánh ổn định và release
+
+Đối với backend:
+
+Hiện tại backend đang:
+chạy CI khi có pull request vào main
+deploy staging khi push vào main
+
+Để đồng bộ với frontend, nên chuyển dần sang:
+
+CI chạy cho pull request vào dev và main
+Staging deploy khi push vào dev
+Main chỉ dùng cho release hoặc production deploy
+
+Nếu nhóm chưa muốn thay đổi backend ngay lúc này thì vẫn có thể ghi nhận tạm thời:
+
+Backend tạm dùng main là nhánh tích hợp chính
+Frontend dùng dev là nhánh tích hợp chính
+
+Tuy nhiên đây chỉ nên là giải pháp tạm thời, không nên duy trì lâu dài.
+
+
+8. Tóm tắt quy ước đề xuất cho nhóm
+
+Dự án dùng 2 Git repository riêng cho frontend và backend.
+Commit message nên theo kiểu Conventional Commits, ưu tiên dạng <type>(<scope>): <message>.
+Mỗi thành viên tạo branch riêng theo task, ví dụ feature/*, fix/*, hotfix/*, docs/*.
+Branch dev dùng để tích hợp và kiểm thử chung.
+Branch main dùng cho bản ổn định và release.
+Mọi thay đổi nên đi qua Pull Request, review và CI trước khi merge.
+Chỉ người quản trị repository hoặc nhóm trưởng nên được merge vào main.
+Frontend hiện đã khá phù hợp với mô hình dev sang main.
+Backend nên được chuẩn hóa dần về cùng mô hình để đồng bộ toàn dự án.
+
+
+9. Kết luận
+
+Version control của dự án hiện tại đã có nền tảng khá tốt:
+
+Commit message tương đối rõ ràng
+Có hook kiểm tra trước khi push
+Có CI/CD
+Đã tách staging và production ở mức workflow
+
+Những điểm nhóm cần chốt thêm:
+
+Thống nhất branch model giữa frontend và backend
+Chốt rõ ai được merge vào main
+Hạn chế branch cá nhân không gắn với task cụ thể
+Xem reference/* là branch thử nghiệm, không phải branch release
+
+Nếu cần chuẩn hóa thành tài liệu chính thức trong codebase, có thể tách nội dung này thành tài liệu quy ước Git riêng trong thư mục tài liệu của dự án.
+10. Coding conventions for frontend and backend
+
+This section summarizes the conventions currently applied in both repositories so the team can align on coding style before committing and opening pull requests.
+
+10.1. Frontend coding conventions
+
+The frontend currently uses React 19 + TypeScript + Vite. The main conventions are as follows:
+
+Code formatting:
+
+Use Prettier with this configuration:
+singleQuote: true
+semi: true
+trailingComma: es5
+printWidth: 100
+
+Linting and type safety:
+
+Use ESLint 9, typescript-eslint, react-hooks, react-refresh, and jsx-a11y.
+Enable strict mode in TypeScript.
+Do not allow unused variables; if one must be intentionally ignored, prefix it with an underscore, for example _event or _error.
+Limit console usage; only console.warn and console.error are allowed.
+
+Code conventions:
+
+React components must use PascalCase.
+Types, interfaces, and props types should use clear, meaningful names, for example AccountProfileCardProps.
+Functions, variables, and hooks must use camelCase.
+Component files should match the main component name, for example AccountProfileCard.tsx.
+Prefer separating utilities and types by domain, for example utils, types, components, routes, and api.
+Imports should be grouped in order: external libraries, internal imports, then CSS if applicable.
+
+UI conventions:
+
+Tailwind className values should be written directly in JSX.
+Color and typography tokens should reuse the project's existing variables and design tokens instead of being hard-coded everywhere.
+Components should stay small and focused on a single responsibility; avoid files that both handle API logic and render too much UI.
+
+Checks before commit/push:
+
+Pre-commit runs lint-staged:
+js/jsx/ts/tsx files are processed by eslint --fix and prettier --write.
+json/css/html/md files are processed by prettier --write.
+
+Pre-push runs npm run typecheck.
+Commands that should be run before pushing:
+npm run lint
+npm run typecheck
+npm run build
+
+10.2. Backend coding conventions
+
+The backend currently uses Java 21 + Gradle multi-module + Spring Boot. The main conventions are as follows:
+
+Code formatting:
+
+Use Spotless with google-java-format 1.24.0.
+Line endings must be LF.
+Indentation uses 4 spaces.
+Trim trailing whitespace and always keep a newline at the end of the file.
+Spotless automatically removes unused imports.
+
+Checkstyle:
+
+Wildcard imports are not allowed.
+Braces are mandatory.
+Each file should contain only one top-level class.
+The file name must match the outermost class name.
+The maximum line length is 140 characters, except for package declarations, imports, and URLs.
+
+Code conventions:
+
+Class names use PascalCase.
+Method and field names use camelCase.
+Constants use UPPER_SNAKE_CASE.
+Prefer constructor injection and avoid field injection.
+Service and query methods should be clearly annotated with @Transactional where appropriate; read-only operations should use @Transactional(readOnly = true).
+Response DTOs and test helpers should be named according to business meaning, not with generic names.
+Logic should be split into small private methods when a main method is doing too much.
+
+Testing conventions:
+
+Use JUnit 5 + Mockito.
+Test names should describe behavior, for example:
+lookup_returnsSummaryWhenPnrAndLastNameMatch
+lookup_returnsAllManageActionsForConfirmedBooking
+
+Checks before push:
+
+The shared pre-push hook runs ./gradlew qualityGate.
+qualityGate includes spotlessCheck, tests, coverage, and module-level static analysis.
+Commands that should be run before pushing:
+./gradlew :app-bootstrap:test
+./gradlew spotlessCheck
+./gradlew check
+
+10.3. Shared principles for FE and BE
+
+Do not commit code that fails linting, type checking, tests, or formatting.
+Every change should come with tests when it affects business logic or fixes a bug.
+File names, class names, function names, and commit messages should reflect business meaning and avoid vague naming.
+Each commit should solve only one main objective.
+If a formatting-only change is generated by tooling, it should be separated into its own style commit when the diff is otherwise hard to review.
