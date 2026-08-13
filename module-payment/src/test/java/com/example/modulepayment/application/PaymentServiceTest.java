@@ -741,11 +741,12 @@ class PaymentServiceTest {
   }
 
   @Test
-  void shouldCreatePayLaterPaymentWithFullHourFromCreationTime() {
+  void shouldCreatePayLaterPaymentWithinBookingPaymentHoldLimit() {
     OffsetDateTime start = OffsetDateTime.now();
     BookingEntity booking = booking("PENDING", start.plusMinutes(15));
     booking.setCreatedAt(start.minusMinutes(4));
     booking.setUpdatedAt(start.minusMinutes(4));
+    OffsetDateTime cap = booking.getCreatedAt().plusMinutes(60);
 
     when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
     when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
@@ -773,8 +774,8 @@ class PaymentServiceTest {
         paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAY_LATER"));
 
     assertEquals("PAY_LATER", result.payment().method());
-    assertEquals(true, result.payment().expireAt().isAfter(start.plusMinutes(59)));
-    assertEquals(true, result.payment().expireAt().isBefore(start.plusMinutes(61)));
+    assertEquals(cap, result.payment().expireAt());
+    assertEquals(cap, booking.getPnrExpiresAt());
   }
 
   @Test
@@ -1323,6 +1324,98 @@ class PaymentServiceTest {
     assertEquals(originalSessionExpiresAt, result.payment().expireAt());
     verify(paymentGateway, never()).createPaymentLink(any());
     verify(paymentRepository, never()).saveAndFlush(any(PaymentEntity.class));
+  }
+
+  @Test
+  void shouldCapNewPayLaterAtBookingPaymentHoldLimit() {
+    OffsetDateTime start = OffsetDateTime.now().minusMinutes(50);
+    OffsetDateTime cap = start.plusMinutes(60);
+    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(5));
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+            10L, List.of("SUSPENDED")))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            eq(10L), any()))
+        .thenReturn(List.of());
+    when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L)).thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_123",
+                "https://pay.payos.vn/web/123",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                cap));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAY_LATER"));
+
+    assertEquals(cap, booking.getPnrExpiresAt());
+    assertEquals(cap, result.payment().expireAt());
+    verify(bookingFareHoldRepository).extendHeldExpiryByBookingId(eq(10L), eq(cap), any());
+    verify(flightSeatRepository).extendReservedUntilForBooking(eq(10L), eq(cap));
+  }
+
+  @Test
+  void shouldCapNewPayosQrAtBookingPaymentHoldLimit() {
+    OffsetDateTime start = OffsetDateTime.now().minusMinutes(58);
+    OffsetDateTime cap = start.plusMinutes(60);
+    BookingEntity booking = booking("PENDING_PAYMENT", OffsetDateTime.now().plusMinutes(1));
+    booking.setCreatedAt(start);
+    booking.setUpdatedAt(start);
+
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findAllByBookingIdAndPaymentStatusForUpdate(10L, "PENDING"))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+            10L, List.of("SUSPENDED")))
+        .thenReturn(List.of());
+    when(paymentRepository.findByBookingIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            eq(10L), any()))
+        .thenReturn(List.of());
+    when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L)).thenReturn(List.of());
+    when(paymentRepository.saveAndFlush(any(PaymentEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              PaymentEntity payment = invocation.getArgument(0, PaymentEntity.class);
+              payment.setId(123L);
+              return payment;
+            });
+    when(paymentGateway.createPaymentLink(any()))
+        .thenReturn(
+            new PaymentGatewayResult(
+                "plink_123",
+                "https://pay.payos.vn/web/123",
+                "000201PAYOSQR",
+                "PENDING",
+                "QR",
+                cap));
+    when(paymentRepository.save(any(PaymentEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0, PaymentEntity.class));
+
+    CreatePaymentResult result =
+        paymentService.createPayment(new CreatePaymentCommand(10L, 7L, "PAYOS"));
+
+    assertEquals(cap, booking.getPnrExpiresAt());
+    assertEquals(cap, result.payment().expireAt());
+    verify(bookingFareHoldRepository).extendHeldExpiryByBookingId(eq(10L), eq(cap), any());
+    verify(flightSeatRepository).extendReservedUntilForBooking(eq(10L), eq(cap));
   }
 
   @Test

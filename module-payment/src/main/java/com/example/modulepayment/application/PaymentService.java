@@ -70,11 +70,7 @@ public class PaymentService {
   /** Minimum remaining time (and checkout session length) required to start Stripe checkout. */
   private static final long STRIPE_PAYMENT_WINDOW_MINUTES = 30;
 
-  /**
-   * Absolute Stripe payment cap from booking creation (independent of PayOS / pay-later windows).
-   */
-  private static final long STRIPE_BOOKING_CAP_MINUTES = 60;
-
+  private static final long MAX_BOOKING_PAYMENT_HOLD_MINUTES = 60;
   private static final long PAY_LATER_HOLD_MINUTES = 60;
   private static final long PAYMENT_CREATION_COOLDOWN_SECONDS = 15;
   private static final long PAYMENT_CREATION_WINDOW_MINUTES = 10;
@@ -152,6 +148,7 @@ public class PaymentService {
     OffsetDateTime now = OffsetDateTime.now();
     boolean payosWindowEligible = hasValidEffectivePaymentWindow(booking, METHOD_PAYOS, now);
     boolean stripeWindowEligible = hasValidEffectivePaymentWindow(booking, METHOD_STRIPE_CARD, now);
+    boolean payLaterWindowEligible = hasValidEffectivePaymentWindow(booking, METHOD_PAY_LATER, now);
     boolean payosSupported =
         paymentProperties.isPayosConfigured()
             && supportsPayosCurrency(booking.getCurrency())
@@ -161,7 +158,9 @@ public class PaymentService {
             && supportsStripeCurrency(booking.getCurrency())
             && stripeWindowEligible;
     boolean payLaterSupported =
-        paymentProperties.isPayosConfigured() && supportsPayosCurrency(booking.getCurrency());
+        paymentProperties.isPayosConfigured()
+            && supportsPayosCurrency(booking.getCurrency())
+            && payLaterWindowEligible;
     String vietqrIcon = iconUrl("/assets/payment-icons/vietqr.svg");
     String stripeIcon = iconUrl("/assets/payment-icons/stripe.svg");
     String vnpayIcon = iconUrl("/assets/payment-icons/vnpay.svg");
@@ -548,10 +547,14 @@ public class PaymentService {
       BookingEntity booking, List<PaymentEntity> previousPending, OffsetDateTime now) {
     PaymentEntity latestQrPending = findLatestReusablePayosPending(previousPending);
     OffsetDateTime qrSessionExpireAt =
-        latestQrPending == null
-            ? resolveInitialPayosQrExpireAt(booking, now)
-            : resolveSubsequentPayosQrExpireAt(latestQrPending, now);
+        capExpireAt(
+            booking,
+            METHOD_PAYOS,
+            latestQrPending == null
+                ? resolveInitialPayosQrExpireAt(booking, now)
+                : resolveSubsequentPayosQrExpireAt(latestQrPending, now));
     OffsetDateTime qrExpireAt = qrSessionExpireAt;
+    assertSufficientPaymentWindow(booking, METHOD_PAYOS, qrExpireAt, now);
 
     if (latestQrPending != null
         && Objects.equals(qrExpireAt, latestQrPending.getSessionExpiresAt())) {
@@ -721,10 +724,7 @@ public class PaymentService {
     if (booking == null || booking.getCreatedAt() == null) {
       return booking == null ? null : booking.getPnrExpiresAt();
     }
-    if (METHOD_STRIPE_CARD.equals(method)) {
-      return booking.getCreatedAt().plusMinutes(STRIPE_BOOKING_CAP_MINUTES);
-    }
-    return null;
+    return booking.getCreatedAt().plusMinutes(MAX_BOOKING_PAYMENT_HOLD_MINUTES);
   }
 
   private boolean withinMethodCap(BookingEntity booking, String method, OffsetDateTime expireAt) {

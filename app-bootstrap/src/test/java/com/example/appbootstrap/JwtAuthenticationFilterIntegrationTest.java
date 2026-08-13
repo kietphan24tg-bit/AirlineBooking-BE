@@ -4,7 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.appbootstrap.security.JwtService;
+import com.example.moduleweb.security.JwtService;
 import com.example.moduleidentity.entity.Role;
 import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.UserRepository;

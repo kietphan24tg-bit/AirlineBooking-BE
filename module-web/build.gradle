@@ -1,0 +1,30 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    implementation project(':common')
+    implementation project(':module-identity')
+    implementation project(':module-flight')
+    implementation project(':module-booking')
+    implementation project(':module-payment')
+    implementation project(':module-checkin')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1'
+    implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.40'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.1'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

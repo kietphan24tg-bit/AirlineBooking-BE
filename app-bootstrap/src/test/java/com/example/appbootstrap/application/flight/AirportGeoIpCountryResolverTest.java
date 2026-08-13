@@ -1,4 +1,4 @@
-package com.example.appbootstrap.application.flight;
+package com.example.moduleweb.application.flight;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

@@ -1,10 +1,10 @@
-package com.example.appbootstrap.controller.payment;
+package com.example.modulepayment.controller;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
-import com.example.appbootstrap.controller.payment.dto.PaymentWebhookResponse;
+import com.example.modulepayment.controller.dto.PaymentWebhookResponse;
 import com.example.modulepayment.application.PaymentWebhookService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

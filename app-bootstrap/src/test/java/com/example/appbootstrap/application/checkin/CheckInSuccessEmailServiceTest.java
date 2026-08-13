@@ -1,4 +1,4 @@
-package com.example.appbootstrap.application.checkin;
+package com.example.moduleweb.application.checkin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -6,7 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.config.MailProperties;
+import com.example.moduleweb.config.MailProperties;
 import com.example.modulebooking.entity.BoardingPassEntity;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;

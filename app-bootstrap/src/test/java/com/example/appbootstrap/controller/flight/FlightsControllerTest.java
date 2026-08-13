@@ -1,4 +1,4 @@
-package com.example.appbootstrap.controller.flight;
+package com.example.moduleweb.controller.flight;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,19 +9,19 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.application.booking.BookingRevalidateService;
-import com.example.appbootstrap.application.flight.FlightSeatMapService;
-import com.example.appbootstrap.application.flight.PromotionCatalogService;
-import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse;
-import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
-import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchQueryRequest;
-import com.example.appbootstrap.controller.flight.dto.FlightCalendarSearchResponse;
-import com.example.appbootstrap.controller.flight.dto.FlightSearchQueryRequest;
-import com.example.appbootstrap.controller.flight.dto.FlightSearchResponse;
-import com.example.appbootstrap.controller.flight.dto.FlightSeatMapResponse;
+import com.example.moduleweb.application.booking.BookingRevalidateService;
+import com.example.moduleweb.application.flight.FlightSeatMapService;
+import com.example.moduleweb.application.flight.PromotionCatalogService;
+import com.example.moduleweb.controller.booking.dto.PassengerSummaryRequest;
+import com.example.moduleweb.controller.booking.dto.RevalidateFareRequest;
+import com.example.moduleweb.controller.booking.dto.RevalidateFareResponse;
+import com.example.moduleweb.controller.booking.dto.RevalidateItineraryRequest;
+import com.example.moduleweb.controller.booking.dto.RevalidateItineraryResponse;
+import com.example.moduleweb.controller.flight.dto.FlightCalendarSearchQueryRequest;
+import com.example.moduleweb.controller.flight.dto.FlightCalendarSearchResponse;
+import com.example.moduleweb.controller.flight.dto.FlightSearchQueryRequest;
+import com.example.moduleweb.controller.flight.dto.FlightSearchResponse;
+import com.example.moduleweb.controller.flight.dto.FlightSeatMapResponse;
 import com.example.common.exception.AppException;
 import com.example.moduleflight.application.CabinClass;
 import com.example.moduleflight.application.FareFamilyCatalogService;

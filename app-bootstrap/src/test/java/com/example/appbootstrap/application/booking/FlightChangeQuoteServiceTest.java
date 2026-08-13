@@ -1,4 +1,4 @@
-package com.example.appbootstrap.application.booking;
+package com.example.moduleweb.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,9 +8,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.config.BookingProperties;
-import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteRequest;
-import com.example.appbootstrap.controller.booking.dto.FlightChangeQuoteResponse;
+import com.example.moduleweb.config.BookingProperties;
+import com.example.moduleweb.controller.booking.dto.FlightChangeQuoteRequest;
+import com.example.moduleweb.controller.booking.dto.FlightChangeQuoteResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingFareHoldEntity;
@@ -164,6 +164,165 @@ class FlightChangeQuoteServiceTest {
     verify(flightFareRepository, never()).findByIdWithDetails(any());
   }
 
+  @Test
+  void quoteShouldRejectWhenChangeWindowClosed() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking, 101L, 501L, "ADULT", true, "ISSUED");
+    ticket.getFlight().setDepartureTime(OffsetDateTime.now().plusMinutes(179));
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), any()))
+        .thenReturn(List.of(payment(booking)));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(101L)))
+        .thenReturn(List.of(ticket));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.quote(
+                    null, 10L, new FlightChangeQuoteRequest(List.of(101L), 501L, 888L, 321L)));
+
+    assertEquals("CHANGE_WINDOW_CLOSED", exception.getCode());
+    verify(flightFareRepository, never()).findByIdWithDetails(any());
+  }
+
+  @Test
+  void quoteShouldRejectSameFlightAsNewFlight() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking, 101L, 501L, "ADULT", true, "ISSUED");
+    FlightFareEntity newFare = newFare(501L, 321L, "1500000.00", "1500000.00");
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), any()))
+        .thenReturn(List.of(payment(booking)));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(101L)))
+        .thenReturn(List.of(ticket));
+    when(flightFareRepository.findByIdWithDetails(321L)).thenReturn(Optional.of(newFare));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.quote(
+                    null, 10L, new FlightChangeQuoteRequest(List.of(101L), 501L, 501L, 321L)));
+
+    assertEquals("INVALID_FLIGHT_CHANGE_ROUTE", exception.getCode());
+  }
+
+  @Test
+  void quoteShouldRejectNewFlightWithDifferentRoute() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking, 101L, 501L, "ADULT", true, "ISSUED");
+    FlightFareEntity newFare = newFare(888L, 321L, "1500000.00", "1500000.00");
+    AirportEntity differentArrival = new AirportEntity();
+    differentArrival.setId(3L);
+    differentArrival.setCode("DAD");
+    newFare.getFlight().setArrivalAirport(differentArrival);
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), any()))
+        .thenReturn(List.of(payment(booking)));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(101L)))
+        .thenReturn(List.of(ticket));
+    when(flightFareRepository.findByIdWithDetails(321L)).thenReturn(Optional.of(newFare));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.quote(
+                    null, 10L, new FlightChangeQuoteRequest(List.of(101L), 501L, 888L, 321L)));
+
+    assertEquals("INVALID_FLIGHT_CHANGE_ROUTE", exception.getCode());
+  }
+
+  @Test
+  void quoteShouldRejectUnavailableNewFare() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking, 101L, 501L, "ADULT", true, "ISSUED");
+    FlightFareEntity newFare = newFare(888L, 321L, "1500000.00", "1500000.00");
+    newFare.setStatus("SOLD_OUT");
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), any()))
+        .thenReturn(List.of(payment(booking)));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(101L)))
+        .thenReturn(List.of(ticket));
+    when(flightFareRepository.findByIdWithDetails(321L)).thenReturn(Optional.of(newFare));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.quote(
+                    null, 10L, new FlightChangeQuoteRequest(List.of(101L), 501L, 888L, 321L)));
+
+    assertEquals("SEAT_UNAVAILABLE", exception.getCode());
+  }
+
+  @Test
+  void quoteShouldRejectWhenNewFlightDoesNotHaveEnoughSeats() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking, 101L, 501L, "ADULT", true, "ISSUED");
+    FlightFareEntity newFare = newFare(888L, 321L, "1500000.00", "1500000.00");
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), any()))
+        .thenReturn(List.of(payment(booking)));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(101L)))
+        .thenReturn(List.of(ticket));
+    when(flightFareRepository.findByIdWithDetails(321L)).thenReturn(Optional.of(newFare));
+    when(flightInventoryAvailabilityService.hasEnoughSeats(888L, 20L, 1)).thenReturn(false);
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.quote(
+                    null, 10L, new FlightChangeQuoteRequest(List.of(101L), 501L, 888L, 321L)));
+
+    assertEquals("SEAT_UNAVAILABLE", exception.getCode());
+  }
+
+  @Test
+  void quoteShouldRejectWhenConnectionLayoverIsTooShort() {
+    BookingEntity booking = booking();
+    TicketEntity ticket = ticket(booking, 101L, 501L, "ADULT", true, "ISSUED");
+    FlightFareEntity newFare = newFare(888L, 321L, "1500000.00", "1500000.00");
+    FlightFareEntity nextSegmentFare =
+        connectionFare(
+            777L,
+            newFare.getFlight().getArrivalAirport(),
+            airport(3L, "DAD"),
+            newFare.getFlight().getArrivalTime().plusMinutes(60));
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findBookingLevelPaymentsByBookingIdAndPaymentStatusInOrderByLatest(
+            eq(10L), any()))
+        .thenReturn(List.of(payment(booking)));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetails(10L, List.of(101L)))
+        .thenReturn(List.of(ticket));
+    when(flightFareRepository.findByIdWithDetails(321L)).thenReturn(Optional.of(newFare));
+    when(flightInventoryAvailabilityService.hasEnoughSeats(888L, 20L, 1)).thenReturn(true);
+    when(bookingFareHoldRepository.findByBookingIdOrderByIdAsc(10L))
+        .thenReturn(List.of(hold(ticket.getFlightFare()), hold(nextSegmentFare)));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.quote(
+                    null, 10L, new FlightChangeQuoteRequest(List.of(101L), 501L, 888L, 321L)));
+
+    assertEquals("CONNECTION_INVALID", exception.getCode());
+  }
+
   private BookingEntity booking() {
     BookingEntity booking = new BookingEntity();
     booking.setId(10L);
@@ -238,12 +397,8 @@ class FlightChangeQuoteServiceTest {
 
   private FlightFareEntity newFare(
       Long flightId, Long fareId, String totalPrice, String basePrice) {
-    AirportEntity departureAirport = new AirportEntity();
-    departureAirport.setId(1L);
-    departureAirport.setCode("SGN");
-    AirportEntity arrivalAirport = new AirportEntity();
-    arrivalAirport.setId(2L);
-    arrivalAirport.setCode("HAN");
+    AirportEntity departureAirport = airport(1L, "SGN");
+    AirportEntity arrivalAirport = airport(2L, "HAN");
 
     FlightEntity flight = new FlightEntity();
     flight.setId(flightId);
@@ -268,6 +423,40 @@ class FlightChangeQuoteServiceTest {
     fare.setTotalTaxAmount(BigDecimal.ZERO);
     fare.setTotalPrice(new BigDecimal(totalPrice));
     return fare;
+  }
+
+  private FlightFareEntity connectionFare(
+      Long flightId, AirportEntity departureAirport, AirportEntity arrivalAirport, OffsetDateTime departureTime) {
+    FlightEntity flight = new FlightEntity();
+    flight.setId(flightId);
+    flight.setFlightNumber("VN777");
+    flight.setStatus("SCHEDULED");
+    flight.setFlightDate(departureTime.toLocalDate());
+    flight.setDepartureAirport(departureAirport);
+    flight.setArrivalAirport(arrivalAirport);
+    flight.setDepartureTime(departureTime);
+    flight.setArrivalTime(departureTime.plusHours(1));
+
+    FareClassEntity fareClass = new FareClassEntity();
+    fareClass.setId(30L);
+    fareClass.setCode("ECONOMY");
+
+    FlightFareEntity fare = new FlightFareEntity();
+    fare.setId(400L + flightId);
+    fare.setFlight(flight);
+    fare.setFareClass(fareClass);
+    fare.setStatus("AVAILABLE");
+    fare.setBasePrice(new BigDecimal("1000000.00"));
+    fare.setTotalTaxAmount(BigDecimal.ZERO);
+    fare.setTotalPrice(new BigDecimal("1000000.00"));
+    return fare;
+  }
+
+  private AirportEntity airport(Long id, String code) {
+    AirportEntity airport = new AirportEntity();
+    airport.setId(id);
+    airport.setCode(code);
+    return airport;
   }
 
   private TicketFinancialSnapshotEntity snapshot(

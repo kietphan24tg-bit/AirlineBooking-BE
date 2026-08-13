@@ -2,6 +2,7 @@ package com.example.modulepayment.repository;
 
 import com.example.modulepayment.entity.FlightChangeSettlementEntity;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -41,4 +42,6 @@ public interface FlightChangeSettlementRepository
       """)
   Optional<FlightChangeSettlementEntity> findFirstByBookingIdAndIdempotencyKeyWithItems(
       @Param("bookingId") Long bookingId, @Param("idempotencyKey") String idempotencyKey);
+
+  boolean existsByBookingIdAndStatusIn(Long bookingId, List<String> statuses);
 }

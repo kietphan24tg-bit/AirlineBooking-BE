@@ -9,10 +9,12 @@ dependencies {
     implementation project(':module-flight')
     implementation project(':module-checkin')
 
+    implementation 'org.springframework:spring-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+    implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.40'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

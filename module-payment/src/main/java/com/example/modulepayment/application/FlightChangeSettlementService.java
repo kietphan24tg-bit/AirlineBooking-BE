@@ -77,6 +77,7 @@ public class FlightChangeSettlementService {
   private final TicketFinancialSnapshotRepository ticketFinancialSnapshotRepository;
   private final PaymentRefundService paymentRefundService;
   private final FlightChangeSettlementRepository flightChangeSettlementRepository;
+  private final BookingChangePaymentGuard bookingChangePaymentGuard;
   private final PaymentProperties paymentProperties;
 
   public FlightChangeSettlementService(
@@ -91,6 +92,7 @@ public class FlightChangeSettlementService {
       TicketFinancialSnapshotRepository ticketFinancialSnapshotRepository,
       PaymentRefundService paymentRefundService,
       FlightChangeSettlementRepository flightChangeSettlementRepository,
+      BookingChangePaymentGuard bookingChangePaymentGuard,
       PaymentProperties paymentProperties) {
     this.bookingRepository = bookingRepository;
     this.ticketRepository = ticketRepository;
@@ -103,6 +105,7 @@ public class FlightChangeSettlementService {
     this.ticketFinancialSnapshotRepository = ticketFinancialSnapshotRepository;
     this.paymentRefundService = paymentRefundService;
     this.flightChangeSettlementRepository = flightChangeSettlementRepository;
+    this.bookingChangePaymentGuard = bookingChangePaymentGuard;
     this.paymentProperties = paymentProperties;
   }
 
@@ -119,6 +122,7 @@ public class FlightChangeSettlementService {
       return toConfirmView(existing.get());
     }
 
+    bookingChangePaymentGuard.assertNoActiveChangePayment(command.bookingId());
     BookingEntity booking = requireBooking(command.userId(), command.bookingId(), true);
     validateExpectedAmounts(command);
 

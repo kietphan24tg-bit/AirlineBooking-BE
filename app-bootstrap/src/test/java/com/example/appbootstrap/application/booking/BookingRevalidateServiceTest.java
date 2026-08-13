@@ -1,4 +1,4 @@
-package com.example.appbootstrap.application.booking;
+package com.example.moduleweb.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -14,12 +14,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.controller.booking.dto.CreateBookingRequest;
-import com.example.appbootstrap.controller.booking.dto.CreateBookingResponse;
-import com.example.appbootstrap.controller.booking.dto.PassengerSummaryRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateFareRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryRequest;
-import com.example.appbootstrap.controller.booking.dto.RevalidateItineraryResponse;
+import com.example.moduleweb.controller.booking.dto.CreateBookingRequest;
+import com.example.moduleweb.controller.booking.dto.CreateBookingResponse;
+import com.example.moduleweb.controller.booking.dto.PassengerSummaryRequest;
+import com.example.moduleweb.controller.booking.dto.RevalidateFareRequest;
+import com.example.moduleweb.controller.booking.dto.RevalidateItineraryRequest;
+import com.example.moduleweb.controller.booking.dto.RevalidateItineraryResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
@@ -698,7 +698,7 @@ class BookingRevalidateServiceTest {
     when(flightFareRepository.findByIdWithDetailsForUpdate(101L)).thenReturn(Optional.of(fare));
   }
 
-  private com.example.appbootstrap.controller.booking.dto.RevalidateFareResponse stubRevalidate(
+  private com.example.moduleweb.controller.booking.dto.RevalidateFareResponse stubRevalidate(
       PassengerSummaryRequest summary, long availableSeats, String originalTotalPrice) {
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     when(flightFareRepository.findByIdWithDetails(101L)).thenReturn(Optional.of(fare));

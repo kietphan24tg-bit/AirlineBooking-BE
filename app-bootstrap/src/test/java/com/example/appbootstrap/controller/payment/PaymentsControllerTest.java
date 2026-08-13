@@ -1,15 +1,15 @@
-package com.example.appbootstrap.controller.payment;
+package com.example.modulepayment.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.controller.payment.dto.CancelPaymentRequest;
-import com.example.appbootstrap.controller.payment.dto.CreatePaymentRequest;
-import com.example.appbootstrap.controller.payment.dto.CreatePaymentResponse;
-import com.example.appbootstrap.controller.payment.dto.PaymentMethodsResponse;
-import com.example.appbootstrap.controller.payment.dto.PaymentStatusResponse;
+import com.example.modulepayment.controller.dto.CancelPaymentRequest;
+import com.example.modulepayment.controller.dto.CreatePaymentRequest;
+import com.example.modulepayment.controller.dto.CreatePaymentResponse;
+import com.example.modulepayment.controller.dto.PaymentMethodsResponse;
+import com.example.modulepayment.controller.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
 import com.example.modulepayment.application.ActivePayLaterSessionView;

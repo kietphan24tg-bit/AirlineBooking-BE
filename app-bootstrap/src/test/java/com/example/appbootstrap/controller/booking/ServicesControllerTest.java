@@ -1,10 +1,10 @@
-package com.example.appbootstrap.controller.booking;
+package com.example.moduleweb.controller.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.application.booking.AncillaryCatalogService;
-import com.example.appbootstrap.controller.booking.dto.AncillaryCatalogResponse;
+import com.example.moduleweb.application.booking.AncillaryCatalogService;
+import com.example.moduleweb.controller.booking.dto.AncillaryCatalogResponse;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

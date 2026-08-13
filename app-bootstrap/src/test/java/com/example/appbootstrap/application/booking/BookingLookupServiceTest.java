@@ -1,4 +1,4 @@
-package com.example.appbootstrap.application.booking;
+package com.example.moduleweb.application.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -7,8 +7,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.controller.booking.dto.BookingLookupRequest;
-import com.example.appbootstrap.controller.booking.dto.BookingLookupResponse;
+import com.example.moduleweb.controller.booking.dto.BookingLookupRequest;
+import com.example.moduleweb.controller.booking.dto.BookingLookupResponse;
 import com.example.common.exception.AppException;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;

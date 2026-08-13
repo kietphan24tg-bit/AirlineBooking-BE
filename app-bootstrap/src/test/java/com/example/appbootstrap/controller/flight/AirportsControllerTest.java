@@ -1,12 +1,12 @@
-package com.example.appbootstrap.controller.flight;
+package com.example.moduleweb.controller.flight;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.application.flight.AirportGeoIpCountryResolver;
-import com.example.appbootstrap.controller.flight.dto.AirportByCountryItemResponse;
+import com.example.moduleweb.application.flight.AirportGeoIpCountryResolver;
+import com.example.moduleweb.controller.flight.dto.AirportByCountryItemResponse;
 import com.example.moduleflight.application.AirportGroupedItem;
 import com.example.moduleflight.application.AirportPickerInitialItem;
 import com.example.moduleflight.application.AirportPickerItem;

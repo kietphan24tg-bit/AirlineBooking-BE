@@ -1,4 +1,4 @@
-package com.example.appbootstrap.config;
+package com.example.moduleweb.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;

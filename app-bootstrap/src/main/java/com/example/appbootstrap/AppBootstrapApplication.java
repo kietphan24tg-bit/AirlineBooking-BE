@@ -1,14 +1,14 @@
 package com.example.appbootstrap;
 
-import com.example.appbootstrap.config.AuthCookieProperties;
-import com.example.appbootstrap.config.BookingProperties;
-import com.example.appbootstrap.config.ClientIpProperties;
-import com.example.appbootstrap.config.CorsProperties;
-import com.example.appbootstrap.config.JwtProperties;
-import com.example.appbootstrap.config.LoggingProperties;
-import com.example.appbootstrap.config.MailProperties;
-import com.example.appbootstrap.config.PasswordResetProperties;
-import com.example.appbootstrap.config.SwaggerProperties;
+import com.example.moduleweb.config.AuthCookieProperties;
+import com.example.moduleweb.config.BookingProperties;
+import com.example.moduleweb.config.ClientIpProperties;
+import com.example.moduleweb.config.CorsProperties;
+import com.example.moduleweb.config.JwtProperties;
+import com.example.moduleweb.config.LoggingProperties;
+import com.example.moduleweb.config.MailProperties;
+import com.example.moduleweb.config.PasswordResetProperties;
+import com.example.moduleweb.config.SwaggerProperties;
 import com.example.modulecheckin.config.CheckInProperties;
 import com.example.moduleflight.config.AirlineImportProperties;
 import com.example.moduleflight.config.AirportImportProperties;

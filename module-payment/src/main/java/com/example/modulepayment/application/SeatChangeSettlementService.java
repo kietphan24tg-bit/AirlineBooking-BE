@@ -77,6 +77,7 @@ public class SeatChangeSettlementService {
   private final FlightSeatRepository flightSeatRepository;
   private final PaymentRepository paymentRepository;
   private final SeatChangeSettlementRepository seatChangeSettlementRepository;
+  private final BookingChangePaymentGuard bookingChangePaymentGuard;
   private final PaymentRefundService paymentRefundService;
   private final PaymentProperties paymentProperties;
 
@@ -88,6 +89,7 @@ public class SeatChangeSettlementService {
       FlightSeatRepository flightSeatRepository,
       PaymentRepository paymentRepository,
       SeatChangeSettlementRepository seatChangeSettlementRepository,
+      BookingChangePaymentGuard bookingChangePaymentGuard,
       PaymentRefundService paymentRefundService,
       PaymentProperties paymentProperties) {
     this.bookingRepository = bookingRepository;
@@ -97,6 +99,7 @@ public class SeatChangeSettlementService {
     this.flightSeatRepository = flightSeatRepository;
     this.paymentRepository = paymentRepository;
     this.seatChangeSettlementRepository = seatChangeSettlementRepository;
+    this.bookingChangePaymentGuard = bookingChangePaymentGuard;
     this.paymentRefundService = paymentRefundService;
     this.paymentProperties = paymentProperties;
   }
@@ -119,6 +122,15 @@ public class SeatChangeSettlementService {
     if (!StringUtils.hasText(idempotencyKey)) {
       throw new AppException("VALIDATION_FAILED", "idempotencyKey is required", 400);
     }
+    String normalizedIdempotencyKey = idempotencyKey.trim();
+    var existing =
+        seatChangeSettlementRepository.findFirstByBookingIdAndIdempotencyKeyWithItems(
+            bookingId, normalizedIdempotencyKey);
+    if (existing.isPresent()) {
+      return toConfirmView(existing.get());
+    }
+
+    bookingChangePaymentGuard.assertNoActiveChangePayment(bookingId);
     PreparedSettlement prepared = prepareSettlement(userId, bookingId, changes, true);
     validateExpectedSummary(
         prepared.preview().summary(),
@@ -149,7 +161,7 @@ public class SeatChangeSettlementService {
           saveSettlement(
               prepared.booking(),
               preview,
-              idempotencyKey,
+              normalizedIdempotencyKey,
               SETTLEMENT_STATUS_PAYMENT_REQUIRED,
               null,
               null,
@@ -176,7 +188,7 @@ public class SeatChangeSettlementService {
         saveSettlement(
             prepared.booking(),
             preview,
-            idempotencyKey,
+            normalizedIdempotencyKey,
             SETTLEMENT_STATUS_REFUND_PENDING,
             null,
             null,
@@ -188,7 +200,7 @@ public class SeatChangeSettlementService {
       PaymentRefundResult refundResult =
           paymentRefundService.refund(
               bookingId,
-              idempotencyKey.trim(),
+              normalizedIdempotencyKey,
               payment,
               preview.summary().refundAmount(),
               "Seat change refund");
@@ -580,6 +592,50 @@ public class SeatChangeSettlementService {
 
   private SummaryView toSummary(SeatChangePreviewView.SummaryView summary) {
     return new SummaryView(summary.additionalAmount(), summary.refundAmount(), summary.netAmount());
+  }
+
+  private SeatChangeConfirmView toConfirmView(SeatChangeSettlementEntity settlement) {
+    String normalizedStatus = normalize(settlement.getStatus());
+    boolean hasRefund = normalizeMoney(settlement.getRefundAmount()).signum() > 0;
+    String paymentStatus =
+        switch (normalizedStatus) {
+          case SETTLEMENT_STATUS_PAYMENT_REQUIRED, SETTLEMENT_STATUS_PAYMENT_PENDING ->
+              STATUS_PAYMENT_REQUIRED;
+          case SETTLEMENT_STATUS_REFUND_PENDING, SETTLEMENT_STATUS_COMPLETED ->
+              hasRefund ? STATUS_REFUND_PENDING : STATUS_COMPLETED;
+          case SETTLEMENT_STATUS_PAYMENT_FAILED,
+                  SETTLEMENT_STATUS_EXPIRED,
+                  SETTLEMENT_STATUS_CANCELLED ->
+              hasRefund ? STATUS_REFUND_FAILED : STATUS_PAYMENT_REQUIRED;
+          default -> STATUS_COMPLETED;
+        };
+    String refundStatus;
+    if (hasRefund && SETTLEMENT_STATUS_PAYMENT_FAILED.equals(normalizedStatus)) {
+      refundStatus = "FAILED";
+    } else if (hasRefund) {
+      refundStatus = "SUCCEEDED";
+    } else {
+      refundStatus = null;
+    }
+    return new SeatChangeConfirmView(
+        settlement.getId(),
+        settlement.getBooking().getId(),
+        settlement.getCurrency(),
+        settlement.getSettlementType(),
+        paymentStatus,
+        refundStatus,
+        settlement.getProvider(),
+        settlement.getProviderRefundId(),
+        settlement.getErrorCode(),
+        settlement.getErrorMessage(),
+        hasRefund ? buildRefundMethod(null, settlement.getProvider()) : null,
+        SETTLEMENT_COLLECT_PAYMENT.equals(settlement.getSettlementType())
+            ? supportedPaymentMethods(settlement.getCurrency())
+            : List.of(),
+        new SummaryView(
+            settlement.getAdditionalAmount(),
+            settlement.getRefundAmount(),
+            settlement.getNetAmount()));
   }
 
   private static SeatChangeConfirmView.RefundMethodView buildRefundMethod(

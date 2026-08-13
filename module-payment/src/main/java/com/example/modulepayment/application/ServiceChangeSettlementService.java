@@ -78,6 +78,7 @@ public class ServiceChangeSettlementService {
   private final PassengerSeatAssignmentRepository passengerSeatAssignmentRepository;
   private final PaymentRepository paymentRepository;
   private final ServiceChangeSettlementRepository serviceChangeSettlementRepository;
+  private final BookingChangePaymentGuard bookingChangePaymentGuard;
   private final PaymentRefundService paymentRefundService;
   private final PaymentProperties paymentProperties;
 
@@ -90,6 +91,7 @@ public class ServiceChangeSettlementService {
       PassengerSeatAssignmentRepository passengerSeatAssignmentRepository,
       PaymentRepository paymentRepository,
       ServiceChangeSettlementRepository serviceChangeSettlementRepository,
+      BookingChangePaymentGuard bookingChangePaymentGuard,
       PaymentRefundService paymentRefundService,
       PaymentProperties paymentProperties) {
     this.bookingRepository = bookingRepository;
@@ -100,6 +102,7 @@ public class ServiceChangeSettlementService {
     this.passengerSeatAssignmentRepository = passengerSeatAssignmentRepository;
     this.paymentRepository = paymentRepository;
     this.serviceChangeSettlementRepository = serviceChangeSettlementRepository;
+    this.bookingChangePaymentGuard = bookingChangePaymentGuard;
     this.paymentRefundService = paymentRefundService;
     this.paymentProperties = paymentProperties;
   }
@@ -132,6 +135,7 @@ public class ServiceChangeSettlementService {
       return toConfirmView(existing.get());
     }
 
+    bookingChangePaymentGuard.assertNoActiveChangePayment(bookingId);
     PreparedSettlement prepared = prepareSettlement(userId, bookingId, passengers, true);
     if (StringUtils.hasText(previewToken)
         && !Objects.equals(prepared.preview().previewToken(), previewToken.trim())) {

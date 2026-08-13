@@ -1,14 +1,14 @@
-package com.example.appbootstrap.controller.checkin;
+package com.example.moduleweb.controller.checkin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.appbootstrap.application.checkin.CheckInSuccessEmailService;
-import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmRequest;
-import com.example.appbootstrap.controller.checkin.dto.CheckInConfirmResponse;
-import com.example.appbootstrap.controller.checkin.dto.CheckInContinueRequest;
-import com.example.appbootstrap.controller.checkin.dto.CheckInContinueResponse;
+import com.example.moduleweb.application.checkin.CheckInSuccessEmailService;
+import com.example.moduleweb.controller.checkin.dto.CheckInConfirmRequest;
+import com.example.moduleweb.controller.checkin.dto.CheckInConfirmResponse;
+import com.example.moduleweb.controller.checkin.dto.CheckInContinueRequest;
+import com.example.moduleweb.controller.checkin.dto.CheckInContinueResponse;
 import com.example.modulecheckin.application.CheckInConfirmCommand;
 import com.example.modulecheckin.application.CheckInConfirmService;
 import com.example.modulecheckin.application.CheckInConfirmView;

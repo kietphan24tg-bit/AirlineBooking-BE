@@ -1,11 +1,11 @@
-package com.example.appbootstrap.application.identity;
+package com.example.moduleweb.application.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.example.appbootstrap.config.MailProperties;
-import com.example.appbootstrap.config.PasswordResetProperties;
+import com.example.moduleweb.config.MailProperties;
+import com.example.moduleweb.config.PasswordResetProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
