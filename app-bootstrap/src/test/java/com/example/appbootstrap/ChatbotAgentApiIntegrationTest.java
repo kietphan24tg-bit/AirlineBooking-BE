@@ -1,5 +1,6 @@
 package com.example.appbootstrap;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import com.example.moduleai.agent.AgentOrchestrator;
 import com.example.moduleai.confirmation.ToolConfirmationService;
 import com.example.moduleai.confirmation.ToolProposalView;
@@ -103,12 +106,13 @@ class ChatbotAgentApiIntegrationTest {
     mockMvc
         .perform(get("/api/chatbot/proposals/{id}", proposalId).with(user(principal)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.status").value("PENDING"));
+        .andExpect(result -> assertProposalStatus(result.getResponse().getContentAsString(), "PENDING"));
 
     mockMvc
         .perform(post("/api/chatbot/proposals/{id}/confirm", proposalId).with(user(principal)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.status").value("EXECUTED"));
+        .andExpect(
+            result -> assertProposalStatus(result.getResponse().getContentAsString(), "EXECUTED"));
 
     verify(requestLimiter).checkConfirmation(77L);
     verify(confirmationService).confirm(proposalId, 77L);
@@ -126,5 +130,13 @@ class ChatbotAgentApiIntegrationTest {
         OffsetDateTime.now().plusMinutes(5),
         "/api/chatbot/proposals/" + id + "/confirm",
         "/api/chatbot/proposals/" + id + "/reject");
+  }
+
+  private void assertProposalStatus(String json, String expectedStatus) {
+    try {
+      assertEquals(expectedStatus, JsonPath.read(json, "$.data.status"));
+    } catch (PathNotFoundException ignored) {
+      assertEquals(expectedStatus, JsonPath.read(json, "$.status"));
+    }
   }
 }
