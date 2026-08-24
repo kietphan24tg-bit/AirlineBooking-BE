@@ -1,7 +1,21 @@
 package com.example.moduleweb.controller.booking;
 
+import com.example.common.exception.AppException;
+import com.example.modulebooking.application.BookingLookupCommand;
+import com.example.modulebooking.application.BookingLookupService;
+import com.example.modulebooking.application.BookingTicketsView;
+import com.example.modulebooking.application.TicketIssuanceService;
+import com.example.moduleidentity.application.security.AppUserPrincipal;
+import com.example.modulepayment.application.BookingCancellationPreviewView;
+import com.example.modulepayment.application.BookingCancellationResultView;
+import com.example.modulepayment.application.BookingCancellationService;
+import com.example.modulepayment.application.SeatChangeConfirmView;
+import com.example.modulepayment.application.SeatChangePreviewView;
+import com.example.modulepayment.application.SeatChangeSettlementService;
+import com.example.modulepayment.application.ServiceChangeConfirmView;
+import com.example.modulepayment.application.ServiceChangePreviewView;
+import com.example.modulepayment.application.ServiceChangeSettlementService;
 import com.example.moduleweb.application.booking.BookingAncillarySelectionService;
-import com.example.moduleweb.application.booking.BookingLookupService;
 import com.example.moduleweb.application.booking.BookingManageOptionsService;
 import com.example.moduleweb.application.booking.BookingRevalidateService;
 import com.example.moduleweb.application.booking.BookingSeatAssignmentService;
@@ -39,19 +53,6 @@ import com.example.moduleweb.controller.booking.dto.ServiceChangePreviewResponse
 import com.example.moduleweb.controller.booking.dto.TripDetailResponse;
 import com.example.moduleweb.controller.booking.dto.TripHistoryQueryRequest;
 import com.example.moduleweb.controller.booking.dto.TripHistoryResponse;
-import com.example.common.exception.AppException;
-import com.example.modulebooking.application.BookingTicketsView;
-import com.example.modulebooking.application.TicketIssuanceService;
-import com.example.moduleidentity.application.security.AppUserPrincipal;
-import com.example.modulepayment.application.BookingCancellationPreviewView;
-import com.example.modulepayment.application.BookingCancellationResultView;
-import com.example.modulepayment.application.BookingCancellationService;
-import com.example.modulepayment.application.SeatChangeConfirmView;
-import com.example.modulepayment.application.SeatChangePreviewView;
-import com.example.modulepayment.application.SeatChangeSettlementService;
-import com.example.modulepayment.application.ServiceChangeConfirmView;
-import com.example.modulepayment.application.ServiceChangePreviewView;
-import com.example.modulepayment.application.ServiceChangeSettlementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -163,7 +164,9 @@ public class BookingsController {
     @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
   })
   BookingLookupResponse lookupBooking(@Valid @RequestBody BookingLookupRequest request) {
-    return bookingLookupService.lookup(request);
+    return BookingLookupResponse.from(
+        bookingLookupService.lookup(
+            new BookingLookupCommand(request.pnrCode(), request.lastName())));
   }
 
   @GetMapping("/bookings/my-trips")

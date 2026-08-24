@@ -9,4 +9,12 @@ public interface RateLimitStore {
   long getCount(String key);
 
   void delete(String key);
+
+  default boolean tryAcquire(String key, Duration ttl) {
+    return increment(key, ttl) == 1L;
+  }
+
+  default void release(String key) {
+    delete(key);
+  }
 }

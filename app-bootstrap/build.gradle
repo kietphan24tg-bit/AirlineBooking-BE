@@ -27,6 +27,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1'
     implementation 'org.flywaydb:flyway-database-postgresql'
+    if (!(findProperty('skipPrometheusRegistry') ?: 'false').toBoolean()) {
+        runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    }
     runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.1'
 
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
@@ -74,4 +77,8 @@ tasks.named('bootRun', BootRun) {
     } else {
         logger.lifecycle('No .env file found at {}. bootRun will use the current shell environment.', envFile)
     }
+}
+
+tasks.named('test') {
+    systemProperty 'skipPrometheusRegistry', (findProperty('skipPrometheusRegistry') ?: 'false').toString()
 }

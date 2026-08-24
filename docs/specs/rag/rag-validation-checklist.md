@@ -187,6 +187,25 @@ Các câu này kiểm tra bot có hiểu đúng điều kiện, ngoại lệ và
 | EDGE-027 | Hộ chiếu còn hạn 4 tháng có bay được không? | Không bịa số tháng; yêu cầu kiểm tra quy định điểm đến/hãng bay. |
 | EDGE-028 | Trẻ em đi một mình cần giấy ủy quyền không? | Không khẳng định nếu chưa có policy chính thức; hướng kiểm tra nhân viên hỗ trợ/nguồn chính thức. |
 
+## Đa ngôn ngữ và language consistency
+
+Các câu này kiểm tra retrieval trên câu hỏi không phải tiếng Việt và bảo đảm câu trả lời dùng đúng ngôn ngữ được chỉ định. Thuật ngữ nghiệp vụ, alias và mã trạng thái không được xem là sai ngôn ngữ.
+
+| ID | Câu hỏi test | Expected behavior |
+| --- | --- | --- |
+| LANG-001 | When does online check-in open and close for a domestic flight? | [LANG=en] Answer in English; state that it opens 24 hours before departure and closes 40 minutes before departure. |
+| LANG-002 | What does the booking status PENDING_PAYMENT mean? | [LANG=en] Answer in English; explain that the booking was created but payment has not succeeded and it remains subject to the hold expiry. |
+| LANG-003 | Can an infant select a separate seat? | [LANG=en] Answer in English; say no because an infant does not have a separate seat under the current policy. |
+| LANG-004 | How long is a flight-change quote valid? | [LANG=en] Answer in English; state 15 minutes. |
+| LANG-005 | Can every INCLUDED fare select every seat for free? | [LANG=en] Answer in English; say no, only included seat categories are free and higher categories may cost extra. |
+| LANG-006 | What documents do I need for a Japanese visa? | [LANG=en] Answer in English; do not invent requirements and direct the user to official sources or support. |
+| LANG-007 | Quand l'enregistrement en ligne ouvre-t-il et ferme-t-il pour un vol intérieur ? | [LANG=fr] Répondre en français ; indiquer une ouverture 24 heures avant le départ et une fermeture 40 minutes avant le départ. |
+| LANG-008 | Que signifie le statut de réservation PENDING_PAYMENT ? | [LANG=fr] Répondre en français ; expliquer que la réservation est créée mais que le paiement n'a pas abouti et qu'elle reste soumise à son délai d'expiration. |
+| LANG-009 | Un bébé peut-il sélectionner un siège séparé ? | [LANG=fr] Répondre en français ; répondre non, car un bébé n'a pas de siège séparé selon la politique actuelle. |
+| LANG-010 | Combien de mois mon passeport doit-il rester valide pour un vol international ? | [LANG=fr] Répondre en français ; ne pas inventer une durée et orienter vers une source officielle ou l'assistance. |
+| LANG-011 | Booking chua thanh toan duoc giu bao lau? | [LANG=vi] Trả lời bằng tiếng Việt; nêu thời gian giữ mặc định 15 phút theo pnrExpiresAt. |
+| LANG-012 | My booking đang PENDING_PAYMENT, tôi có check-in được không? | [LANG=vi] Trả lời bằng tiếng Việt; nói không, vì check-in cần booking CONFIRMED và ticket ISSUED. |
+
 ## Acceptance criteria
 
 Knowledge base được xem là đạt mức demo nghiêm túc khi:
@@ -196,6 +215,7 @@ Knowledge base được xem là đạt mức demo nghiêm túc khi:
 - 100% câu trong nhóm `Fallback và không được bịa` không bị bot trả lời chắc chắn khi chưa có nguồn.
 - Bot không trả lời mâu thuẫn với code về các mốc 15 phút, 24 giờ, 48 giờ, 40 phút, 60 phút, 180 phút, 90 phút.
 - Mỗi câu trả lời quan trọng có thể truy ngược về một file policy trong thư mục này.
+- Câu hỏi tiếng Anh, tiếng Pháp và tiếng Việt phải được trả lời bằng đúng ngôn ngữ yêu cầu trong nhóm language consistency.
 
 Knowledge base được xem là đạt mức gần production khi:
 

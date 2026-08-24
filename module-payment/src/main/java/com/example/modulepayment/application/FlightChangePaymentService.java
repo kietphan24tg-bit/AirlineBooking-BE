@@ -4,6 +4,7 @@ import com.example.common.exception.AppException;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.FlightChangeSettlementEntity;
 import com.example.modulepayment.entity.PaymentEntity;
+import com.example.modulepayment.exception.PaymentExecutionUnknownException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PayosPaymentGateway;
 import com.example.modulepayment.gateway.StripePaymentGateway;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FlightChangePaymentService {
@@ -25,6 +27,7 @@ public class FlightChangePaymentService {
   private static final String METHOD_STRIPE_CARD = "STRIPE_CARD";
   private static final String PAYMENT_STATUS_CANCELLED = "CANCELLED";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
+  private static final String PAYMENT_STATUS_UNKNOWN = "UNKNOWN";
   private static final String PAYMENT_PURPOSE = "FLIGHT_CHANGE";
 
   private final FlightChangeSettlementService flightChangeSettlementService;
@@ -48,6 +51,17 @@ public class FlightChangePaymentService {
 
   public CreatePaymentResult createPayment(
       Long bookingId, Long settlementId, Long userId, String method) {
+    return doCreatePayment(bookingId, settlementId, userId, method, null);
+  }
+
+  @Transactional(noRollbackFor = PaymentExecutionUnknownException.class)
+  public CreatePaymentResult createPayment(
+      Long bookingId, Long settlementId, Long userId, String method, String idempotencyKey) {
+    return doCreatePayment(bookingId, settlementId, userId, method, idempotencyKey);
+  }
+
+  private CreatePaymentResult doCreatePayment(
+      Long bookingId, Long settlementId, Long userId, String method, String idempotencyKey) {
     String normalizedMethod = normalizeMethod(method);
     if (!METHOD_PAYOS.equals(normalizedMethod) && !METHOD_STRIPE_CARD.equals(normalizedMethod)) {
       throw new AppException("UNSUPPORTED_PAYMENT_METHOD", "Payment method is not supported", 400);
@@ -61,15 +75,31 @@ public class FlightChangePaymentService {
           409);
     }
 
+    String requestKey = PaymentRequestKeySupport.normalize(idempotencyKey);
+    PaymentEntity existing = PaymentRequestKeySupport.findExisting(paymentRepository, requestKey);
+    if (existing != null) {
+      PaymentRequestKeySupport.validateExisting(
+          existing,
+          settlement.getBooking().getId(),
+          normalizedMethod,
+          existing.getFlightChangeSettlement() != null
+              && settlement.getId().equals(existing.getFlightChangeSettlement().getId()));
+      return PaymentRequestKeySupport.toResult(existing);
+    }
+
     OffsetDateTime now = OffsetDateTime.now();
     List<PaymentEntity> previousPending =
         paymentRepository.findByFlightChangeSettlementIdAndPaymentStatusInForUpdateOrderByLatest(
-            settlement.getId(), List.of(PAYMENT_STATUS_PENDING));
-    for (PaymentEntity existing : previousPending) {
-      cancelWithProvider(existing, "Payment method changed");
-      existing.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
-      existing.setUpdatedAt(now);
-      paymentRepository.save(existing);
+            settlement.getId(), List.of(PAYMENT_STATUS_PENDING, PAYMENT_STATUS_UNKNOWN));
+    if (previousPending.stream()
+        .anyMatch(payment -> PAYMENT_STATUS_UNKNOWN.equalsIgnoreCase(payment.getPaymentStatus()))) {
+      throw new PaymentExecutionUnknownException();
+    }
+    for (PaymentEntity pendingPayment : previousPending) {
+      cancelWithProvider(pendingPayment, "Payment method changed");
+      pendingPayment.setPaymentStatus(PAYMENT_STATUS_CANCELLED);
+      pendingPayment.setUpdatedAt(now);
+      paymentRepository.save(pendingPayment);
     }
 
     PaymentEntity payment = new PaymentEntity();
@@ -79,6 +109,7 @@ public class FlightChangePaymentService {
     payment.setCurrency(settlement.getCurrency());
     payment.setPaymentMethod(normalizedMethod);
     payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
+    payment.setRequestKey(requestKey);
     payment.setType(METHOD_PAYOS.equals(normalizedMethod) ? "QR" : "CHECKOUT");
     OffsetDateTime expireAt = resolveExpireAt(normalizedMethod, now);
     payment.setSessionExpiresAt(expireAt);
@@ -87,14 +118,26 @@ public class FlightChangePaymentService {
     paymentRepository.saveAndFlush(payment);
 
     PaymentGateway.PaymentGatewayResult gatewayResult;
-    if (METHOD_PAYOS.equals(normalizedMethod)) {
-      gatewayResult =
-          payosPaymentGateway.createPaymentLink(
-              buildGatewayRequest(payment, settlement, normalizedMethod, expireAt));
-    } else {
-      gatewayResult =
-          stripePaymentGateway.createCheckoutSession(
-              buildGatewayRequest(payment, settlement, normalizedMethod, expireAt));
+    try {
+      if (METHOD_PAYOS.equals(normalizedMethod)) {
+        gatewayResult =
+            payosPaymentGateway.createPaymentLink(
+                buildGatewayRequest(payment, settlement, normalizedMethod, expireAt, requestKey));
+      } else {
+        gatewayResult =
+            stripePaymentGateway.createCheckoutSession(
+                buildGatewayRequest(payment, settlement, normalizedMethod, expireAt, requestKey));
+      }
+    } catch (RuntimeException exception) {
+      boolean executionUnknown =
+          requestKey != null && PaymentRequestKeySupport.isProviderResultUnknown(exception);
+      payment.setPaymentStatus(executionUnknown ? "UNKNOWN" : "FAILED");
+      payment.setUpdatedAt(OffsetDateTime.now());
+      paymentRepository.save(payment);
+      if (executionUnknown) {
+        throw new PaymentExecutionUnknownException();
+      }
+      throw exception;
     }
 
     payment.setTransactionId(gatewayResult.paymentLinkId());
@@ -123,7 +166,8 @@ public class FlightChangePaymentService {
       PaymentEntity payment,
       FlightChangeSettlementEntity settlement,
       String method,
-      OffsetDateTime expireAt) {
+      OffsetDateTime expireAt,
+      String requestKey) {
     return new PaymentGateway.PaymentGatewayRequest(
         payment.getId(),
         payment.getId(),
@@ -145,11 +189,14 @@ public class FlightChangePaymentService {
                 "Flight change",
                 "Flight change payment for booking " + settlement.getBooking().getPnrCode(),
                 payment.getAmount())),
-        Map.of(
-            "purpose", PAYMENT_PURPOSE,
-            "paymentId", String.valueOf(payment.getId()),
-            "bookingId", String.valueOf(settlement.getBooking().getId()),
-            "settlementId", String.valueOf(settlement.getId())));
+        PaymentRequestKeySupport.metadata(
+            Map.of(
+                "purpose", PAYMENT_PURPOSE,
+                "paymentId", String.valueOf(payment.getId()),
+                "bookingId", String.valueOf(settlement.getBooking().getId()),
+                "settlementId", String.valueOf(settlement.getId())),
+            requestKey),
+        requestKey);
   }
 
   private OffsetDateTime resolveExpireAt(String method, OffsetDateTime now) {

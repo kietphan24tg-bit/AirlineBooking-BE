@@ -1,9 +1,9 @@
 package com.example.moduleweb.controller.account;
 
+import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleweb.api.ApiSuccessMessage;
 import com.example.moduleweb.application.account.AccountOverviewService;
 import com.example.moduleweb.controller.account.dto.AccountOverviewResponse;
-import com.example.moduleidentity.application.security.AppUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

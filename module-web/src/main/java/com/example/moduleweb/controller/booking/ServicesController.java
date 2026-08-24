@@ -40,7 +40,8 @@ public class ServicesController {
         content = @Content(schema = @Schema(implementation = AncillaryCatalogResponse.class)))
   })
   AncillaryCatalogResponse getCatalog(
-      @RequestParam(required = false) Long flightId, @RequestParam(required = false) Long fareId) {
+      @RequestParam(name = "flightId", required = false) Long flightId,
+      @RequestParam(name = "fareId", required = false) Long fareId) {
     return AncillaryCatalogResponse.from(
         ancillaryCatalogService.getCatalogForFare(flightId, fareId));
   }

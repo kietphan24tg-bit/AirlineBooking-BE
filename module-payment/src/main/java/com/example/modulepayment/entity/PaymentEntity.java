@@ -58,6 +58,9 @@ public class PaymentEntity {
   @Column(name = "transaction_id", unique = true, length = 100)
   private String transactionId;
 
+  @Column(name = "request_key", unique = true, length = 255)
+  private String requestKey;
+
   @Column(name = "provider_payment_reference", length = 255)
   private String providerPaymentReference;
 

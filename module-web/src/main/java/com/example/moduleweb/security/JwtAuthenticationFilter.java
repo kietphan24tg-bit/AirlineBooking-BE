@@ -19,8 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Not a servlet {@code @Component}; built in {@link
- * com.example.moduleweb.config.SecurityConfig}.
+ * Not a servlet {@code @Component}; built in {@link com.example.moduleweb.config.SecurityConfig}.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

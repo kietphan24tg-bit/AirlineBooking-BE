@@ -1,10 +1,10 @@
 package com.example.moduleweb.application.account;
 
-import com.example.moduleweb.application.booking.UserTripHistoryService;
 import com.example.moduleflight.application.AirportPickerItem;
 import com.example.moduleflight.application.AirportPickerService;
 import com.example.moduleidentity.application.AuthService;
 import com.example.moduleidentity.entity.UserEntity;
+import com.example.moduleweb.application.booking.UserTripHistoryService;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;

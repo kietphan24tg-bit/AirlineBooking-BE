@@ -34,6 +34,13 @@ Quyền chọn ghế phụ thuộc vào hạng vé khách đã mua:
 
 Một số hạng vé hoặc cấu hình đặc biệt có thể không cho chọn ghế trước, hoặc chỉ cho chọn ghế khi làm check-in. Khi khách hỏi về booking cụ thể, cần kiểm tra quyền chọn ghế thực tế của booking đó.
 
+Alias quyền chọn ghế của fare:
+
+| Alias | Ý nghĩa |
+| --- | --- |
+| `CHECKIN_ONLY` | Chỉ được chọn ghế trong luồng check-in, không được chọn ghế trước luồng này. |
+| `NOT_ALLOWED` | Không được chọn ghế trước. |
+
 ## Điều kiện của ghế được chọn
 
 Một ghế chỉ có thể chọn nếu:
@@ -52,22 +59,39 @@ Phí chọn ghế phụ thuộc vào nhóm ghế, loại ghế và quyền lợi
 
 Các mức phí tham chiếu dưới đây đang áp dụng theo VND. Với booking dùng loại tiền tệ khác, không được tự quy đổi phí ghế sang ngoại tệ; cần tra cứu hệ thống để biết booking đó có hỗ trợ phụ phí ghế hay không.
 
+Alias nghiệp vụ cho nhóm ghế:
+
+| Alias | Tên hiển thị | Phí tham chiếu |
+| --- | --- | ---: |
+| STANDARD | Tiêu chuẩn | 0 VND |
+| PREFERRED | Ưu tiên | 40,000 VND |
+| EXIT_ROW | Hàng thoát hiểm | 120,000 VND |
+| EXTRA_LEGROOM | Rộng chân | 180,000 VND |
+
 Nhóm ghế tham chiếu theo cấu hình hiện tại:
 
 | Nhóm ghế | Phí tham chiếu |
 | --- | ---: |
 | Tiêu chuẩn | 0 VND |
-| Ưu tiên | 40.000 VND |
-| Hàng thoát hiểm | 120.000 VND |
-| Rộng chân | 180.000 VND |
+| Ưu tiên | 40,000 VND |
+| Hàng thoát hiểm | 120,000 VND |
+| Rộng chân | 180,000 VND |
+
+Alias nghiệp vụ cho loại ghế:
+
+| Alias | Tên hiển thị | Phí tham chiếu |
+| --- | --- | ---: |
+| MIDDLE | Ghế giữa | 0 VND |
+| WINDOW | Ghế cửa sổ | 20,000 VND |
+| AISLE | Ghế lối đi | 20,000 VND |
 
 Loại ghế tham chiếu theo cấu hình hiện tại:
 
 | Loại ghế | Phí tham chiếu |
 | --- | ---: |
 | Ghế giữa | 0 VND |
-| Ghế cửa sổ | 20.000 VND |
-| Ghế lối đi | 20.000 VND |
+| Ghế cửa sổ | 20,000 VND |
+| Ghế lối đi | 20,000 VND |
 
 Phí thực tế không nên tự cộng thủ công cho booking cụ thể. Hệ thống sẽ tính dựa trên ghế khách chọn, hạng vé, quyền lợi miễn phí và loại tiền tệ của booking.
 

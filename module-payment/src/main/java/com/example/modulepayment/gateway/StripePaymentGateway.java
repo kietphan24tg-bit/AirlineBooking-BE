@@ -67,7 +67,7 @@ public class StripePaymentGateway {
     }
 
     try {
-      Session session = Session.create(params.build(), requestOptions());
+      Session session = Session.create(params.build(), requestOptions(request.idempotencyKey()));
       return new PaymentGateway.PaymentGatewayResult(
           session.getId(),
           session.getUrl(),
@@ -274,7 +274,16 @@ public class StripePaymentGateway {
   }
 
   private RequestOptions requestOptions() {
-    return RequestOptions.builder().setApiKey(paymentProperties.stripe().secretKey()).build();
+    return requestOptions(null);
+  }
+
+  private RequestOptions requestOptions(String idempotencyKey) {
+    RequestOptions.RequestOptionsBuilder builder =
+        RequestOptions.builder().setApiKey(paymentProperties.stripe().secretKey());
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      builder.setIdempotencyKey(idempotencyKey.trim());
+    }
+    return builder.build();
   }
 
   /**

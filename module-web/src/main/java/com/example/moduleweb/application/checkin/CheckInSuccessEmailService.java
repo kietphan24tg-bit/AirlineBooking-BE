@@ -1,6 +1,5 @@
 package com.example.moduleweb.application.checkin;
 
-import com.example.moduleweb.config.MailProperties;
 import com.example.modulebooking.entity.BoardingPassEntity;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
@@ -12,6 +11,7 @@ import com.example.modulebooking.repository.TicketRepository;
 import com.example.modulecheckin.application.CheckInConfirmView;
 import com.example.moduleflight.entity.AirportEntity;
 import com.example.moduleflight.entity.FlightEntity;
+import com.example.moduleweb.config.MailProperties;
 import jakarta.mail.MessagingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

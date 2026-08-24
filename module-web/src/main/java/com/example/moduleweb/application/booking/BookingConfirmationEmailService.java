@@ -1,6 +1,5 @@
 package com.example.moduleweb.application.booking;
 
-import com.example.moduleweb.config.MailProperties;
 import com.example.modulebooking.entity.BookingContactEntity;
 import com.example.modulebooking.entity.BookingEntity;
 import com.example.modulebooking.entity.BookingServiceEntity;
@@ -18,6 +17,7 @@ import com.example.moduleflight.entity.FlightEntity;
 import com.example.modulepayment.application.BookingConfirmationNotifier;
 import com.example.modulepayment.entity.PaymentEntity;
 import com.example.modulepayment.repository.PaymentRepository;
+import com.example.moduleweb.config.MailProperties;
 import jakarta.mail.MessagingException;
 import java.math.BigDecimal;
 import java.text.NumberFormat;

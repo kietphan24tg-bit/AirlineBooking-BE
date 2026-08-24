@@ -30,7 +30,47 @@ public interface PaymentGateway {
       String productName,
       String productDescription,
       List<PaymentLineItem> lineItems,
-      Map<String, String> metadata) {
+      Map<String, String> metadata,
+      String idempotencyKey) {
+
+    public PaymentGatewayRequest(
+        Long paymentId,
+        long orderCode,
+        BigDecimal amount,
+        String currency,
+        String description,
+        String returnUrl,
+        String cancelUrl,
+        String buyerName,
+        String buyerEmail,
+        String buyerPhone,
+        OffsetDateTime expiredAt,
+        Long bookingId,
+        String provider,
+        String productName,
+        String productDescription,
+        List<PaymentLineItem> lineItems,
+        Map<String, String> metadata) {
+      this(
+          paymentId,
+          orderCode,
+          amount,
+          currency,
+          description,
+          returnUrl,
+          cancelUrl,
+          buyerName,
+          buyerEmail,
+          buyerPhone,
+          expiredAt,
+          bookingId,
+          provider,
+          productName,
+          productDescription,
+          lineItems,
+          metadata,
+          null);
+    }
 
     public PaymentGatewayRequest(
         Long paymentId,
@@ -61,7 +101,8 @@ public interface PaymentGateway {
           description,
           description,
           List.of(),
-          Map.of());
+          Map.of(),
+          null);
     }
   }
 

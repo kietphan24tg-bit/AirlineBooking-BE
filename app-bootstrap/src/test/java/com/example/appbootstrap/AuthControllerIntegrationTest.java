@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.moduleweb.security.JwtService;
 import com.example.moduleidentity.domain.security.TokenHashingService;
 import com.example.moduleidentity.entity.PasswordResetTokenEntity;
 import com.example.moduleidentity.entity.RefreshTokenSessionEntity;
@@ -16,6 +15,7 @@ import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleidentity.repository.PasswordResetTokenRepository;
 import com.example.moduleidentity.repository.RefreshTokenSessionRepository;
 import com.example.moduleidentity.repository.UserRepository;
+import com.example.moduleweb.security.JwtService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;

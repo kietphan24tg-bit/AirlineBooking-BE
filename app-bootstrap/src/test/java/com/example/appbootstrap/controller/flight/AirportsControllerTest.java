@@ -5,8 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.moduleweb.application.flight.AirportGeoIpCountryResolver;
-import com.example.moduleweb.controller.flight.dto.AirportByCountryItemResponse;
 import com.example.moduleflight.application.AirportGroupedItem;
 import com.example.moduleflight.application.AirportPickerInitialItem;
 import com.example.moduleflight.application.AirportPickerItem;
@@ -15,6 +13,8 @@ import com.example.moduleflight.application.AirportPickerService;
 import com.example.moduleflight.application.AirportQueryService;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
+import com.example.moduleweb.application.flight.AirportGeoIpCountryResolver;
+import com.example.moduleweb.controller.flight.dto.AirportByCountryItemResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

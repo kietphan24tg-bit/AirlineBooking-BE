@@ -18,7 +18,7 @@
 - **Mô tả hoạt động:**
   - Tại trang Kết quả Tìm kiếm, hệ thống hiển thị Biểu đồ xu hướng giá (Trend/Line chart) cho chặng bay đó.
   - AI phân tích và đưa ra lời khuyên tự động: *"Giá đang rẻ hơn 15% so với trung bình, khuyên bạn chốt ngay!"* hoặc *"Giá có xu hướng giảm nhẹ vào tuần tới"*.
-- **Yêu cầu kỹ thuật:** 
+- **Yêu cầu kỹ thuật:**
   - Xây dựng kho dữ liệu lịch sử giá vé (Time-series data).
   - Áp dụng các thuật toán dự đoán (Forecasting) cơ bản.
   - **Lưu ý Pháp lý:** Bắt buộc hiển thị dòng chữ: *"Dự đoán chỉ mang tính chất tham khảo dựa trên thuật toán quá khứ"*.

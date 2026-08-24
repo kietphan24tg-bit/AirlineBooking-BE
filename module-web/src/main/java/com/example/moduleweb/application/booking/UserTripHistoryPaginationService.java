@@ -10,7 +10,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
+@Service("webUserTripHistoryPaginationService")
 public class UserTripHistoryPaginationService {
 
   private static final String CURSOR_VERSION = "v1";

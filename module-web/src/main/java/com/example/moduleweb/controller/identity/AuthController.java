@@ -1,5 +1,10 @@
 package com.example.moduleweb.controller.identity;
 
+import com.example.common.exception.AppException;
+import com.example.moduleidentity.application.AuthService;
+import com.example.moduleidentity.application.AuthTokens;
+import com.example.moduleidentity.application.PasswordResetService;
+import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleweb.api.ApiSuccessMessage;
 import com.example.moduleweb.application.identity.PasswordResetEmailService;
 import com.example.moduleweb.config.AuthCookieProperties;
@@ -10,11 +15,6 @@ import com.example.moduleweb.controller.identity.dto.PasswordResetConfirmRequest
 import com.example.moduleweb.controller.identity.dto.PasswordResetRequest;
 import com.example.moduleweb.controller.identity.dto.RegisterRequest;
 import com.example.moduleweb.controller.identity.dto.RegisterResponse;
-import com.example.common.exception.AppException;
-import com.example.moduleidentity.application.AuthService;
-import com.example.moduleidentity.application.AuthTokens;
-import com.example.moduleidentity.application.PasswordResetService;
-import com.example.moduleidentity.entity.UserEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

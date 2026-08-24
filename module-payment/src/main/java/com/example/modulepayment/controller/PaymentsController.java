@@ -1,13 +1,5 @@
 package com.example.modulepayment.controller;
 
-import com.example.modulepayment.controller.dto.CancelPaymentRequest;
-import com.example.modulepayment.controller.dto.CreateFlightChangePaymentRequest;
-import com.example.modulepayment.controller.dto.CreatePaymentRequest;
-import com.example.modulepayment.controller.dto.CreatePaymentResponse;
-import com.example.modulepayment.controller.dto.CreateSeatChangePaymentRequest;
-import com.example.modulepayment.controller.dto.CreateServiceChangePaymentRequest;
-import com.example.modulepayment.controller.dto.PaymentMethodsResponse;
-import com.example.modulepayment.controller.dto.PaymentStatusResponse;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.modulepayment.application.ActivePayLaterSessionView;
 import com.example.modulepayment.application.CreatePaymentCommand;
@@ -22,6 +14,14 @@ import com.example.modulepayment.application.PaymentService;
 import com.example.modulepayment.application.PaymentStatusView;
 import com.example.modulepayment.application.SeatChangePaymentService;
 import com.example.modulepayment.application.ServiceChangePaymentService;
+import com.example.modulepayment.controller.dto.CancelPaymentRequest;
+import com.example.modulepayment.controller.dto.CreateFlightChangePaymentRequest;
+import com.example.modulepayment.controller.dto.CreatePaymentRequest;
+import com.example.modulepayment.controller.dto.CreatePaymentResponse;
+import com.example.modulepayment.controller.dto.CreateSeatChangePaymentRequest;
+import com.example.modulepayment.controller.dto.CreateServiceChangePaymentRequest;
+import com.example.modulepayment.controller.dto.PaymentMethodsResponse;
+import com.example.modulepayment.controller.dto.PaymentStatusResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -84,9 +84,9 @@ public class PaymentsController {
   })
   PaymentMethodsResponse getPaymentMethods(
       @AuthenticationPrincipal AppUserPrincipal principal,
-      @RequestParam @NotNull(message = "bookingId is required") Long bookingId,
+      @RequestParam("bookingId") @NotNull(message = "bookingId is required") Long bookingId,
       @Parameter(description = "If true, omit payment methods that are not yet supported")
-          @RequestParam(defaultValue = "false")
+          @RequestParam(name = "onlySupported", defaultValue = "false")
           boolean onlySupported) {
     List<PaymentMethodView> groups =
         principal == null
@@ -141,7 +141,7 @@ public class PaymentsController {
   })
   PaymentStatusResponse getPaymentStatus(
       @AuthenticationPrincipal AppUserPrincipal principal,
-      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId) {
+      @PathVariable("paymentId") @Positive(message = "paymentId must be positive") Long paymentId) {
     PaymentStatusView view =
         principal == null
             ? paymentService.getPaymentPublic(paymentId)
@@ -172,7 +172,7 @@ public class PaymentsController {
   })
   PaymentResultStatusView getPaymentResultStatus(
       @AuthenticationPrincipal AppUserPrincipal principal,
-      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId) {
+      @PathVariable("paymentId") @Positive(message = "paymentId must be positive") Long paymentId) {
     return principal == null
         ? paymentResultService.getResultStatusPublic(paymentId)
         : paymentResultService.getResultStatusForUser(paymentId, principal.getUserId());
@@ -193,7 +193,7 @@ public class PaymentsController {
   })
   PaymentResultSummaryView getPaymentResultSummary(
       @AuthenticationPrincipal AppUserPrincipal principal,
-      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId) {
+      @PathVariable("paymentId") @Positive(message = "paymentId must be positive") Long paymentId) {
     return principal == null
         ? paymentResultService.getResultSummaryPublic(paymentId)
         : paymentResultService.getResultSummaryForUser(paymentId, principal.getUserId());
@@ -355,7 +355,7 @@ public class PaymentsController {
   })
   PaymentStatusResponse cancelPayment(
       @AuthenticationPrincipal AppUserPrincipal principal,
-      @PathVariable @Positive(message = "paymentId must be positive") Long paymentId,
+      @PathVariable("paymentId") @Positive(message = "paymentId must be positive") Long paymentId,
       @RequestBody(required = false) CancelPaymentRequest request) {
     PaymentStatusView view =
         principal == null

@@ -15,6 +15,8 @@ Hành khách có thể check-in online khi booking và vé đã đủ điều ki
 
 Nếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.
 
+Với booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung.
+
 ## Cửa sổ check-in online
 
 ### Chuyến bay nội địa

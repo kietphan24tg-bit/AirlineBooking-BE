@@ -16,7 +16,11 @@ class ChatPromptFactoryTest {
 
     assertThat(systemPrompt)
         .contains("Chỉ trả lời dựa trên context")
+        .contains("chính sách tĩnh, tổng quát")
+        .contains("booking, payment, flight, seat, refund")
+        .contains("business confirmation")
         .contains("Trả lời cùng ngôn ngữ")
+        .contains("English question -> English answer")
         .contains("Không nhắc đến RAG");
   }
 
@@ -37,6 +41,17 @@ class ChatPromptFactoryTest {
         .contains("seat-selection-policy.md")
         .contains("Chính sách chọn ghế > Đổi ghế")
         .contains("Khách có thể đổi ghế trong Manage Booking.")
+        .contains("Identify the primary language of the user question")
+        .contains("context language must never determine")
         .contains("Tôi đổi ghế được không?");
+  }
+
+  @Test
+  void userPromptDoesNotHardCodeAnOutputLanguage() {
+    String prompt = promptFactory.userPrompt("Que signifie PENDING_PAYMENT ?", java.util.List.of());
+
+    assertThat(prompt)
+        .contains("Que signifie PENDING_PAYMENT ?")
+        .doesNotContain("Required output language");
   }
 }

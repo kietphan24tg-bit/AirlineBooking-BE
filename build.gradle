@@ -96,8 +96,12 @@ subprojects {
         finalizedBy tasks.named('jacocoTestReport')
     }
 
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs += '-parameters'
+    }
+
     tasks.withType(Test).configureEach {
-        maxHeapSize = '384m'
+        maxHeapSize = findProperty('testMaxHeapSize')?.toString() ?: '384m'
         maxParallelForks = 1
         jvmArgs(
             '-XX:TieredStopAtLevel=1',

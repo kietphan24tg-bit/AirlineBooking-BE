@@ -61,3 +61,64 @@ Các file dưới đây không phải knowledge trả lời trực tiếp cho kh
 - Chạy bộ test trong `rag-validation-checklist.md`.
 - Kiểm tra lại các rule có dữ liệu động bằng API/tool thay vì chỉ dùng tài liệu tĩnh.
 - Re-embed sau mỗi lần sửa policy docs hoặc thay đổi code nghiệp vụ liên quan.
+
+## Chạy quality gate
+
+Kiểm tra deterministic, không gọi dịch vụ ngoài:
+
+```powershell
+./gradlew :module-ai:test --console=plain
+```
+
+Lệnh này kiểm tra parser, chunking, prompt, fallback và replay toàn bộ checklist trên policy docs. Báo cáo offline được ghi tại `module-ai/build/reports/rag-validation-offline-report.md`.
+
+Kiểm tra live với PGVector, embedding và Gemini thật:
+
+```powershell
+./gradlew :module-ai:ragLiveValidation --console=plain
+```
+
+Task live đọc `GEMINI_KEY`, `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` và `SPRING_DATASOURCE_PASSWORD` từ file `.env`. Trước khi chạy checklist, task chỉ refresh vector của 10 file trong `RagPolicyDocumentCatalog`; checklist, README và intent map không được nạp vào index.
+
+Nếu database remote tạm thời không truy cập được và máy đã có PostgreSQL + PGVector local theo cấu hình development mặc định, chạy:
+
+```powershell
+./gradlew :module-ai:ragLiveValidation -PragValidationUseLocalDatabase=true --console=plain
+```
+
+Báo cáo live được ghi tại:
+
+- `module-ai/build/reports/rag-validation-live-report.md`
+- `module-ai/build/reports/rag-validation-live-report.json`
+
+Mỗi kết quả gồm câu hỏi, expected behavior, route category, retrieved chunks và score, source, câu trả lời thật, fallback reason, thời gian xử lý và verdict của judge.
+
+Checklist hiện có 135 case, trong đó 12 case `LANG-*` kiểm tra câu hỏi tiếng Anh, tiếng Pháp, tiếng Việt không dấu và câu trộn ngôn ngữ. Chạy riêng language gate bằng:
+
+```powershell
+./gradlew :module-ai:ragLiveValidation `
+  -PragValidationCaseIds=LANG-001,LANG-002,LANG-003,LANG-004,LANG-005,LANG-006,LANG-007,LANG-008,LANG-009,LANG-010,LANG-011,LANG-012 `
+  -PragValidationIngest=false `
+  --console=plain
+```
+
+Chạy stability gate với câu hỏi nguyên bản và biến thể bỏ dấu, lặp ba lần:
+
+```powershell
+./gradlew :module-ai:ragLiveValidation `
+  -PragValidationVariants=true `
+  -PragValidationRepeats=3 `
+  -PragValidationDelayMillis=5000 `
+  --console=plain
+```
+
+Mặc định `ragValidationDelayMillis` là 5000 để không vượt free-tier 15 generate requests/phút. Chỉ giảm giá trị này khi project có quota cao hơn; không tắt retry hoặc bỏ qua case lỗi.
+
+Quality gate chỉ đạt khi:
+
+- 49/49 câu Must-answer bằng RAG là `PASS`.
+- 15/15 câu fallback không bịa thông tin.
+- Tất cả edge case có kết luận đúng hoặc yêu cầu tra cứu dữ liệu động đúng lúc.
+- 31/31 câu Must-call-API được phân loại `DYNAMIC_API_REQUIRED` và RAG không khẳng định dữ liệu động.
+- 12/12 câu language consistency trả lời đúng nội dung và đúng ngôn ngữ yêu cầu.
+- Không còn verdict `FAIL`, `NEEDS_REVIEW` hoặc `BLOCKED`.

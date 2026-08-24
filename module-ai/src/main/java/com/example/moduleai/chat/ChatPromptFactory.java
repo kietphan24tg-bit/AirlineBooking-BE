@@ -14,13 +14,18 @@ public class ChatPromptFactory {
 
   public String userPrompt(String question, List<Document> contextDocuments) {
     return """
-        Context:
+        User question:
         %s
 
-        Câu hỏi của người dùng:
+        Answer language rule:
+        Identify the primary language of the user question above and write the entire answer in that
+        language. This also applies to policy fallbacks, refusals, warnings, and support guidance.
+        The context language must never determine or change the answer language.
+
+        Context:
         %s
         """
-        .formatted(context(contextDocuments), question)
+        .formatted(question, context(contextDocuments))
         .trim();
   }
 

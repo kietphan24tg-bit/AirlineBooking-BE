@@ -1,8 +1,8 @@
 package com.example.moduleweb.application.identity;
 
+import com.example.common.exception.AppException;
 import com.example.moduleweb.config.MailProperties;
 import com.example.moduleweb.config.PasswordResetProperties;
-import com.example.common.exception.AppException;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;

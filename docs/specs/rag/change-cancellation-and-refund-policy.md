@@ -20,6 +20,8 @@ Hệ thống chỉ cho đổi chuyến trước giờ khởi hành trong một k
 - Hiện tại yêu cầu đổi chuyến online bị khóa trong vòng 180 phút trước giờ khởi hành.
 - Báo giá đổi chuyến chỉ có hiệu lực trong 15 phút.
 - Nếu báo giá hết hạn, người dùng cần tạo báo giá mới vì giá vé, ghế trống hoặc điều kiện chuyến bay có thể đã thay đổi.
+- Với một quote cụ thể, phải gọi API để kiểm tra thời điểm hết hạn và trạng thái hiện tại trước khi xác nhận quote còn dùng được.
+- Không kết luận chắc chắn quote đã hết hạn chỉ bằng cách lấy số phút người dùng cung cấp so với mốc 15 phút. Cần nói quote có thể đã hết hạn và phải kiểm tra quote cụ thể qua API; nếu API xác nhận hết hạn thì tạo quote mới.
 - Với hành trình nối chuyến, chuyến mới vẫn phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.
 
 Các mốc này là giới hạn hệ thống hiện tại. Nếu cấu hình vận hành thay đổi, cần ưu tiên dữ liệu trả về tại thời điểm người dùng thao tác.
@@ -66,7 +68,17 @@ Nếu bên thanh toán trả lỗi hoặc hệ thống chưa hoàn tất xử l�
 
 Số tiền hoàn không chỉ là giá vé ban đầu. Khi preview hủy vé, hệ thống có thể tách số tiền hoàn thành nhiều phần để người dùng hiểu vì sao số tiền cuối cùng thay đổi.
 
-Các thành phần thường gặp gồm:
+Snapshot preview refund gồm các thành phần nghiệp vụ sau:
+
+- `fare gross`: tổng tiền vé trước khi phân bổ khuyến mãi.
+- `promo allocated`: phần khuyến mãi được phân bổ cho vé bị hủy.
+- `fare net`: tiền vé ròng có thể hoàn sau khi trừ phần khuyến mãi được phân bổ.
+- `seat refund`: phần phí ghế có thể hoàn.
+- `service refund`: phần phí dịch vụ bổ sung có thể hoàn.
+- `refund fee`: phí hủy hoặc phí hoàn tiền bị trừ.
+- `net refund`: số tiền hoàn cuối cùng, được tính bằng `fare net + seat refund + service refund - refund fee`.
+
+Diễn giải tương ứng cho người dùng:
 
 - Tiền vé còn được hoàn sau khi xét khuyến mãi đã dùng.
 - Phần phí ghế có thể hoàn, nếu hành khách đã mua ghế và chính sách cho phép hoàn.

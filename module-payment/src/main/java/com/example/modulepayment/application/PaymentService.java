@@ -13,6 +13,7 @@ import com.example.moduleflight.entity.AirportEntity;
 import com.example.moduleflight.entity.FlightEntity;
 import com.example.modulepayment.config.PaymentProperties;
 import com.example.modulepayment.entity.PaymentEntity;
+import com.example.modulepayment.exception.PaymentExecutionUnknownException;
 import com.example.modulepayment.exception.PaymentNotFoundException;
 import com.example.modulepayment.gateway.PaymentGateway;
 import com.example.modulepayment.gateway.PaymentGateway.PaymentGatewayRequest;
@@ -59,6 +60,7 @@ public class PaymentService {
   private static final BigDecimal ZERO_MONEY = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
   private static final String METHOD_PAY_LATER = "PAY_LATER";
   private static final String PAYMENT_STATUS_FAILED = "FAILED";
+  private static final String PAYMENT_STATUS_UNKNOWN = "UNKNOWN";
   private static final String PAYMENT_STATUS_PENDING = "PENDING";
   private static final String PAYMENT_STATUS_SUSPENDED = "SUSPENDED";
   private static final String PAYMENT_STATUS_CANCELLED = "CANCELLED";
@@ -381,12 +383,12 @@ public class PaymentService {
         .toList();
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = PaymentExecutionUnknownException.class)
   public CreatePaymentResult createPayment(CreatePaymentCommand command) {
     return createPayment(command, true);
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = PaymentExecutionUnknownException.class)
   public CreatePaymentResult createPaymentPublic(CreatePaymentCommand command) {
     return createPayment(command, false);
   }
@@ -407,6 +409,17 @@ public class PaymentService {
             : requirePayableBookingForUpdatePublic(command.bookingId());
     validatePaymentCurrency(normalizedMethod, booking.getCurrency());
 
+    String requestKey = PaymentRequestKeySupport.normalize(command.idempotencyKey());
+    CreatePaymentResult existingResult =
+        findExistingIdempotentPayment(requestKey, booking, normalizedMethod);
+    if (existingResult != null) {
+      return existingResult;
+    }
+    if (paymentRepository.existsByBookingIdAndPaymentStatus(
+        booking.getId(), PAYMENT_STATUS_UNKNOWN)) {
+      throw new PaymentExecutionUnknownException();
+    }
+
     OffsetDateTime now = OffsetDateTime.now();
     List<PaymentEntity> previousPending =
         new ArrayList<>(
@@ -419,7 +432,7 @@ public class PaymentService {
       previousPending.addAll(suspendedPayLater);
     }
     if (METHOD_PAYOS.equals(normalizedMethod)) {
-      return createOrReusePayosPayment(booking, previousPending, now);
+      return createOrReusePayosPayment(booking, previousPending, now, requestKey);
     }
     PaymentEntity latestReusablePending =
         findLatestReusablePending(previousPending, normalizedMethod);
@@ -432,11 +445,13 @@ public class PaymentService {
         findReusablePending(
             previousPending, normalizedMethod, booking.getPnrExpiresAt(), bookingExpireAt);
     boolean shouldReusePending =
-        reusablePending != null && Objects.equals(booking.getPnrExpiresAt(), bookingExpireAt);
+        requestKey == null
+            && reusablePending != null
+            && Objects.equals(booking.getPnrExpiresAt(), bookingExpireAt);
 
     if (METHOD_PAY_LATER.equals(normalizedMethod)) {
       PaymentEntity existingPayLater = findLatestPayLaterSession(previousPending);
-      if (existingPayLater != null && hasActiveBookingHold(booking, now)) {
+      if (requestKey == null && existingPayLater != null && hasActiveBookingHold(booking, now)) {
         OffsetDateTime preservedExpireAt = existingPayLater.getSessionExpiresAt();
         if (preservedExpireAt == null || !preservedExpireAt.isAfter(now)) {
           preservedExpireAt = bookingExpireAt;
@@ -479,6 +494,7 @@ public class PaymentService {
     payment.setCurrency(booking.getCurrency());
     payment.setPaymentMethod(normalizedMethod);
     payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
+    payment.setRequestKey(requestKey);
     payment.setType(actionTypeForMethod(normalizedMethod));
     payment.setSessionExpiresAt(paymentResponseExpireAt);
     payment.setCreatedAt(now);
@@ -514,9 +530,12 @@ public class PaymentService {
                       buildProductName(booking),
                       buildProductDescription(booking),
                       buildStripeLineItems(booking),
-                      buildStripeMetadata(booking)));
+                      PaymentRequestKeySupport.metadata(buildStripeMetadata(booking), requestKey),
+                      requestKey));
     } catch (RuntimeException exception) {
-      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      boolean executionUnknown =
+          requestKey != null && PaymentRequestKeySupport.isProviderResultUnknown(exception);
+      payment.setPaymentStatus(executionUnknown ? PAYMENT_STATUS_UNKNOWN : PAYMENT_STATUS_FAILED);
       payment.setUpdatedAt(OffsetDateTime.now());
       paymentRepository.save(payment);
       log.error(
@@ -525,6 +544,9 @@ public class PaymentService {
           payment.getId(),
           normalizedMethod,
           exception);
+      if (executionUnknown) {
+        throw new PaymentExecutionUnknownException();
+      }
       if (exception instanceof AppException appException) {
         throw appException;
       }
@@ -544,7 +566,10 @@ public class PaymentService {
   }
 
   private CreatePaymentResult createOrReusePayosPayment(
-      BookingEntity booking, List<PaymentEntity> previousPending, OffsetDateTime now) {
+      BookingEntity booking,
+      List<PaymentEntity> previousPending,
+      OffsetDateTime now,
+      String requestKey) {
     PaymentEntity latestQrPending = findLatestReusablePayosPending(previousPending);
     OffsetDateTime qrSessionExpireAt =
         capExpireAt(
@@ -556,7 +581,8 @@ public class PaymentService {
     OffsetDateTime qrExpireAt = qrSessionExpireAt;
     assertSufficientPaymentWindow(booking, METHOD_PAYOS, qrExpireAt, now);
 
-    if (latestQrPending != null
+    if (requestKey == null
+        && latestQrPending != null
         && Objects.equals(qrExpireAt, latestQrPending.getSessionExpiresAt())) {
       resolvePendingPaymentsOnMethodChange(
           previousPending, METHOD_PAYOS, now, latestQrPending.getId());
@@ -577,6 +603,7 @@ public class PaymentService {
     payment.setCurrency(booking.getCurrency());
     payment.setPaymentMethod(METHOD_PAYOS);
     payment.setPaymentStatus(PAYMENT_STATUS_PENDING);
+    payment.setRequestKey(requestKey);
     payment.setType(PAYMENT_ACTION_QR);
     payment.setSessionExpiresAt(qrExpireAt);
     payment.setCreatedAt(now);
@@ -604,9 +631,12 @@ public class PaymentService {
                   buildProductName(booking),
                   buildProductDescription(booking),
                   buildStripeLineItems(booking),
-                  buildStripeMetadata(booking)));
+                  PaymentRequestKeySupport.metadata(buildStripeMetadata(booking), requestKey),
+                  requestKey));
     } catch (RuntimeException exception) {
-      payment.setPaymentStatus(PAYMENT_STATUS_FAILED);
+      boolean executionUnknown =
+          requestKey != null && PaymentRequestKeySupport.isProviderResultUnknown(exception);
+      payment.setPaymentStatus(executionUnknown ? PAYMENT_STATUS_UNKNOWN : PAYMENT_STATUS_FAILED);
       payment.setUpdatedAt(OffsetDateTime.now());
       paymentRepository.save(payment);
       log.error(
@@ -615,6 +645,9 @@ public class PaymentService {
           payment.getId(),
           METHOD_PAYOS,
           exception);
+      if (executionUnknown) {
+        throw new PaymentExecutionUnknownException();
+      }
       if (exception instanceof AppException appException) {
         throw appException;
       }
@@ -936,6 +969,21 @@ public class PaymentService {
       return left;
     }
     return left.isBefore(right) ? left : right;
+  }
+
+  private CreatePaymentResult findExistingIdempotentPayment(
+      String requestKey, BookingEntity booking, String normalizedMethod) {
+    PaymentEntity existing = PaymentRequestKeySupport.findExisting(paymentRepository, requestKey);
+    if (existing == null) {
+      return null;
+    }
+    boolean bookingLevelPayment =
+        existing.getSeatChangeSettlement() == null
+            && existing.getServiceChangeSettlement() == null
+            && existing.getFlightChangeSettlement() == null;
+    PaymentRequestKeySupport.validateExisting(
+        existing, booking.getId(), normalizedMethod, bookingLevelPayment);
+    return buildCreatePaymentResult(existing, booking, existing.getSessionExpiresAt());
   }
 
   private CreatePaymentResult buildCreatePaymentResult(

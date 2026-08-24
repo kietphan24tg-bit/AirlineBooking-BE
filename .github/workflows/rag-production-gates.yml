@@ -1,0 +1,76 @@
+name: RAG Production Gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_base_url:
+        description: Public base URL of the staging API
+        required: true
+        type: string
+      vus:
+        description: Concurrent virtual users within the approved provider quota
+        required: true
+        default: '2'
+        type: string
+      duration:
+        description: Load duration accepted by k6, for example 30s or 2m
+        required: true
+        default: '2m'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew
+      - name: Run provider fault and capacity gate
+        run: ./gradlew --no-daemon :module-ai:ragResilienceGate --console=plain
+      - name: Run actuator access-control gate
+        run: >-
+          ./gradlew --no-daemon :app-bootstrap:test
+          --tests com.example.appbootstrap.ActuatorSecurityIntegrationTest
+          --console=plain
+
+  staging-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RAG_BASE_URL: ${{ inputs.staging_base_url }}
+      RAG_VUS: ${{ inputs.vus }}
+      RAG_DURATION: ${{ inputs.duration }}
+      RAG_P95_MS: '25000'
+      RAG_MAX_FALLBACK_RATE: '0.05'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create report directory
+        run: mkdir -p build/reports
+      - name: Run bounded staging load and prompt-injection smoke test
+        run: >-
+          docker run --rm
+          -e RAG_BASE_URL
+          -e RAG_VUS
+          -e RAG_DURATION
+          -e RAG_P95_MS
+          -e RAG_MAX_FALLBACK_RATE
+          -v "${{ github.workspace }}:/work"
+          -w /work
+          grafana/k6:0.54.0 run
+          --summary-export=/work/build/reports/rag-load-summary.json
+          scripts/load/rag-api-load-test.js
+      - name: Upload load evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-load-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/reports/rag-load-summary.json
+          if-no-files-found: warn

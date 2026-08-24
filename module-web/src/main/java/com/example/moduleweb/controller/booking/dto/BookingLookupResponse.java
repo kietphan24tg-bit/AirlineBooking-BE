@@ -1,5 +1,6 @@
 package com.example.moduleweb.controller.booking.dto;
 
+import com.example.modulebooking.application.BookingLookupView;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -12,6 +13,21 @@ public record BookingLookupResponse(
     List<ItinerarySummary> itineraries,
     List<PassengerSummary> passengers,
     Actions actions) {
+
+  public static BookingLookupResponse from(BookingLookupView view) {
+    return new BookingLookupResponse(
+        toBookingSummary(view.booking()),
+        new PrimaryContact(view.primaryContact().email(), view.primaryContact().phone()),
+        new PaymentDetails(toPriceBreakdown(view.paymentDetails().price())),
+        view.itineraries().stream().map(BookingLookupResponse::toItinerarySummary).toList(),
+        view.passengers().stream().map(BookingLookupResponse::toPassengerSummary).toList(),
+        new Actions(
+            view.actions().canSelectSeat(),
+            view.actions().canBuyAncillaries(),
+            view.actions().canCheckIn(),
+            view.actions().canChangeFlight(),
+            view.actions().canCancel()));
+  }
 
   public record BookingSummary(
       Long bookingId,
@@ -110,4 +126,113 @@ public record BookingLookupResponse(
       boolean canCheckIn,
       boolean canChangeFlight,
       boolean canCancel) {}
+
+  private static BookingSummary toBookingSummary(BookingLookupView.BookingSummary view) {
+    return new BookingSummary(
+        view.bookingId(),
+        view.pnrCode(),
+        view.status(),
+        view.statusLabel(),
+        view.totalAmount(),
+        view.currency(),
+        view.createdAt(),
+        view.expiresAt());
+  }
+
+  private static PriceBreakdown toPriceBreakdown(BookingLookupView.PriceBreakdown view) {
+    return new PriceBreakdown(
+        view.baseFare(),
+        view.discount(),
+        view.tax(),
+        view.serviceFee(),
+        view.seatFee(),
+        view.total(),
+        view.currency());
+  }
+
+  private static ItinerarySummary toItinerarySummary(BookingLookupView.ItinerarySummary view) {
+    return new ItinerarySummary(
+        view.flightId(),
+        view.flightNumber(),
+        view.departureTime(),
+        view.arrivalTime(),
+        view.departureAirportCode(),
+        view.departureCity(),
+        view.departureTerminal(),
+        view.arrivalAirportCode(),
+        view.arrivalCity(),
+        view.arrivalTerminal(),
+        view.flightStatus(),
+        view.fareName(),
+        view.cabinClass(),
+        toFareBenefits(view.fareBenefits()));
+  }
+
+  private static FareBenefits toFareBenefits(BookingLookupView.FareBenefits view) {
+    BookingLookupView.IncludedSeatCategory category = view.includedSeatCategory();
+    IncludedSeatCategory includedCategory =
+        category == null
+            ? null
+            : new IncludedSeatCategory(category.id(), category.code(), category.name());
+    return new FareBenefits(
+        view.fareClassCode(),
+        view.fareClassName(),
+        view.cabinClass(),
+        view.baggageCheckinKg(),
+        view.baggageHandKg(),
+        view.changeFee(),
+        view.refundFee(),
+        view.refundable(),
+        view.changeable(),
+        view.priorityCheckin(),
+        view.priorityBoarding(),
+        view.loungeAccess(),
+        view.seatSelection(),
+        view.seatSelectionPolicy(),
+        view.mileageRate(),
+        view.mealType(),
+        view.wifiIncluded(),
+        view.fastTrackSecurity(),
+        includedCategory);
+  }
+
+  private static PassengerSummary toPassengerSummary(BookingLookupView.PassengerSummary view) {
+    return new PassengerSummary(
+        view.passengerId(),
+        view.firstName(),
+        view.lastName(),
+        view.passengerType(),
+        view.gender(),
+        view.dateOfBirth(),
+        new PassengerSelections(
+            view.selections().seats().stream()
+                .map(BookingLookupResponse::toSeatAssignmentDetail)
+                .toList(),
+            view.selections().services().stream()
+                .map(BookingLookupResponse::toServiceSelectionDetail)
+                .toList()));
+  }
+
+  private static SeatAssignmentDetail toSeatAssignmentDetail(
+      BookingLookupView.SeatAssignmentDetail view) {
+    return new SeatAssignmentDetail(
+        view.flightId(),
+        view.seatId(),
+        view.seatNumber(),
+        view.status(),
+        view.surchargeAmount(),
+        view.currency());
+  }
+
+  private static ServiceSelectionDetail toServiceSelectionDetail(
+      BookingLookupView.ServiceSelectionDetail view) {
+    return new ServiceSelectionDetail(
+        view.serviceId(),
+        view.serviceType(),
+        view.serviceName(),
+        view.optionId(),
+        view.optionName(),
+        view.quantity(),
+        view.price());
+  }
 }

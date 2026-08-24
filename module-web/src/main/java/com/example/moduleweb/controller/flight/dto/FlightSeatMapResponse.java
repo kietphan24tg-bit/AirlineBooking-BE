@@ -1,6 +1,6 @@
 package com.example.moduleweb.controller.flight.dto;
 
-import com.example.moduleweb.application.flight.FlightSeatMapService;
+import com.example.modulebooking.application.FlightSeatMapService;
 import java.math.BigDecimal;
 import java.util.List;
 

@@ -7,6 +7,7 @@ Tài liệu này mô tả chính sách đặt chỗ và thanh toán theo cách n
 Sau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.
 
 - Booking mới được giữ chỗ mặc định khoảng 15 phút.
+- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.
 - Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.
 - Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.
 - Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.
@@ -78,6 +79,8 @@ Quy tắc dễ hiểu: đổi phương thức là đổi cách thanh toán, khô
 ## Khi đang có thanh toán chờ xử lý
 
 Khi booking đang có một payment chờ xử lý, hệ thống có thể hạn chế các thao tác làm thay đổi tổng tiền.
+
+Muốn xác nhận một booking đang ở trạng thái `PENDING` có đổi được dịch vụ hay không, phải gọi API tra cứu booking/payment. Thông thường khách cần hoàn tất, hủy hoặc chờ payment hiện tại hết hạn trước khi thử thay đổi.
 
 Các thao tác thường không được thực hiện trong lúc payment đang chờ xử lý gồm:
 

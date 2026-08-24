@@ -55,19 +55,27 @@ Chi tiết đổi chuyến, hủy vé và hoàn tiền nằm trong `change-cance
 
 ## Loại hành khách
 
-Hệ thống hỗ trợ ba loại hành khách:
+Hệ thống hỗ trợ ba loại hành khách.
+
+Alias nghiệp vụ thường gặp trong API, code và chatbot:
+
+| Alias | Tên hiển thị | Quy tắc giá |
+| --- | --- | --- |
+| ADULT | Người lớn | 100% giá vé người lớn cùng fare |
+| CHILD | Trẻ em | 75% giá vé người lớn cùng fare |
+| INFANT | Em bé | 10% giá vé người lớn cùng fare |
 
 ### Người lớn
 
-Người lớn là hành khách từ 12 tuổi trở lên tính theo ngày bay. Giá vé người lớn là mức giá cơ sở của fare. Người lớn có ghế riêng.
+Người lớn (`ADULT`) là hành khách từ 12 tuổi trở lên tính theo ngày bay. Giá vé người lớn là 100% giá cơ sở của fare. Người lớn có ghế riêng.
 
 ### Trẻ em
 
-Trẻ em là hành khách từ 2 tuổi đến dưới 12 tuổi tính theo ngày bay. Giá vé trẻ em bằng 75% giá vé người lớn cùng fare. Trẻ em có ghế riêng và có thể chọn ghế nếu hạng vé cho phép.
+Trẻ em (`CHILD`) là hành khách từ 2 tuổi đến dưới 12 tuổi tính theo ngày bay. Giá vé trẻ em bằng 75% giá vé người lớn cùng fare. Trẻ em có ghế riêng và có thể chọn ghế nếu hạng vé cho phép.
 
 ### Em bé
 
-Em bé là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.
+Em bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.
 
 Số em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi.
 

@@ -17,6 +17,14 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
 
   Optional<PaymentEntity> findByTransactionId(String transactionId);
 
+  @Query("select p from PaymentEntity p join fetch p.booking where p.requestKey = :requestKey")
+  Optional<PaymentEntity> findByRequestKeyWithBooking(@Param("requestKey") String requestKey);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select p from PaymentEntity p join fetch p.booking where p.requestKey = :requestKey")
+  Optional<PaymentEntity> findByRequestKeyWithBookingForUpdate(
+      @Param("requestKey") String requestKey);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select p from PaymentEntity p where p.transactionId = :transactionId")
   Optional<PaymentEntity> findByTransactionIdForUpdate(

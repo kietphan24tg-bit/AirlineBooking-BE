@@ -10,7 +10,7 @@ import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import org.springframework.stereotype.Service;
 
-@Service
+@Service("webBookingTotalRecalculationService")
 public class BookingTotalRecalculationService {
 
   private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -53,6 +53,11 @@ public class BookingTotalRecalculationService {
     bookingRepository.save(booking);
     return new BookingTotalBreakdown(
         normalizeMoney(fareTotal), serviceTotal, seatSurchargeTotal, totalAmount);
+  }
+
+  com.example.modulebooking.application.BookingTotalRecalculationService toModuleBookingService() {
+    return new com.example.modulebooking.application.BookingTotalRecalculationService(
+        bookingRepository, bookingServiceRepository, passengerSeatAssignmentRepository);
   }
 
   private BigDecimal currentServiceTotal(Long bookingId) {

@@ -1,12 +1,12 @@
 package com.example.moduleweb.controller.identity;
 
+import com.example.moduleidentity.application.AuthService;
+import com.example.moduleidentity.application.security.AppUserPrincipal;
+import com.example.moduleidentity.entity.UserEntity;
 import com.example.moduleweb.api.ApiSuccessMessage;
 import com.example.moduleweb.controller.identity.dto.ChangePasswordRequest;
 import com.example.moduleweb.controller.identity.dto.CurrentUserResponse;
 import com.example.moduleweb.controller.identity.dto.UpdateCurrentUserRequest;
-import com.example.moduleidentity.application.AuthService;
-import com.example.moduleidentity.application.security.AppUserPrincipal;
-import com.example.moduleidentity.entity.UserEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -255,6 +255,7 @@ Table payments {
   payment_method varchar [not null]
   payment_status varchar [not null]
   transaction_id varchar [unique]
+  request_key varchar [unique, note: 'Trusted idempotency key for payment creation requests']
   qr_data text
   qr_image_url varchar
   type varchar

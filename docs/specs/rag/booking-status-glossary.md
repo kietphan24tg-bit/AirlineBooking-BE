@@ -38,6 +38,8 @@ Booking đã bị hủy. Nếu tất cả ticket active trong booking bị hủy
 
 Booking đã `CANCELLED` không được check-in, đổi chuyến, chọn ghế, mua dịch vụ, hoặc tạo payment mới.
 
+Nếu chỉ hủy một hành khách hoặc một phần ticket trong booking nhiều người, booking có thể vẫn tiếp tục hiệu lực thay vì chuyển toàn bộ sang `CANCELLED`. Phải gọi API tra cứu booking cụ thể trước khi xác nhận trạng thái cuối cùng.
+
 ### `EXPIRED`
 
 Booking hết hạn giữ chỗ do quá `pnrExpiresAt` mà chưa thanh toán hợp lệ. Ghế và fare hold được giải phóng cho khách khác.
@@ -87,6 +89,16 @@ Payment đã được hoàn tiền toàn bộ.
 ### `PARTIALLY_REFUNDED`
 
 Payment đã được hoàn một phần. Trạng thái này có thể xuất hiện khi chỉ hủy một phần ticket trong booking.
+
+## Fare seat-selection mode
+
+### `CHECKIN_ONLY`
+
+Fare chỉ cho hành khách chọn ghế trong luồng check-in, không được chọn ghế trước luồng này.
+
+### `NOT_ALLOWED`
+
+Fare không cho hành khách chọn ghế trước.
 
 ## Seat assignment status
 

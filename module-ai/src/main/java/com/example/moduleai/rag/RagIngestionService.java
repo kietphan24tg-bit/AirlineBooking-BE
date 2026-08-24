@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RagIngestionService {
@@ -39,7 +40,7 @@ public class RagIngestionService {
       EmbeddingService embeddingService,
       @Value("${app.ai.rag.docs-path:docs/specs/rag}") String docsPath,
       @Value("${app.ai.rag.ingest-batch-size:80}") int ingestBatchSize,
-      @Value("${app.ai.rag.ingest-batch-delay:45s}") Duration ingestBatchDelay) {
+      @Value("${app.ai.rag.ingest-batch-delay:65s}") Duration ingestBatchDelay) {
     this.ragChunker = ragChunker;
     this.vectorSearchService = vectorSearchService;
     this.embeddingService = embeddingService;
@@ -48,6 +49,7 @@ public class RagIngestionService {
     this.ingestBatchDelay = ingestBatchDelay;
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public RagIngestionResult ingestProductionPolicies() throws IOException {
     int dimensions = embeddingService.dimensions();
     List<Document> documents = new ArrayList<>();
