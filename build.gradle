@@ -101,7 +101,7 @@ subprojects {
     }
 
     tasks.withType(Test).configureEach {
-        maxHeapSize = findProperty('testMaxHeapSize')?.toString() ?: '384m'
+        maxHeapSize = findProperty('testMaxHeapSize')?.toString() ?: '768m'
         maxParallelForks = 1
         jvmArgs(
             '-XX:TieredStopAtLevel=1',
