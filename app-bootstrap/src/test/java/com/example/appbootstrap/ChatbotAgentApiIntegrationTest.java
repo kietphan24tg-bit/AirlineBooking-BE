@@ -10,8 +10,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
 import com.example.moduleai.agent.AgentOrchestrator;
 import com.example.moduleai.confirmation.ToolConfirmationService;
 import com.example.moduleai.confirmation.ToolProposalView;
@@ -22,6 +20,8 @@ import com.example.moduleai.guardrail.AgentRequestLimiter;
 import com.example.moduleai.tool.core.ToolOperation;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +106,8 @@ class ChatbotAgentApiIntegrationTest {
     mockMvc
         .perform(get("/api/chatbot/proposals/{id}", proposalId).with(user(principal)))
         .andExpect(status().isOk())
-        .andExpect(result -> assertProposalStatus(result.getResponse().getContentAsString(), "PENDING"));
+        .andExpect(
+            result -> assertProposalStatus(result.getResponse().getContentAsString(), "PENDING"));
 
     mockMvc
         .perform(post("/api/chatbot/proposals/{id}/confirm", proposalId).with(user(principal)))
