@@ -62,7 +62,8 @@ public class SeatTools extends AbstractAgentTool {
 
   @Tool(
       description =
-          "Replace seat assignments during initial booking or check-in only. Do not call until the backend booking bridge is connected.")
+          "Replace seat assignments during initial booking or check-in only. "
+              + "Do not call until the backend booking bridge is connected.")
   @AgentToolPolicy(
       tool = "replace_seat_assignments",
       operation = ToolOperation.WRITE,
@@ -94,7 +95,8 @@ public class SeatTools extends AbstractAgentTool {
 
   @Tool(
       description =
-          "Remove a direct seat assignment during initial booking or check-in only. Do not call until the backend booking bridge is connected.")
+          "Remove a direct seat assignment during initial booking or check-in only. "
+              + "Do not call until the backend booking bridge is connected.")
   @AgentToolPolicy(
       tool = "remove_seat_assignment",
       operation = ToolOperation.WRITE,
@@ -126,7 +128,8 @@ public class SeatTools extends AbstractAgentTool {
 
   @Tool(
       description =
-          "Patch a direct seat assignment during initial booking or check-in only. Do not call until the backend booking bridge is connected.")
+          "Patch a direct seat assignment during initial booking or check-in only. "
+              + "Do not call until the backend booking bridge is connected.")
   @AgentToolPolicy(
       tool = "patch_seat_assignment",
       operation = ToolOperation.WRITE,

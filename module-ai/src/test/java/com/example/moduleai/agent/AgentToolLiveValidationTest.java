@@ -240,7 +240,8 @@ class AgentToolLiveValidationTest {
 
     @Tool(
         description =
-            "Look up the authoritative status of demo booking DEMO123. Use this when the user asks whether booking DEMO123 is confirmed, issued, or pending.")
+            "Look up the authoritative status of demo booking DEMO123. "
+                + "Use this when the user asks whether it is confirmed, issued, or pending.")
     @AgentToolPolicy(
         tool = "live_lookup_demo_booking",
         operation = ToolOperation.READ,
@@ -258,7 +259,8 @@ class AgentToolLiveValidationTest {
 
     @Tool(
         description =
-            "Create a confirmation-required seat-change proposal for demo booking DEMO123 when the user asks to move from one seat to another.")
+            "Create a confirmation-required seat-change proposal for demo booking DEMO123 "
+                + "when the user asks to move from one seat to another.")
     @AgentToolPolicy(
         tool = "live_request_demo_seat_change",
         operation = ToolOperation.FINANCIAL,
