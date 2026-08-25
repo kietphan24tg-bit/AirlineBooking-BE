@@ -53,9 +53,11 @@ jobs:
         env:
           COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
         run: |
           test -n "$COOLIFY_DEPLOY_WEBHOOK"
           test -n "$COOLIFY_API_TOKEN"
+          test -n "$GEMINI_KEY"
           case "$COOLIFY_DEPLOY_WEBHOOK" in
             http://*|https://*) ;;
             *)
@@ -63,6 +65,38 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Sync staging AI runtime secret
+        env:
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+        run: |
+          set -euo pipefail
+          coolify_base=${COOLIFY_DEPLOY_WEBHOOK%%/api/v1/*}
+          resource_uuid=$(sed -nE 's/.*[?&]uuid=([^&]+).*/\1/p' <<< "$COOLIFY_DEPLOY_WEBHOOK")
+          test -n "$resource_uuid"
+
+          envs=$(curl -fsS -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$coolify_base/api/v1/applications/$resource_uuid/envs")
+          payload=$(jq -cn --arg key "GEMINI_KEY" --arg value "$GEMINI_KEY" \
+            '{key: $key, value: $value, is_preview: false, is_literal: true}')
+
+          if jq -e '.[] | select(.key == "GEMINI_KEY")' <<< "$envs" > /dev/null; then
+            curl -fsS -X PATCH \
+              -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$payload" \
+              "$coolify_base/api/v1/applications/$resource_uuid/envs" > /dev/null
+            echo "Updated GEMINI_KEY in Coolify staging runtime."
+          else
+            curl -fsS -X POST \
+              -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$payload" \
+              "$coolify_base/api/v1/applications/$resource_uuid/envs" > /dev/null
+            echo "Created GEMINI_KEY in Coolify staging runtime."
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
