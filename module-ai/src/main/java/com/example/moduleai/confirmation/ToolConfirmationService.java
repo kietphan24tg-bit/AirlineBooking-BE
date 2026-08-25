@@ -95,7 +95,7 @@ public class ToolConfirmationService {
     try {
       UUID proposalId = UUID.randomUUID();
       OffsetDateTime now = OffsetDateTime.now();
-      OffsetDateTime expiresAt = now.plus(properties.getProposalTtl());
+      OffsetDateTime expiresAt = signer.normalizeTimestamp(now.plus(properties.getProposalTtl()));
       String proposalIdempotencyKey =
           context.idempotencyKey() == null || context.idempotencyKey().isBlank()
               ? "ai-proposal:" + proposalId

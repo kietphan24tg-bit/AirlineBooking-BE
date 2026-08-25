@@ -38,11 +38,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration;
+import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.transaction.autoconfigure.TransactionAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -52,6 +59,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(classes = ToolConfirmationServicePostgresIntegrationTest.JpaConfig.class)
 @Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ToolConfirmationServicePostgresIntegrationTest {
 
   private static final String HMAC_SECRET = "postgres-agent-confirmation-secret-32+";
@@ -152,13 +160,14 @@ class ToolConfirmationServicePostgresIntegrationTest {
             .map(AppException.class::cast)
             .filter(error -> "PROPOSAL_ALREADY_CLAIMED".equals(error.getCode()))
             .count();
-
-    assertThat(successCount).isEqualTo(1);
-    assertThat(claimedCount).isEqualTo(1);
-    assertThat(invocations.get()).isEqualTo(1);
-
     ToolProposalEntity saved =
         proposalRepository.findByIdAndUserId(proposal.getId(), USER_ID).orElseThrow();
+    String diagnostics = results + ", persistedError=" + saved.getSafeError();
+
+    assertThat(successCount).as("concurrent confirmation results: %s", diagnostics).isEqualTo(1);
+    assertThat(claimedCount).as("concurrent confirmation results: %s", diagnostics).isEqualTo(1);
+    assertThat(invocations.get()).isEqualTo(1);
+
     assertThat(saved.getStatus()).isEqualTo(ToolProposalStatus.EXECUTED);
   }
 
@@ -240,11 +249,23 @@ class ToolConfirmationServicePostgresIntegrationTest {
     return proposalRepository.save(proposal);
   }
 
-  @TestConfiguration
-  @EnableAutoConfiguration
+  @SpringBootConfiguration
+  @ImportAutoConfiguration({
+    DataSourceAutoConfiguration.class,
+    DataSourceTransactionManagerAutoConfiguration.class,
+    HibernateJpaAutoConfiguration.class,
+    DataJpaRepositoriesAutoConfiguration.class,
+    TransactionAutoConfiguration.class
+  })
+  @EntityScan(basePackageClasses = {ToolProposalEntity.class, ToolAuditEventEntity.class})
   @EnableJpaRepositories(
       basePackageClasses = {ToolProposalRepository.class, ToolAuditEventRepository.class})
   static class JpaConfig {
+
+    @Bean
+    ObjectMapper objectMapper() {
+      return new ObjectMapper();
+    }
 
     @Bean
     AiAgentProperties aiAgentProperties() {

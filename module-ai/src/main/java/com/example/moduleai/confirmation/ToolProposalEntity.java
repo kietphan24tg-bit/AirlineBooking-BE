@@ -10,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "ai_tool_proposals")
@@ -35,12 +37,14 @@ public class ToolProposalEntity {
   private ToolAccess access;
 
   @Column(name = "canonical_arguments", nullable = false, columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   private String canonicalArguments;
 
   @Column(name = "confirmation_hmac", nullable = false, length = 255)
   private String confirmationHmac;
 
   @Column(name = "confirmation_snapshot", nullable = false, columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   private String confirmationSnapshot;
 
   @Enumerated(EnumType.STRING)
@@ -51,9 +55,11 @@ public class ToolProposalEntity {
   private String idempotencyKey;
 
   @Column(name = "safe_result", columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   private String safeResult;
 
   @Column(name = "safe_error", columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   private String safeError;
 
   @Column(name = "expires_at", nullable = false)

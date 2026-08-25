@@ -14,7 +14,7 @@ public interface ToolProposalRepository extends JpaRepository<ToolProposalEntity
 
   Optional<ToolProposalEntity> findByIdAndUserId(UUID id, Long userId);
 
-  @Modifying
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
       update ToolProposalEntity proposal

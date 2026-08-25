@@ -4,7 +4,10 @@ import com.example.moduleai.config.AiAgentProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.UUID;
 import javax.crypto.Mac;
@@ -39,7 +42,7 @@ public class ToolProposalSigner {
             + "|"
             + canonicalArguments
             + "|"
-            + expiresAt);
+            + normalizeTimestamp(expiresAt).toInstant());
   }
 
   public boolean matches(
@@ -53,6 +56,11 @@ public class ToolProposalSigner {
     String actual = sign(proposalId, userId, toolName, operation, canonicalArguments, expiresAt);
     return MessageDigest.isEqual(
         actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
+  }
+
+  OffsetDateTime normalizeTimestamp(OffsetDateTime timestamp) {
+    Instant roundedToMicros = timestamp.toInstant().plusNanos(500).truncatedTo(ChronoUnit.MICROS);
+    return OffsetDateTime.ofInstant(roundedToMicros, ZoneOffset.UTC);
   }
 
   private String hmac(String payload) {
