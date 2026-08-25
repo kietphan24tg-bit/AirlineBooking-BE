@@ -89,8 +89,11 @@ jobs:
           set -euo pipefail
           response=$(curl -fsS -H "Authorization: Bearer $COOLIFY_API_TOKEN" "$COOLIFY_DEPLOY_WEBHOOK")
           deployment_uuid=$(jq -r '.deployments[0].deployment_uuid // empty' <<< "$response")
+          resource_uuid=$(jq -r '.deployments[0].resource_uuid // empty' <<< "$response")
           test -n "$deployment_uuid"
+          test -n "$resource_uuid"
           echo "deployment_uuid=$deployment_uuid" >> "$GITHUB_OUTPUT"
+          echo "resource_uuid=$resource_uuid" >> "$GITHUB_OUTPUT"
           echo "Coolify deployment queued: $deployment_uuid"
 
       - name: Wait for staging readiness
@@ -98,10 +101,16 @@ jobs:
           COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           DEPLOYMENT_UUID: ${{ steps.coolify-deploy.outputs.deployment_uuid }}
+          RESOURCE_UUID: ${{ steps.coolify-deploy.outputs.resource_uuid }}
           STAGING_READINESS_URL: http://r5fyz2laprvyctuy8ppjfdvg.4.190.168.109.sslip.io/actuator/health/readiness
         run: |
           set -euo pipefail
+          coolify_base=${COOLIFY_DEPLOY_WEBHOOK%%/api/v1/*}
+          finished_attempts=0
           for attempt in $(seq 1 40); do
+            deployment=$(curl -fsS -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+              "$coolify_base/api/v1/deployments/$DEPLOYMENT_UUID")
+            deployment_status=$(jq -r '.status // "unknown"' <<< "$deployment")
             status=$(curl -sS -o /tmp/staging-readiness.json -w '%{http_code}' \
               --max-time 10 "$STAGING_READINESS_URL" || true)
             if [ "$status" = "200" ]; then
@@ -109,15 +118,26 @@ jobs:
               cat /tmp/staging-readiness.json
               exit 0
             fi
-            echo "Staging readiness attempt $attempt/40 returned HTTP ${status:-000}."
+            echo "Attempt $attempt/40: deployment=$deployment_status readiness=${status:-000}."
+            case "$deployment_status" in
+              failed|cancelled*) break ;;
+              finished)
+                finished_attempts=$((finished_attempts + 1))
+                if [ "$finished_attempts" -ge 8 ]; then
+                  break
+                fi
+                ;;
+              *) finished_attempts=0 ;;
+            esac
             sleep 15
           done
 
-          coolify_base=${COOLIFY_DEPLOY_WEBHOOK%%/api/v1/*}
-          echo "Staging did not become ready. Coolify deployment summary:"
+          echo "Staging did not become ready. Coolify deployment logs:"
+          jq -r '.logs // "No deployment logs returned."' <<< "$deployment" | tail -n 200
+          echo "Coolify application logs:"
           curl -fsS -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
-            "$coolify_base/api/v1/deployments/$DEPLOYMENT_UUID" \
-            | jq '{deployment_uuid, status, created_at, updated_at, finished_at}' || true
+            "$coolify_base/api/v1/applications/$RESOURCE_UUID/logs?lines=200" \
+            | jq -r '.logs // "No application logs returned."' || true
           exit 1
 
       - name: Explain Coolify staging deploy
