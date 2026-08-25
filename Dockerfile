@@ -18,6 +18,8 @@ COPY module-payment module-payment
 COPY module-checkin module-checkin
 COPY module-notification module-notification
 COPY module-scheduler module-scheduler
+COPY module-ai module-ai
+COPY module-web module-web
 
 RUN chmod +x gradlew && ./gradlew --no-daemon :app-bootstrap:bootJar
 
