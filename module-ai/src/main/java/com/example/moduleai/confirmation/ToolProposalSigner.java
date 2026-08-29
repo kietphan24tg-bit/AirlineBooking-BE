@@ -24,6 +24,7 @@ public class ToolProposalSigner {
   }
 
   public String sign(
+      UUID conversationId,
       UUID proposalId,
       Long userId,
       String toolName,
@@ -31,7 +32,9 @@ public class ToolProposalSigner {
       String canonicalArguments,
       OffsetDateTime expiresAt) {
     return hmac(
-        "v1|"
+        "v2|"
+            + conversationId
+            + "|"
             + proposalId
             + "|"
             + userId
@@ -47,13 +50,16 @@ public class ToolProposalSigner {
 
   public boolean matches(
       String expected,
+      UUID conversationId,
       UUID proposalId,
       Long userId,
       String toolName,
       String operation,
       String canonicalArguments,
       OffsetDateTime expiresAt) {
-    String actual = sign(proposalId, userId, toolName, operation, canonicalArguments, expiresAt);
+    String actual =
+        sign(
+            conversationId, proposalId, userId, toolName, operation, canonicalArguments, expiresAt);
     return MessageDigest.isEqual(
         actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
   }

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.example.common.exception.AppException;
 import com.example.moduleai.config.AiAgentGuardrailProperties;
 import com.example.moduleai.config.AiAgentProperties;
+import com.example.moduleai.conversation.ChatConversationRepository;
 import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.observability.AiObservability;
 import com.example.moduleai.rollout.AgentRolloutMode;
@@ -67,6 +68,7 @@ class ToolConfirmationServiceTest {
   @Mock private ToolExecutionGuard toolExecutionGuard;
   @Mock private ToolProposalRepository proposalRepository;
   @Mock private ToolAuditEventRepository auditEventRepository;
+  @Mock private ChatConversationRepository conversationRepository;
   @Mock private AiObservability observability;
   @Mock private ToolConfirmationRegistry confirmationRegistry;
   @Mock private ToolExecutionReconcilerRegistry reconcilerRegistry;
@@ -109,6 +111,7 @@ class ToolConfirmationServiceTest {
             snapshotFactory,
             confirmationRegistry,
             reconcilerRegistry,
+            conversationRepository,
             objectMapper,
             properties,
             rolloutProperties,
@@ -349,10 +352,12 @@ class ToolConfirmationServiceTest {
   void signer_signAndMatchRoundTrip() {
     UUID id = UUID.randomUUID();
     OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(5);
-    String hmac = signer.sign(id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt);
+    String hmac = signer.sign(null, id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt);
 
     assertThat(hmac).isNotBlank();
-    assertThat(signer.matches(hmac, id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt))
+    assertThat(
+            signer.matches(
+                hmac, null, id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt))
         .isTrue();
   }
 
@@ -360,12 +365,19 @@ class ToolConfirmationServiceTest {
   void signer_detectsTamperedArguments() {
     UUID id = UUID.randomUUID();
     OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(5);
-    String hmac = signer.sign(id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt);
+    String hmac = signer.sign(null, id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt);
 
     // Tamper the canonical arguments
     assertThat(
             signer.matches(
-                hmac, id, USER_ID, "seat_change_confirm", "WRITE", "{\"evil\":true}", expiresAt))
+                hmac,
+                null,
+                id,
+                USER_ID,
+                "seat_change_confirm",
+                "WRITE",
+                "{\"evil\":true}",
+                expiresAt))
         .isFalse();
   }
 
@@ -373,9 +385,10 @@ class ToolConfirmationServiceTest {
   void signer_detectsTamperedUserId() {
     UUID id = UUID.randomUUID();
     OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(5);
-    String hmac = signer.sign(id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt);
+    String hmac = signer.sign(null, id, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt);
 
-    assertThat(signer.matches(hmac, id, 999L, "seat_change_confirm", "WRITE", "{}", expiresAt))
+    assertThat(
+            signer.matches(hmac, null, id, 999L, "seat_change_confirm", "WRITE", "{}", expiresAt))
         .isFalse();
   }
 
@@ -400,12 +413,12 @@ class ToolConfirmationServiceTest {
     entity.setUpdatedAt(now);
     // Set a valid HMAC so integrity check passes by default
     entity.setConfirmationHmac(
-        signer.sign(PROPOSAL_ID, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt));
+        signer.sign(null, PROPOSAL_ID, USER_ID, "seat_change_confirm", "WRITE", "{}", expiresAt));
     return entity;
   }
 
   private static AgentToolContext authenticatedContext(Long userId) {
-    return new AgentToolContext(null, userId, Set.of(), false, null, null, null, Map.of());
+    return new AgentToolContext(null, null, userId, Set.of(), false, null, null, null, Map.of());
   }
 
   private static ToolDescriptor writeDescriptor(String toolName) {
@@ -439,6 +452,7 @@ class ToolConfirmationServiceTest {
         snapshotFactory,
         confirmationRegistry,
         reconcilerRegistry,
+        conversationRepository,
         objectMapper,
         properties,
         rolloutProperties,

@@ -1,5 +1,6 @@
 package com.example.moduleai.chat;
 
+import com.example.moduleai.conversation.ChatMemorySnapshot;
 import com.example.moduleai.dto.ChatRequest;
 import com.example.moduleai.dto.RagChatResponse;
 import com.example.moduleai.observability.AiObservability;
@@ -74,12 +75,25 @@ public class ChatService {
     return chatWithTrace(request).response();
   }
 
+  public RagChatResponse chat(
+      String originalQuestion, String retrievalQuestion, ChatMemorySnapshot memory) {
+    return chatWithTrace(originalQuestion, retrievalQuestion, memory).response();
+  }
+
   public RagChatTrace chatWithTrace(ChatRequest request) {
+    return chatWithTrace(
+        request.message().trim(),
+        request.message().trim(),
+        new ChatMemorySnapshot(null, null, List.of()));
+  }
+
+  public RagChatTrace chatWithTrace(
+      String originalQuestion, String retrievalQuestion, ChatMemorySnapshot memory) {
     long startedAt = System.nanoTime();
-    String question = request.message().trim();
     List<Document> documents;
     try {
-      documents = providerGuard.executeRetrieval(() -> ragRetriever.retrieve(question, topK));
+      documents =
+          providerGuard.executeRetrieval(() -> ragRetriever.retrieve(retrievalQuestion, topK));
     } catch (AiProviderException exception) {
       LOGGER.warn(
           "RAG retrieval failed with category {}: {}",
@@ -106,7 +120,9 @@ public class ChatService {
 
     String answer;
     try {
-      answer = providerGuard.execute(() -> callChatModel(question, documents));
+      answer =
+          providerGuard.execute(
+              () -> callChatModel(originalQuestion, retrievalQuestion, memory, documents));
     } catch (AiProviderException exception) {
       LOGGER.warn(
           "Chat model call failed with category {}: {}",
@@ -139,10 +155,19 @@ public class ChatService {
   }
 
   private String callChatModel(String question, List<Document> documents) {
+    return callChatModel(
+        question, question, new ChatMemorySnapshot(null, null, List.of()), documents);
+  }
+
+  private String callChatModel(
+      String originalQuestion,
+      String retrievalQuestion,
+      ChatMemorySnapshot memory,
+      List<Document> documents) {
     return chatClient
         .prompt()
         .system(chatPromptFactory.systemPrompt())
-        .user(chatPromptFactory.userPrompt(question, documents))
+        .user(chatPromptFactory.userPrompt(originalQuestion, retrievalQuestion, memory, documents))
         .call()
         .content();
   }

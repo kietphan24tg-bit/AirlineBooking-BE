@@ -5,6 +5,7 @@ import com.example.moduleai.chat.ChatResponseMapper;
 import com.example.moduleai.config.AiAgentGuardrailProperties;
 import com.example.moduleai.confirmation.ToolConfirmationService;
 import com.example.moduleai.confirmation.ToolProposalView;
+import com.example.moduleai.conversation.ChatMemorySnapshot;
 import com.example.moduleai.dto.AnswerType;
 import com.example.moduleai.dto.ChatRequest;
 import com.example.moduleai.dto.RagChatResponse;
@@ -89,6 +90,20 @@ public class AgentToolOrchestrator {
 
   public RagChatResponse handle(
       ChatRequest request, RoutingDecision decision, Authentication authentication) {
+    return handle(
+        request,
+        decision,
+        authentication,
+        new ChatMemorySnapshot(null, null, List.of()),
+        contextFactory.from(authentication));
+  }
+
+  public RagChatResponse handle(
+      ChatRequest request,
+      RoutingDecision decision,
+      Authentication authentication,
+      ChatMemorySnapshot memory,
+      AgentToolContext baseContext) {
     GuardrailDecision guardrailDecision = inputGuard.assess(request);
     if (guardrailDecision.blocked()) {
       observability.recordAgentGuardrailBlock(guardrailDecision.reasonCode());
@@ -96,7 +111,8 @@ public class AgentToolOrchestrator {
           guardrailDecision.userMessage(), guardrailDecision.reasonCode());
     }
 
-    AgentToolContext context = contextFactory.from(authentication);
+    AgentToolContext context =
+        baseContext == null ? contextFactory.from(authentication) : baseContext;
     Set<ToolDescriptor> allowlist = allowlistResolver.resolve(decision, context);
     if (allowlist.isEmpty()) {
       observability.recordAgentAllowlistDeny(decision.intent());
@@ -113,6 +129,7 @@ public class AgentToolOrchestrator {
 
     List<Message> history = new ArrayList<>();
     history.add(new SystemMessage(AGENT_SYSTEM_POLICY));
+    addMemory(history, memory);
     history.add(new UserMessage(request.message()));
 
     List<ToolCallback> toolCallbacks =
@@ -159,7 +176,9 @@ public class AgentToolOrchestrator {
           }
 
           try {
-            Object input = objectMapper.readValue(call.arguments(), descriptor.inputType());
+            com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(call.arguments());
+            com.fasterxml.jackson.databind.JsonNode inputNode = rootNode.has("input") ? rootNode.get("input") : rootNode;
+            Object input = objectMapper.treeToValue(inputNode, descriptor.inputType());
             AgentToolContext proposalContext =
                 trustedContextResolver.resolve(descriptor, input, context);
             ToolProposalView proposal =
@@ -175,6 +194,8 @@ public class AgentToolOrchestrator {
             observability.recordAgentGuardrailBlock(exception.getCode());
             return chatResponseMapper.fallback(safeUserMessage(exception), exception.getCode());
           } catch (Exception exception) {
+            System.err.println("FAILED TO PARSE MUTATION ARGUMENTS: " + call.arguments());
+            exception.printStackTrace();
             observability.recordAgentGuardrailBlock("MUTATION_PROCESSING_FAILED");
             return chatResponseMapper.fallback(
                 "Khong the tao proposal an toan cho yeu cau nay. Vui long thu lai.",
@@ -187,12 +208,14 @@ public class AgentToolOrchestrator {
             if (descriptor == null) {
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
-                      call.id(), call.name(), "Tool is not allowed for this request."));
+                      call.id(), call.name(), "{\"error\": \"Tool is not allowed for this request.\"}"));
               continue;
             }
 
             try {
-              Object input = objectMapper.readValue(call.arguments(), descriptor.inputType());
+              com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(call.arguments());
+              com.fasterxml.jackson.databind.JsonNode inputNode = rootNode.has("input") ? rootNode.get("input") : rootNode;
+              Object input = objectMapper.treeToValue(inputNode, descriptor.inputType());
               AgentToolContext executionContext =
                   trustedContextResolver.resolve(descriptor, input, context);
               ToolResult<?> result =
@@ -207,11 +230,13 @@ public class AgentToolOrchestrator {
             } catch (AppException exception) {
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
-                      call.id(), call.name(), safeUserMessage(exception)));
+                      call.id(), call.name(), "{\"error\": \"" + safeUserMessage(exception) + "\"}"));
             } catch (Exception e) {
+              System.err.println("FAILED TO PARSE ARGUMENTS: " + call.arguments());
+              e.printStackTrace();
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
-                      call.id(), call.name(), "Tool execution is temporarily unavailable."));
+                      call.id(), call.name(), "{\"error\": \"Tool execution is temporarily unavailable.\"}"));
             }
           }
           history.add(ToolResponseMessage.builder().responses(toolResponses).build());
@@ -226,6 +251,28 @@ public class AgentToolOrchestrator {
 
   private ToolDescriptor findDescriptor(Set<ToolDescriptor> allowlist, String name) {
     return allowlist.stream().filter(d -> d.name().equals(name)).findFirst().orElse(null);
+  }
+
+  private void addMemory(List<Message> history, ChatMemorySnapshot memory) {
+    if (memory == null) {
+      return;
+    }
+    if (memory.summary() != null && !memory.summary().isBlank()) {
+      history.add(new SystemMessage("Conversation summary:\n" + memory.summary()));
+    }
+    if (memory.state() != null) {
+      history.add(new SystemMessage("Structured state:\n" + memory.state()));
+    }
+    if (memory.recentMessages() == null) {
+      return;
+    }
+    for (var item : memory.recentMessages()) {
+      if ("USER".equals(item.role())) {
+        history.add(new UserMessage(item.content()));
+      } else if ("ASSISTANT".equals(item.role())) {
+        history.add(new AssistantMessage(item.content()));
+      }
+    }
   }
 
   private boolean isMutation(ToolDescriptor descriptor) {

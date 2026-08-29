@@ -24,7 +24,17 @@ public class AgentConcurrencyLimiter {
     if (userId == null) {
       return Slot.noop();
     }
-    String key = key(userId, action);
+    return acquireSlot(key("user:" + userId, action), action);
+  }
+
+  public Slot acquireOwnerSlot(String ownerKey, String action) {
+    if (ownerKey == null || ownerKey.isBlank()) {
+      return Slot.noop();
+    }
+    return acquireSlot(key(ownerKey, action), action);
+  }
+
+  private Slot acquireSlot(String key, String action) {
     try {
       if (!rateLimitStore.tryAcquire(key, properties.getConcurrencySlotTtl())) {
         observability.recordAgentRateLimitBlocked("concurrency", action);
@@ -48,8 +58,8 @@ public class AgentConcurrencyLimiter {
     }
   }
 
-  private static String key(Long userId, String action) {
-    return "concurrency:agent:" + action + ":user:" + userId;
+  private static String key(String ownerKey, String action) {
+    return "concurrency:agent:" + action + ":" + ownerKey;
   }
 
   public static final class Slot implements AutoCloseable {

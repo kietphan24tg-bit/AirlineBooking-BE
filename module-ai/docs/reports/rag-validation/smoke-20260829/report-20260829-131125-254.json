@@ -1,0 +1,61 @@
+{
+  "metadata" : {
+    "runId" : "smoke-20260829",
+    "generatedAt" : "2026-08-29T06:10:02.499968Z",
+    "commit" : "unknown",
+    "chatModel" : "gemini-3.5-flash-lite",
+    "embeddingModel" : "gemini-embedding-001",
+    "topK" : 5,
+    "repeats" : 1,
+    "variants" : false,
+    "promptHash" : "b6cfe91b0d6dd1436807af3a13f6055fb5b3e8e1bdf9d8a40fe105751274a210",
+    "docsHash" : "2e85288e474501430603e329ef51740b97323bec3239837c2bdfdf75e5fc627d"
+  },
+  "judgedAt" : "2026-08-29T13:11:25.252939+07:00",
+  "checklistCaseCount" : 135,
+  "ingestedFiles" : 10,
+  "ingestedChunks" : 114,
+  "results" : [ {
+    "executionId" : "RAG-001/original/run-1",
+    "caseId" : "RAG-001",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "RAG",
+    "question" : "Check-in online mở và đóng lúc nào cho chuyến nội địa?",
+    "expectedBehavior" : "Nêu 24 giờ trước giờ bay và đóng 40 phút trước giờ bay.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Đối với chuyến bay nội địa, thời gian check-in trực tuyến (online) được quy định như sau:\n\n- **Mở check-in online:** 24 giờ trước giờ khởi hành.\n- **Đóng check-in online:** 40 phút trước giờ khởi hành.\n\nLưu ý: Đối với một booking cụ thể, bạn cần đảm bảo vé đã được xuất, có ghế hợp lệ và hệ thống sẽ cần kiểm tra trạng thái thực tế qua API check-in để xác nhận việc làm thủ tục.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.8863509297370911,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.8090960383415222,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.7638843506574631,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.7359172999858856,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.73142409324646,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Đúng các mốc thời gian, khônga bịa đặt thông tin và tuân thủ đúng yêu cầu RAG.",
+    "durationMillis" : 3113
+  } ]
+}

@@ -65,7 +65,8 @@ public class AncillaryTools extends AbstractAgentTool {
       tool = "replace_booking_services",
       operation = ToolOperation.WRITE,
       access = ToolAccess.BOOKING_VERIFIED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<PassengerServiceSelectionView> replace_booking_services(
       ReplaceBookingServicesInput input, ToolContext toolContext) {
     AgentToolContext context = AgentToolContext.from(toolContext);

@@ -59,7 +59,7 @@ class AgentToolOrchestratorTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final AiAgentGuardrailProperties properties = new AiAgentGuardrailProperties();
   private final AgentToolContext context =
-      new AgentToolContext(null, 7L, Set.of(), false, null, null, null, Map.of());
+      new AgentToolContext(null, null, 7L, Set.of(), false, null, null, null, Map.of());
 
   private AgentToolOrchestrator orchestrator;
 

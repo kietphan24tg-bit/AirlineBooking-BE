@@ -68,7 +68,8 @@ public class SeatTools extends AbstractAgentTool {
       tool = "replace_seat_assignments",
       operation = ToolOperation.WRITE,
       access = ToolAccess.BOOKING_VERIFIED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<SeatAssignmentView> replace_seat_assignments(
       ReplaceSeatAssignmentsInput input, ToolContext toolContext) {
     AgentToolContext context = AgentToolContext.from(toolContext);
@@ -101,7 +102,8 @@ public class SeatTools extends AbstractAgentTool {
       tool = "remove_seat_assignment",
       operation = ToolOperation.WRITE,
       access = ToolAccess.BOOKING_VERIFIED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<SeatAssignmentView> remove_seat_assignment(
       ReplaceSeatAssignmentsInput input, ToolContext toolContext) {
     AgentToolContext context = AgentToolContext.from(toolContext);
@@ -134,7 +136,8 @@ public class SeatTools extends AbstractAgentTool {
       tool = "patch_seat_assignment",
       operation = ToolOperation.WRITE,
       access = ToolAccess.BOOKING_VERIFIED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<SeatAssignmentView> patch_seat_assignment(
       PatchSeatAssignmentInput input, ToolContext toolContext) {
     AgentToolContext context = AgentToolContext.from(toolContext);

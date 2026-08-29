@@ -54,6 +54,7 @@ public class ToolProposalConfirmationVerifier implements ToolConfirmationVerifie
     boolean valid =
         signer.matches(
             proposal.getConfirmationHmac(),
+            proposal.getConversationId(),
             proposal.getId(),
             proposal.getUserId(),
             proposal.getToolName(),
@@ -67,6 +68,11 @@ public class ToolProposalConfirmationVerifier implements ToolConfirmationVerifie
         && !proposal.getIdempotencyKey().equals(context.idempotencyKey())) {
       return ToolError.forbidden(
           "PROPOSAL_IDEMPOTENCY_MISMATCH", "Proposal idempotency context does not match");
+    }
+    if (proposal.getConversationId() != null
+        && !proposal.getConversationId().equals(context.conversationId())) {
+      return ToolError.forbidden(
+          "PROPOSAL_CONVERSATION_MISMATCH", "Proposal conversation context does not match");
     }
     return null;
   }

@@ -25,6 +25,9 @@ public class ToolProposalEntity {
   @Column(name = "verified_booking_id")
   private Long verifiedBookingId;
 
+  @Column(name = "conversation_id")
+  private UUID conversationId;
+
   @Column(name = "tool_name", nullable = false, length = 100)
   private String toolName;
 
@@ -99,6 +102,14 @@ public class ToolProposalEntity {
 
   public void setVerifiedBookingId(Long verifiedBookingId) {
     this.verifiedBookingId = verifiedBookingId;
+  }
+
+  public UUID getConversationId() {
+    return conversationId;
+  }
+
+  public void setConversationId(UUID conversationId) {
+    this.conversationId = conversationId;
   }
 
   public String getToolName() {

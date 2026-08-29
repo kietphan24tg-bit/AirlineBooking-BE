@@ -9,6 +9,20 @@ public record RagChatResponse(
     boolean grounded,
     String fallbackReason,
     AnswerType answerType,
+    ChatConversationRef conversation,
     ToolProposalView proposal,
     List<AgentTraceStep> trace,
-    double confidence) {}
+    double confidence) {
+
+  public RagChatResponse(
+      String answer,
+      List<SourceCitation> sources,
+      boolean grounded,
+      String fallbackReason,
+      AnswerType answerType,
+      ToolProposalView proposal,
+      List<AgentTraceStep> trace,
+      double confidence) {
+    this(answer, sources, grounded, fallbackReason, answerType, null, proposal, trace, confidence);
+  }
+}

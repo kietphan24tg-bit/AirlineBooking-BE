@@ -151,7 +151,7 @@ public class IntentRouter {
           "GET /api/bookings/my-trips",
           List.of(RequiredContext.AUTHENTICATED_ACCOUNT),
           false,
-          true);
+          false);
     }
     if (containsAny(normalized, "ghe nao con trong cho toi", "dang ngoi ghe nao")) {
       String intent = normalized.contains("dang ngoi") ? "trip_detail" : "manage_options";

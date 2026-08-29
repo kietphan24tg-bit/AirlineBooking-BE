@@ -40,7 +40,7 @@ class ToolAllowlistResolverTest {
     ToolAllowlistResolver resolver =
         new ToolAllowlistResolver(catalog, agentProperties, rollout, confirmationRegistry);
     AgentToolContext context =
-        new AgentToolContext(null, 9L, Set.of(), false, null, null, null, Map.of());
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
 
     assertThat(resolver.resolve(decision("seat_change_confirm"), context))
         .containsExactly(mutation);
@@ -78,7 +78,7 @@ class ToolAllowlistResolverTest {
     assertThat(resolver.resolve(decision("manage_options"), AgentToolContext.empty())).isEmpty();
 
     AgentToolContext authenticated =
-        new AgentToolContext(null, 9L, Set.of(), false, null, null, null, Map.of());
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
     assertThat(resolver.resolve(decision("manage_options"), authenticated))
         .containsExactly(descriptor);
   }

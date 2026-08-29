@@ -56,7 +56,7 @@ class ToolExecutionGuardTest {
                 "booking_tool", ToolOperation.READ, ToolAccess.BOOKING_VERIFIED, false, false),
             new SampleInput("ok"),
             new AgentToolContext(
-                null, 10L, java.util.Set.of(), false, null, null, null, java.util.Map.of()),
+                null, null, 10L, java.util.Set.of(), false, null, null, null, java.util.Map.of()),
             () -> "ok");
 
     assertThat(result.status()).isEqualTo(ToolResultStatus.FAILED);
@@ -90,7 +90,7 @@ class ToolExecutionGuardTest {
                 "financial_tool", ToolOperation.FINANCIAL, ToolAccess.PUBLIC, true, true),
             new SampleInput("ok"),
             new AgentToolContext(
-                null, null, java.util.Set.of(), true, null, null, null, java.util.Map.of()),
+                null, null, null, java.util.Set.of(), true, null, null, null, java.util.Map.of()),
             () -> "ok");
 
     assertThat(result.status()).isEqualTo(ToolResultStatus.FAILED);
@@ -124,6 +124,7 @@ class ToolExecutionGuardTest {
                 "ok_tool", ToolOperation.FINANCIAL, ToolAccess.AUTHENTICATED, true, true),
             new SampleInput("ok"),
             new AgentToolContext(
+                null,
                 null,
                 99L,
                 java.util.Set.of("USER"),

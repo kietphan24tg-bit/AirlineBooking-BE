@@ -14,6 +14,9 @@ public interface ToolProposalRepository extends JpaRepository<ToolProposalEntity
 
   Optional<ToolProposalEntity> findByIdAndUserId(UUID id, Long userId);
 
+  List<ToolProposalEntity> findByConversationIdAndStatus(
+      UUID conversationId, ToolProposalStatus status);
+
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
@@ -42,4 +45,36 @@ public interface ToolProposalRepository extends JpaRepository<ToolProposalEntity
   List<ToolProposalEntity> findByStatus(ToolProposalStatus status);
 
   boolean existsByUserIdAndStatusIn(Long userId, Collection<ToolProposalStatus> statuses);
+
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query(
+      """
+      update ToolProposalEntity proposal
+         set proposal.status = :nextStatus,
+             proposal.completedAt = :now,
+             proposal.updatedAt = :now
+       where proposal.conversationId = :conversationId
+         and proposal.status = :currentStatus
+      """)
+  int updateStatusForConversation(
+      @Param("conversationId") UUID conversationId,
+      @Param("currentStatus") ToolProposalStatus currentStatus,
+      @Param("nextStatus") ToolProposalStatus nextStatus,
+      @Param("now") OffsetDateTime now);
+
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query(
+      """
+      update ToolProposalEntity proposal
+         set proposal.status = :nextStatus,
+             proposal.completedAt = :now,
+             proposal.updatedAt = :now
+       where proposal.id = :proposalId
+         and proposal.status = :currentStatus
+      """)
+  int updateStatusForProposal(
+      @Param("proposalId") UUID proposalId,
+      @Param("currentStatus") ToolProposalStatus currentStatus,
+      @Param("nextStatus") ToolProposalStatus nextStatus,
+      @Param("now") OffsetDateTime now);
 }

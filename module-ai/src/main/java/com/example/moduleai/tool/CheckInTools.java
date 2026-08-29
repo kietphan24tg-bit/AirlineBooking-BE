@@ -70,7 +70,8 @@ public class CheckInTools extends AbstractAgentTool {
       tool = "confirm_check_in",
       operation = ToolOperation.WRITE,
       access = ToolAccess.AUTHENTICATED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<CheckInConfirmView> confirm_check_in(
       ConfirmCheckInInput input, ToolContext toolContext) {
     return execute(

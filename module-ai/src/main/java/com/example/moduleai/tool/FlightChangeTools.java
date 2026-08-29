@@ -35,7 +35,8 @@ public class FlightChangeTools extends AbstractAgentTool {
       tool = "confirm_flight_change",
       operation = ToolOperation.FINANCIAL,
       access = ToolAccess.AUTHENTICATED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<UnavailableToolData> confirm_flight_change(
       EmptyInput input, ToolContext toolContext) {
     return unavailable("confirm_flight_change");

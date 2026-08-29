@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.moduleai.agent.AgentOrchestrator;
 import com.example.moduleai.confirmation.ToolConfirmationService;
 import com.example.moduleai.confirmation.ToolProposalView;
+import com.example.moduleai.conversation.ChatConversationFacade;
 import com.example.moduleai.dto.AnswerType;
 import com.example.moduleai.dto.RagChatResponse;
 import com.example.moduleai.guardrail.AgentConcurrencyLimiter;
@@ -40,17 +40,18 @@ class ChatbotAgentApiIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
 
-  @MockitoBean private AgentOrchestrator agentOrchestrator;
+  @MockitoBean private ChatConversationFacade chatConversationFacade;
   @MockitoBean private ToolConfirmationService confirmationService;
   @MockitoBean private AgentRequestLimiter requestLimiter;
   @MockitoBean private AgentConcurrencyLimiter concurrencyLimiter;
 
   @Test
   void chatbotMessageRemainsPublicAndReturnsAgentEnvelope() throws Exception {
-    AgentConcurrencyLimiter.Slot slot = mock(AgentConcurrencyLimiter.Slot.class);
-    when(concurrencyLimiter.acquireUserSlot(null, "chat")).thenReturn(slot);
-    when(agentOrchestrator.handle(
-            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.isNull()))
+    when(chatConversationFacade.chat(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()))
         .thenReturn(
             new RagChatResponse(
                 "Found flights",
@@ -73,7 +74,6 @@ class ChatbotAgentApiIntegrationTest {
         .andExpect(jsonPath("$.data.answerType").value("TOOL_RESULT"));
 
     verify(requestLimiter).checkQuery(null, null);
-    verify(slot).close();
   }
 
   @Test

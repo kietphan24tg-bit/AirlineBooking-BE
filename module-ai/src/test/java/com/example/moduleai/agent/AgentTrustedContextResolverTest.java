@@ -29,7 +29,8 @@ class AgentTrustedContextResolverTest {
   void verifiesOwnedBookingBeforeAddingTrustedContext() {
     ToolDescriptor descriptor = descriptor(ToolAccess.BOOKING_VERIFIED);
     AgentToolContext context =
-        new AgentToolContext(null, 7L, Set.of("ROLE_USER"), false, null, null, null, Map.of());
+        new AgentToolContext(
+            null, null, 7L, Set.of("ROLE_USER"), false, null, null, null, Map.of());
     when(bookingAccessService.requireOwnedBooking(7L, 42L)).thenReturn(42L);
 
     AgentToolContext resolved = resolver.resolve(descriptor, new BookingInput(42L), context);
@@ -43,7 +44,7 @@ class AgentTrustedContextResolverTest {
   void rejectsBookingToolWithoutTypedBookingId() {
     ToolDescriptor descriptor = descriptor(ToolAccess.BOOKING_VERIFIED);
     AgentToolContext context =
-        new AgentToolContext(null, 7L, Set.of(), false, null, null, null, Map.of());
+        new AgentToolContext(null, null, 7L, Set.of(), false, null, null, null, Map.of());
 
     assertThatThrownBy(() -> resolver.resolve(descriptor, new MissingBookingInput("x"), context))
         .isInstanceOf(AppException.class)

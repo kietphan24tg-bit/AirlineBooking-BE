@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.ai.chat.model.ToolContext;
 
 public record AgentToolContext(
+    UUID conversationId,
     UUID proposalId,
     Long userId,
     Set<String> roles,
@@ -18,6 +19,7 @@ public record AgentToolContext(
     Long verifiedBookingId,
     Map<String, Object> rawContext) {
 
+  public static final String CONVERSATION_ID_KEY = "conversationId";
   public static final String PROPOSAL_ID_KEY = "proposalId";
   public static final String USER_ID_KEY = "userId";
   public static final String ROLES_KEY = "roles";
@@ -27,7 +29,7 @@ public record AgentToolContext(
   public static final String VERIFIED_BOOKING_ID_KEY = "verifiedBookingId";
 
   public static AgentToolContext empty() {
-    return new AgentToolContext(null, null, Set.of(), false, null, null, null, Map.of());
+    return new AgentToolContext(null, null, null, Set.of(), false, null, null, null, Map.of());
   }
 
   public static AgentToolContext from(ToolContext toolContext) {
@@ -36,6 +38,7 @@ public record AgentToolContext(
     }
     Map<String, Object> raw = Map.copyOf(toolContext.getContext());
     return new AgentToolContext(
+        uuidValue(raw.get(CONVERSATION_ID_KEY)),
         uuidValue(raw.get(PROPOSAL_ID_KEY)),
         longValue(raw.get(USER_ID_KEY)),
         rolesOf(raw.get(ROLES_KEY)),
@@ -55,6 +58,7 @@ public record AgentToolContext(
         new java.util.LinkedHashMap<>(rawContext);
     trustedContext.put(VERIFIED_BOOKING_ID_KEY, bookingId);
     return new AgentToolContext(
+        conversationId,
         proposalId,
         userId,
         roles,
@@ -62,6 +66,26 @@ public record AgentToolContext(
         confirmationToken,
         idempotencyKey,
         bookingId,
+        Map.copyOf(trustedContext));
+  }
+
+  public AgentToolContext withConversationId(UUID value) {
+    java.util.LinkedHashMap<String, Object> trustedContext =
+        new java.util.LinkedHashMap<>(rawContext);
+    if (value != null) {
+      trustedContext.put(CONVERSATION_ID_KEY, value.toString());
+    } else {
+      trustedContext.remove(CONVERSATION_ID_KEY);
+    }
+    return new AgentToolContext(
+        value,
+        proposalId,
+        userId,
+        roles,
+        confirmed,
+        confirmationToken,
+        idempotencyKey,
+        verifiedBookingId,
         Map.copyOf(trustedContext));
   }
 

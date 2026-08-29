@@ -2,6 +2,8 @@ package com.example.moduleai.confirmation;
 
 import com.example.common.exception.AppException;
 import com.example.moduleai.config.AiAgentProperties;
+import com.example.moduleai.conversation.ChatConversationRepository;
+import com.example.moduleai.conversation.ChatConversationStatus;
 import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.observability.AiObservability;
 import com.example.moduleai.rollout.AgentRolloutMode;
@@ -38,6 +40,7 @@ public class ToolConfirmationService {
   private final ToolProposalSnapshotFactory snapshotFactory;
   private final ToolConfirmationRegistry confirmationRegistry;
   private final ToolExecutionReconcilerRegistry reconcilerRegistry;
+  private final ChatConversationRepository conversationRepository;
   private final ObjectMapper objectMapper;
   private final AiAgentProperties properties;
   private final AgentRolloutProperties rolloutProperties;
@@ -53,6 +56,7 @@ public class ToolConfirmationService {
       ToolProposalSnapshotFactory snapshotFactory,
       ToolConfirmationRegistry confirmationRegistry,
       ToolExecutionReconcilerRegistry reconcilerRegistry,
+      ChatConversationRepository conversationRepository,
       ObjectMapper objectMapper,
       AiAgentProperties properties,
       AgentRolloutProperties rolloutProperties,
@@ -66,6 +70,7 @@ public class ToolConfirmationService {
     this.snapshotFactory = snapshotFactory;
     this.confirmationRegistry = confirmationRegistry;
     this.reconcilerRegistry = reconcilerRegistry;
+    this.conversationRepository = conversationRepository;
     this.objectMapper = objectMapper;
     this.properties = properties;
     this.rolloutProperties = rolloutProperties;
@@ -102,6 +107,7 @@ public class ToolConfirmationService {
               : context.idempotencyKey();
       AgentToolContext proposalContext =
           new AgentToolContext(
+              context.conversationId(),
               context.proposalId(),
               context.userId(),
               context.roles(),
@@ -121,6 +127,7 @@ public class ToolConfirmationService {
       proposal.setId(proposalId);
       proposal.setUserId(context.userId());
       proposal.setVerifiedBookingId(context.verifiedBookingId());
+      proposal.setConversationId(context.conversationId());
       proposal.setToolName(toolName);
       proposal.setOperation(descriptor.policy().operation());
       proposal.setAccess(descriptor.policy().access());
@@ -133,6 +140,7 @@ public class ToolConfirmationService {
       proposal.setUpdatedAt(now);
       proposal.setConfirmationHmac(
           signer.sign(
+              context.conversationId(),
               proposalId,
               context.userId(),
               toolName,
@@ -160,6 +168,7 @@ public class ToolConfirmationService {
   public ToolProposalView reject(UUID proposalId, Long userId) {
     ensureActionsEnabled();
     ToolProposalEntity proposal = requireProposal(proposalId, userId);
+    ensureConversationActive(proposal);
     OffsetDateTime now = OffsetDateTime.now();
     if (proposal.getExpiresAt().isBefore(now)) {
       throw new AppException("PROPOSAL_EXPIRED", "Proposal has expired", 410);
@@ -189,6 +198,7 @@ public class ToolConfirmationService {
           409);
     }
     ToolProposalEntity proposal = requireProposal(proposalId, userId);
+    ensureConversationActive(proposal);
     OffsetDateTime now = OffsetDateTime.now();
     if (proposal.getExpiresAt().isBefore(now)) {
       throw new AppException("PROPOSAL_EXPIRED", "Proposal has expired", 410);
@@ -210,6 +220,10 @@ public class ToolConfirmationService {
       Map<String, Object> originalSnapshot =
           objectMapper.readValue(executing.getConfirmationSnapshot(), MAP_TYPE);
       Map<String, Object> trustedContext = new LinkedHashMap<>();
+      if (executing.getConversationId() != null) {
+        trustedContext.put(
+            AgentToolContext.CONVERSATION_ID_KEY, executing.getConversationId().toString());
+      }
       trustedContext.put(AgentToolContext.PROPOSAL_ID_KEY, executing.getId().toString());
       trustedContext.put(AgentToolContext.USER_ID_KEY, executing.getUserId());
       trustedContext.put(AgentToolContext.CONFIRMED_KEY, true);
@@ -220,6 +234,7 @@ public class ToolConfirmationService {
       }
       AgentToolContext executionContext =
           new AgentToolContext(
+              executing.getConversationId(),
               executing.getId(),
               executing.getUserId(),
               java.util.Set.of(),
@@ -309,6 +324,31 @@ public class ToolConfirmationService {
   }
 
   @Transactional
+  public int expirePendingForConversation(UUID conversationId) {
+    if (conversationId == null) {
+      return 0;
+    }
+    OffsetDateTime now = OffsetDateTime.now();
+    var pending =
+        proposalRepository.findByConversationIdAndStatus(
+            conversationId, ToolProposalStatus.PENDING);
+    int expired = 0;
+    for (ToolProposalEntity proposal : pending) {
+      int claimed =
+          proposalRepository.updateStatusForProposal(
+              proposal.getId(), ToolProposalStatus.PENDING, ToolProposalStatus.EXPIRED, now);
+      if (claimed == 1) {
+        proposal.setStatus(ToolProposalStatus.EXPIRED);
+        proposal.setCompletedAt(now);
+        proposal.setUpdatedAt(now);
+        audit(proposal, "EXPIRED", "CONVERSATION_ARCHIVED", null);
+        expired++;
+      }
+    }
+    return expired;
+  }
+
+  @Transactional
   public int reconcileUnknownExecutions() {
     int updated = 0;
     OffsetDateTime cutoff = OffsetDateTime.now().minus(properties.getExecutingTimeout());
@@ -379,6 +419,7 @@ public class ToolConfirmationService {
     boolean valid =
         signer.matches(
             proposal.getConfirmationHmac(),
+            proposal.getConversationId(),
             proposal.getId(),
             proposal.getUserId(),
             proposal.getToolName(),
@@ -388,6 +429,23 @@ public class ToolConfirmationService {
     if (!valid) {
       observability.recordToolIntegrityFailure(proposal.getToolName());
       throw new AppException("PROPOSAL_HMAC_INVALID", "Proposal integrity check failed", 409);
+    }
+  }
+
+  private void ensureConversationActive(ToolProposalEntity proposal) {
+    if (proposal.getConversationId() == null) {
+      return;
+    }
+    boolean active =
+        conversationRepository
+            .findById(proposal.getConversationId())
+            .map(conversation -> conversation.getStatus() == ChatConversationStatus.ACTIVE)
+            .orElse(false);
+    if (!active) {
+      throw new AppException(
+          "PROPOSAL_CONVERSATION_INACTIVE",
+          "Proposal belongs to an archived or expired chat session",
+          410);
     }
   }
 

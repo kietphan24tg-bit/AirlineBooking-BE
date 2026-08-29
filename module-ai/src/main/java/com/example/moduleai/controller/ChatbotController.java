@@ -1,8 +1,11 @@
 package com.example.moduleai.controller;
 
-import com.example.moduleai.agent.AgentOrchestrator;
 import com.example.moduleai.confirmation.ToolConfirmationService;
 import com.example.moduleai.confirmation.ToolProposalView;
+import com.example.moduleai.conversation.ChatConversationFacade;
+import com.example.moduleai.conversation.ChatConversationListView;
+import com.example.moduleai.conversation.ChatConversationView;
+import com.example.moduleai.conversation.ChatMessagePageView;
 import com.example.moduleai.dto.ChatRequest;
 import com.example.moduleai.dto.RagChatResponse;
 import com.example.moduleai.guardrail.AgentConcurrencyLimiter;
@@ -15,16 +18,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,17 +41,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Chatbot", description = "RAG chatbot endpoints")
 public class ChatbotController {
 
-  private final AgentOrchestrator agentOrchestrator;
+  private final ChatConversationFacade chatConversationFacade;
   private final ToolConfirmationService toolConfirmationService;
   private final AgentRequestLimiter agentRequestLimiter;
   private final AgentConcurrencyLimiter agentConcurrencyLimiter;
 
   public ChatbotController(
-      AgentOrchestrator agentOrchestrator,
+      ChatConversationFacade chatConversationFacade,
       ToolConfirmationService toolConfirmationService,
       AgentRequestLimiter agentRequestLimiter,
       AgentConcurrencyLimiter agentConcurrencyLimiter) {
-    this.agentOrchestrator = agentOrchestrator;
+    this.chatConversationFacade = chatConversationFacade;
     this.toolConfirmationService = toolConfirmationService;
     this.agentRequestLimiter = agentRequestLimiter;
     this.agentConcurrencyLimiter = agentConcurrencyLimiter;
@@ -64,14 +72,71 @@ public class ChatbotController {
   RagChatResponse chat(
       @Valid @RequestBody ChatRequest request,
       Authentication authentication,
+      HttpServletRequest servletRequest,
+      HttpServletResponse servletResponse,
       @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor,
       @RequestHeader(value = "X-Real-IP", required = false) String realIp) {
     Long userId = currentUserId(authentication);
     agentRequestLimiter.checkQuery(userId, clientIp(forwardedFor, realIp));
-    try (AgentConcurrencyLimiter.Slot ignored =
-        agentConcurrencyLimiter.acquireUserSlot(userId, "chat")) {
-      return agentOrchestrator.handle(request, authentication);
-    }
+    return chatConversationFacade.chat(request, authentication, servletRequest, servletResponse);
+  }
+
+  @GetMapping("/conversations/active")
+  ResponseEntity<ChatConversationView> activeConversation(
+      Authentication authentication,
+      HttpServletRequest servletRequest,
+      HttpServletResponse servletResponse) {
+    ChatConversationView conversation =
+        chatConversationFacade.getActive(authentication, servletRequest, servletResponse);
+    return conversation == null
+        ? ResponseEntity.noContent().build()
+        : ResponseEntity.ok(conversation);
+  }
+
+  @GetMapping("/conversations")
+  ChatConversationListView listConversations(
+      Authentication authentication,
+      HttpServletRequest servletRequest,
+      HttpServletResponse servletResponse,
+      @RequestParam(value = "cursor", required = false) String cursor,
+      @RequestParam(value = "limit", defaultValue = "20") int limit) {
+    return chatConversationFacade.list(
+        authentication, servletRequest, servletResponse, cursor, limit);
+  }
+
+  @GetMapping("/conversations/{conversationId}/messages")
+  ChatMessagePageView conversationMessages(
+      @PathVariable UUID conversationId,
+      Authentication authentication,
+      HttpServletRequest servletRequest,
+      HttpServletResponse servletResponse,
+      @RequestParam(value = "beforeSequence", required = false) Long beforeSequence,
+      @RequestParam(value = "limit", defaultValue = "50") int limit) {
+    return chatConversationFacade.messages(
+        conversationId, authentication, servletRequest, servletResponse, beforeSequence, limit);
+  }
+
+  @PostMapping("/conversations/active/archive")
+  ResponseEntity<ChatConversationView> archiveActiveConversation(
+      Authentication authentication,
+      HttpServletRequest servletRequest,
+      HttpServletResponse servletResponse) {
+    ChatConversationView conversation =
+        chatConversationFacade.archiveActive(authentication, servletRequest, servletResponse);
+    return conversation == null
+        ? ResponseEntity.noContent().build()
+        : ResponseEntity.ok(conversation);
+  }
+
+  @DeleteMapping("/conversations/{conversationId}")
+  ResponseEntity<Void> deleteConversation(
+      @PathVariable UUID conversationId,
+      Authentication authentication,
+      HttpServletRequest servletRequest,
+      HttpServletResponse servletResponse) {
+    chatConversationFacade.deleteConversation(
+        conversationId, authentication, servletRequest, servletResponse);
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/proposals/{proposalId}")

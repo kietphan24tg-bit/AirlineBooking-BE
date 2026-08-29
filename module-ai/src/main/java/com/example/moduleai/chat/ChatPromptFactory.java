@@ -1,5 +1,6 @@
 package com.example.moduleai.chat;
 
+import com.example.moduleai.conversation.ChatMemorySnapshot;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.ai.document.Document;
@@ -13,8 +14,29 @@ public class ChatPromptFactory {
   }
 
   public String userPrompt(String question, List<Document> contextDocuments) {
+    return userPrompt(
+        question, question, new ChatMemorySnapshot(null, null, List.of()), contextDocuments);
+  }
+
+  public String userPrompt(
+      String originalQuestion,
+      String retrievalQuestion,
+      ChatMemorySnapshot memory,
+      List<Document> contextDocuments) {
     return """
         User question:
+        %s
+
+        Retrieval question:
+        %s
+
+        Conversation summary:
+        %s
+
+        Structured state:
+        %s
+
+        Recent conversation:
         %s
 
         Answer language rule:
@@ -25,8 +47,23 @@ public class ChatPromptFactory {
         Context:
         %s
         """
-        .formatted(question, context(contextDocuments))
+        .formatted(
+            originalQuestion,
+            retrievalQuestion,
+            memory == null || memory.summary() == null ? "" : memory.summary(),
+            memory == null || memory.state() == null ? "" : memory.state(),
+            recentConversation(memory),
+            context(contextDocuments))
         .trim();
+  }
+
+  private String recentConversation(ChatMemorySnapshot memory) {
+    if (memory == null || memory.recentMessages() == null || memory.recentMessages().isEmpty()) {
+      return "";
+    }
+    return memory.recentMessages().stream()
+        .map(message -> message.role() + ": " + message.content())
+        .collect(Collectors.joining("\n"));
   }
 
   private String context(List<Document> documents) {

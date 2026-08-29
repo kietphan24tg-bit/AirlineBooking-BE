@@ -1,0 +1,1531 @@
+{
+  "metadata" : {
+    "runId" : "release-20260829-lang-stability",
+    "generatedAt" : "2026-08-29T06:14:19.088439700Z",
+    "commit" : "unknown",
+    "chatModel" : "gemini-3.5-flash-lite",
+    "embeddingModel" : "gemini-embedding-001",
+    "topK" : 5,
+    "repeats" : 3,
+    "variants" : false,
+    "promptHash" : "b6cfe91b0d6dd1436807af3a13f6055fb5b3e8e1bdf9d8a40fe105751274a210",
+    "docsHash" : "2e85288e474501430603e329ef51740b97323bec3239837c2bdfdf75e5fc627d"
+  },
+  "judgedAt" : "2026-08-29T13:18:25.898991600+07:00",
+  "checklistCaseCount" : 135,
+  "ingestedFiles" : 10,
+  "ingestedChunks" : 114,
+  "results" : [ {
+    "executionId" : "LANG-001/original/run-1",
+    "caseId" : "LANG-001",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "When does online check-in open and close for a domestic flight?",
+    "expectedBehavior" : "[LANG=en] Answer in English; state that it opens 24 hours before departure and closes 40 minutes before departure.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "For a domestic flight, online check-in opens 24 hours before departure and closes 40 minutes before departure.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.7955101430416107,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.739849865436554,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.6796038746833801,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.6601374745368958,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.6552605330944061,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches expected English response with correct check-in times.",
+    "durationMillis" : 2891
+  }, {
+    "executionId" : "LANG-001/original/run-2",
+    "caseId" : "LANG-001",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "When does online check-in open and close for a domestic flight?",
+    "expectedBehavior" : "[LANG=en] Answer in English; state that it opens 24 hours before departure and closes 40 minutes before departure.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "For a domestic flight, online check-in opens 24 hours before departure and closes 40 minutes before departure.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.7955101430416107,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.739849865436554,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.6796038746833801,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.6601374745368958,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.6552605330944061,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches expected English response with correct check-in times.",
+    "durationMillis" : 1984
+  }, {
+    "executionId" : "LANG-001/original/run-3",
+    "caseId" : "LANG-001",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "When does online check-in open and close for a domestic flight?",
+    "expectedBehavior" : "[LANG=en] Answer in English; state that it opens 24 hours before departure and closes 40 minutes before departure.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "For a domestic flight, online check-in opens 24 hours before departure and closes 40 minutes before departure.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.7955101430416107,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.739849865436554,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.6796038746833801,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.6601374745368958,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.6552605330944061,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches expected English response with correct check-in times.",
+    "durationMillis" : 2242
+  }, {
+    "executionId" : "LANG-002/original/run-1",
+    "caseId" : "LANG-002",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "What does the booking status PENDING_PAYMENT mean?",
+    "expectedBehavior" : "[LANG=en] Answer in English; explain that the booking was created but payment has not succeeded and it remains subject to the hold expiry.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "The booking status `PENDING_PAYMENT` means that the booking has been created, but payment has not yet been successfully completed. While in this status, the booking is still subject to a seat-holding time limit.\n\nDuring `PENDING_PAYMENT`, you can:\n- Select seats in advance (if the booking has not expired and there are no pending payments).\n- Select additional services (if the booking has not expired and there are no pending payments).\n- Create a payment (if the booking is still within the payment window).\n\nHowever, a `PENDING_PAYMENT` booking cannot be checked in, changed, cancelled, or refunded through post-payment flows.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.792719766497612,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7688488066196442,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7684464305639267,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`",
+      "score" : 0.7139782905578613,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`\n\nThay đổi đã được xác nhận ở mức yêu cầu thanh toán thêm, nhưng user chưa tạo hoặc chưa hoàn tất payment cho khoản chênh lệch."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`",
+      "score" : 0.7078705430030823,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`\n\nThay đổi tạo ra khoản cần hoàn tiền và hệ thống đang xử lý hoàn tiền. Không nên nói refund đã hoàn tất nếu chưa có trạng thái thành công từ hệ thống."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches expected English response and accurately explains PENDING_PAYMENT status and hold expiry.",
+    "durationMillis" : 2204
+  }, {
+    "executionId" : "LANG-002/original/run-2",
+    "caseId" : "LANG-002",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "What does the booking status PENDING_PAYMENT mean?",
+    "expectedBehavior" : "[LANG=en] Answer in English; explain that the booking was created but payment has not succeeded and it remains subject to the hold expiry.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "The booking status **PENDING_PAYMENT** means that the booking has been created, but payment has not been successfully completed yet. While in this status, the booking is still subject to a seat-hold time limit. \n\nFor a booking with the `PENDING_PAYMENT` status:\n- You can select seats in advance if the booking has not expired and there is no pending payment.\n- You can select ancillary services if the booking has not expired and there is no pending payment.\n- You can create a payment if the booking is still within the payment window.\n\nHowever, a `PENDING_PAYMENT` booking cannot be checked in, changed, or canceled/refunded via post-payment flows.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.792719766497612,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7688488066196442,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7684464305639267,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`",
+      "score" : 0.7139782905578613,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`\n\nThay đổi đã được xác nhận ở mức yêu cầu thanh toán thêm, nhưng user chưa tạo hoặc chưa hoàn tất payment cho khoản chênh lệch."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`",
+      "score" : 0.7078705430030823,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`\n\nThay đổi tạo ra khoản cần hoàn tiền và hệ thống đang xử lý hoàn tiền. Không nên nói refund đã hoàn tất nếu chưa có trạng thái thành công từ hệ thống."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches expected English response and accurately explains PENDING_PAYMENT status and hold expiry.",
+    "durationMillis" : 2471
+  }, {
+    "executionId" : "LANG-002/original/run-3",
+    "caseId" : "LANG-002",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "What does the booking status PENDING_PAYMENT mean?",
+    "expectedBehavior" : "[LANG=en] Answer in English; explain that the booking was created but payment has not succeeded and it remains subject to the hold expiry.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "The booking status `PENDING_PAYMENT` means that the booking has been created, but payment has not been successfully completed yet. While in this status, the booking is still subject to a seat-holding time limit.\n\nIn the `PENDING_PAYMENT` status, you can:\n- Select seats in advance (if the booking has not expired and there are no pending payments).\n- Select ancillary services (if the booking has not expired and there are no pending payments).\n- Create a payment (if the booking is still within the payment window).\n\nHowever, a `PENDING_PAYMENT` booking cannot be checked in, changed, or canceled/refunded through post-payment flows.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.792719766497612,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7688488066196442,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7684464305639267,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`",
+      "score" : 0.7139782905578613,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`\n\nThay đổi đã được xác nhận ở mức yêu cầu thanh toán thêm, nhưng user chưa tạo hoặc chưa hoàn tất payment cho khoản chênh lệch."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`",
+      "score" : 0.7078705430030823,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`\n\nThay đổi tạo ra khoản cần hoàn tiền và hệ thống đang xử lý hoàn tiền. Không nên nói refund đã hoàn tất nếu chưa có trạng thái thành công từ hệ thống."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches expected English response and accurately explains PENDING_PAYMENT status and hold expiry.",
+    "durationMillis" : 2301
+  }, {
+    "executionId" : "LANG-003/original/run-1",
+    "caseId" : "LANG-003",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Can an infant select a separate seat?",
+    "expectedBehavior" : "[LANG=en] Answer in English; say no because an infant does not have a separate seat under the current policy.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "No, an infant traveling with an adult does not have a separate seat and therefore cannot select a separate seat in the system.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.7092188894748688,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé",
+      "score" : 0.682843416929245,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé\n\nEm bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.\n\nSố em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách",
+      "score" : 0.637716680765152,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách\n\nDịch vụ được áp dụng theo từng hành khách trong booking, không mặc định áp dụng cho toàn bộ booking nếu khách chỉ chọn cho một người.\n\nVới suất ăn, khách có thể chọn nhiều lựa chọn nếu catalog và giao diện hiện tại cho phép.\n\nVới các nhóm dịch vụ còn lại, mỗi hành khách thường chỉ chọn một gói trong cùng nhóm dịch vụ tại một thời điểm. Ví dụ, một hành khách không nên chọn đồng thời hai gói bảo hiểm khác nhau trong cùng một lần xử lý.\n\nTrẻ sơ sinh có thể không được áp dụng đầy đủ mọi dịch vụ như người lớn hoặc trẻ em. Khi câu hỏi liên quan đến một booking cụ thể, cần kiểm tra dữ liệu hành khách và dịch vụ hiện tại trước khi khẳng định."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách",
+      "score" : 0.6241742074489594,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách\n\nMỗi booking phải có ít nhất một hành khách có ghế, tức là người lớn hoặc trẻ em. Hệ thống không cho tạo booking chỉ có em bé vì em bé không có ghế riêng.\n\nSố lượng hành khách khai báo phải khớp với danh sách hành khách thực tế trong booking. Nếu hành khách chọn sai loại tuổi, hệ thống có thể từ chối vì loại hành khách phải phù hợp với ngày sinh tại ngày bay."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách",
+      "score" : 0.6225979924201965,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách\n\nHệ thống hỗ trợ ba loại hành khách.\n\nAlias nghiệp vụ thường gặp trong API, code và chatbot:\n\n| Alias | Tên hiển thị | Quy tắc giá |\n| --- | --- | --- |\n| ADULT | Người lớn | 100% giá vé người lớn cùng fare |\n| CHILD | Trẻ em | 75% giá vé người lớn cùng fare |\n| INFANT | Em bé | 10% giá vé người lớn cùng fare |"
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and is in English.",
+    "durationMillis" : 1949
+  }, {
+    "executionId" : "LANG-003/original/run-2",
+    "caseId" : "LANG-003",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Can an infant select a separate seat?",
+    "expectedBehavior" : "[LANG=en] Answer in English; say no because an infant does not have a separate seat under the current policy.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "No, an infant traveling with an adult does not have a separate seat and therefore cannot select a separate seat in the system.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.7092188894748688,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé",
+      "score" : 0.682843416929245,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé\n\nEm bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.\n\nSố em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách",
+      "score" : 0.637716680765152,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách\n\nDịch vụ được áp dụng theo từng hành khách trong booking, không mặc định áp dụng cho toàn bộ booking nếu khách chỉ chọn cho một người.\n\nVới suất ăn, khách có thể chọn nhiều lựa chọn nếu catalog và giao diện hiện tại cho phép.\n\nVới các nhóm dịch vụ còn lại, mỗi hành khách thường chỉ chọn một gói trong cùng nhóm dịch vụ tại một thời điểm. Ví dụ, một hành khách không nên chọn đồng thời hai gói bảo hiểm khác nhau trong cùng một lần xử lý.\n\nTrẻ sơ sinh có thể không được áp dụng đầy đủ mọi dịch vụ như người lớn hoặc trẻ em. Khi câu hỏi liên quan đến một booking cụ thể, cần kiểm tra dữ liệu hành khách và dịch vụ hiện tại trước khi khẳng định."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách",
+      "score" : 0.6241742074489594,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách\n\nMỗi booking phải có ít nhất một hành khách có ghế, tức là người lớn hoặc trẻ em. Hệ thống không cho tạo booking chỉ có em bé vì em bé không có ghế riêng.\n\nSố lượng hành khách khai báo phải khớp với danh sách hành khách thực tế trong booking. Nếu hành khách chọn sai loại tuổi, hệ thống có thể từ chối vì loại hành khách phải phù hợp với ngày sinh tại ngày bay."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách",
+      "score" : 0.6225979924201965,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách\n\nHệ thống hỗ trợ ba loại hành khách.\n\nAlias nghiệp vụ thường gặp trong API, code và chatbot:\n\n| Alias | Tên hiển thị | Quy tắc giá |\n| --- | --- | --- |\n| ADULT | Người lớn | 100% giá vé người lớn cùng fare |\n| CHILD | Trẻ em | 75% giá vé người lớn cùng fare |\n| INFANT | Em bé | 10% giá vé người lớn cùng fare |"
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and is in English.",
+    "durationMillis" : 2218
+  }, {
+    "executionId" : "LANG-003/original/run-3",
+    "caseId" : "LANG-003",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Can an infant select a separate seat?",
+    "expectedBehavior" : "[LANG=en] Answer in English; say no because an infant does not have a separate seat under the current policy.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "No, an infant traveling with an adult does not have a separate seat and therefore cannot select a separate seat in the system.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.7092188894748688,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé",
+      "score" : 0.682843416929245,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé\n\nEm bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.\n\nSố em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách",
+      "score" : 0.637716680765152,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách\n\nDịch vụ được áp dụng theo từng hành khách trong booking, không mặc định áp dụng cho toàn bộ booking nếu khách chỉ chọn cho một người.\n\nVới suất ăn, khách có thể chọn nhiều lựa chọn nếu catalog và giao diện hiện tại cho phép.\n\nVới các nhóm dịch vụ còn lại, mỗi hành khách thường chỉ chọn một gói trong cùng nhóm dịch vụ tại một thời điểm. Ví dụ, một hành khách không nên chọn đồng thời hai gói bảo hiểm khác nhau trong cùng một lần xử lý.\n\nTrẻ sơ sinh có thể không được áp dụng đầy đủ mọi dịch vụ như người lớn hoặc trẻ em. Khi câu hỏi liên quan đến một booking cụ thể, cần kiểm tra dữ liệu hành khách và dịch vụ hiện tại trước khi khẳng định."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách",
+      "score" : 0.6241742074489594,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách\n\nMỗi booking phải có ít nhất một hành khách có ghế, tức là người lớn hoặc trẻ em. Hệ thống không cho tạo booking chỉ có em bé vì em bé không có ghế riêng.\n\nSố lượng hành khách khai báo phải khớp với danh sách hành khách thực tế trong booking. Nếu hành khách chọn sai loại tuổi, hệ thống có thể từ chối vì loại hành khách phải phù hợp với ngày sinh tại ngày bay."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách",
+      "score" : 0.6225979924201965,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách\n\nHệ thống hỗ trợ ba loại hành khách.\n\nAlias nghiệp vụ thường gặp trong API, code và chatbot:\n\n| Alias | Tên hiển thị | Quy tắc giá |\n| --- | --- | --- |\n| ADULT | Người lớn | 100% giá vé người lớn cùng fare |\n| CHILD | Trẻ em | 75% giá vé người lớn cùng fare |\n| INFANT | Em bé | 10% giá vé người lớn cùng fare |"
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and is in English.",
+    "durationMillis" : 1919
+  }, {
+    "executionId" : "LANG-004/original/run-1",
+    "caseId" : "LANG-004",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "How long is a flight-change quote valid?",
+    "expectedBehavior" : "[LANG=en] Answer in English; state 15 minutes.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "A flight-change quote is valid for 15 minutes. If the quote expires, you will need to create a new one because ticket prices, available seats, or flight conditions may have changed.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "change-cancellation-and-refund-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Giới hạn thời gian đổi chuyến",
+      "score" : 0.7768405228853226,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Giới hạn thời gian đổi chuyến\n\nHệ thống chỉ cho đổi chuyến trước giờ khởi hành trong một khoảng thời gian đủ an toàn để xử lý lại vé, ghế, dịch vụ và thanh toán phát sinh.\n\n- Hiện tại yêu cầu đổi chuyến online bị khóa trong vòng 180 phút trước giờ khởi hành.\n- Báo giá đổi chuyến chỉ có hiệu lực trong 15 phút.\n- Nếu báo giá hết hạn, người dùng cần tạo báo giá mới vì giá vé, ghế trống hoặc điều kiện chuyến bay có thể đã thay đổi.\n- Với một quote cụ thể, phải gọi API để kiểm tra thời điểm hết hạn và trạng thái hiện tại trước khi xác nhận quote còn dùng được.\n- Không kết luận chắc chắn quote đã hết hạn chỉ bằng cách lấy số phút người dùng cung cấp so với mốc 15 phút. Cần nói quote có thể đã hết hạn và phải kiểm tra quote cụ thể qua API; nếu API xác nhận hết hạn thì tạo quote mới.\n- Với hành trình nối chuyến, chuyến mới vẫn phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.\n\nCác mốc này là giới hạn hệ thống hiện tại. Nếu cấu hình vận hành thay đổi, cần ưu tiên dữ liệu trả về tại thời điểm người dùng thao tác."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Đổi chuyến bay",
+      "score" : 0.6707645952701569,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Đổi chuyến bay\n\nNgười dùng chỉ có thể đổi chuyến khi booking và vé còn đủ điều kiện. Các điều kiện chính gồm:\n\n- Booking đã được xác nhận sau thanh toán.\n- Booking chưa bị khóa do check-in.\n- Vé cần đổi đã được xuất và vẫn còn hiệu lực.\n- Hạng vé của vé đó cho phép đổi chuyến.\n- Yêu cầu đổi chuyến được thực hiện trước thời điểm hệ thống đóng quyền đổi chuyến.\n- Booking có giao dịch thanh toán hợp lệ để hệ thống đối chiếu giá trị vé ban đầu."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Kết quả tiền khi đổi chuyến",
+      "score" : 0.670454353094101,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Kết quả tiền khi đổi chuyến\n\nSau khi người dùng chọn chuyến mới, hệ thống sẽ báo giá lại để so sánh với vé hiện tại.\n\nKết quả có thể là:\n\n- Người dùng cần thanh toán thêm nếu chuyến hoặc hạng vé mới có chi phí cao hơn sau khi cộng phí đổi chuyến.\n- Người dùng có thể được hoàn chênh lệch nếu chuyến hoặc hạng vé mới có chi phí thấp hơn và chính sách cho phép.\n- Không phát sinh thêm tiền nếu tổng tiền sau khi tính lại không thay đổi.\n\nĐổi chuyến cũng có thể ảnh hưởng đến ghế và dịch vụ đã chọn trước đó. Người dùng có thể cần chọn lại ghế hoặc kiểm tra lại dịch vụ nếu các lựa chọn cũ không còn phù hợp với chuyến mới."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Điều kiện flight mới",
+      "score" : 0.6700973510742188,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Điều kiện flight mới\n\nFlight mới phải hợp lệ:\n\n- Khác flight hiện tại.\n- Cùng sân bay đi và sân bay đến với segment đang đổi.\n- Fare mới còn khả dụng.\n- Đủ ghế cho các passenger có ghế riêng.\n- Nếu là itinerary nối chuyến, phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.\n\nInfant phải đi cùng ít nhất một adult trong thay đổi."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Khi nào phải tra cứu dữ liệu thực tế",
+      "score" : 0.6597638428211212,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Khi nào phải tra cứu dữ liệu thực tế\n\nPhải tra cứu dữ liệu thực tế nếu khách hỏi:\n\n- Vé của tôi có đổi được không?\n- Đổi sang chuyến này mất bao nhiêu?\n- Tôi hủy vé được bao nhiêu tiền?\n- Booking đã check-in rồi có hủy được không?\n- Ticket nào trong booking còn active?"
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and is in English.",
+    "durationMillis" : 2012
+  }, {
+    "executionId" : "LANG-004/original/run-2",
+    "caseId" : "LANG-004",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "How long is a flight-change quote valid?",
+    "expectedBehavior" : "[LANG=en] Answer in English; state 15 minutes.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "A flight-change quote is valid for 15 minutes. If the quote expires, you will need to create a new one because fare prices, seat availability, or flight conditions may have changed. Please note that for any specific quote, the system's current status and expiration time must be checked directly through the system.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "change-cancellation-and-refund-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Giới hạn thời gian đổi chuyến",
+      "score" : 0.7768405228853226,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Giới hạn thời gian đổi chuyến\n\nHệ thống chỉ cho đổi chuyến trước giờ khởi hành trong một khoảng thời gian đủ an toàn để xử lý lại vé, ghế, dịch vụ và thanh toán phát sinh.\n\n- Hiện tại yêu cầu đổi chuyến online bị khóa trong vòng 180 phút trước giờ khởi hành.\n- Báo giá đổi chuyến chỉ có hiệu lực trong 15 phút.\n- Nếu báo giá hết hạn, người dùng cần tạo báo giá mới vì giá vé, ghế trống hoặc điều kiện chuyến bay có thể đã thay đổi.\n- Với một quote cụ thể, phải gọi API để kiểm tra thời điểm hết hạn và trạng thái hiện tại trước khi xác nhận quote còn dùng được.\n- Không kết luận chắc chắn quote đã hết hạn chỉ bằng cách lấy số phút người dùng cung cấp so với mốc 15 phút. Cần nói quote có thể đã hết hạn và phải kiểm tra quote cụ thể qua API; nếu API xác nhận hết hạn thì tạo quote mới.\n- Với hành trình nối chuyến, chuyến mới vẫn phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.\n\nCác mốc này là giới hạn hệ thống hiện tại. Nếu cấu hình vận hành thay đổi, cần ưu tiên dữ liệu trả về tại thời điểm người dùng thao tác."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Đổi chuyến bay",
+      "score" : 0.6707645952701569,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Đổi chuyến bay\n\nNgười dùng chỉ có thể đổi chuyến khi booking và vé còn đủ điều kiện. Các điều kiện chính gồm:\n\n- Booking đã được xác nhận sau thanh toán.\n- Booking chưa bị khóa do check-in.\n- Vé cần đổi đã được xuất và vẫn còn hiệu lực.\n- Hạng vé của vé đó cho phép đổi chuyến.\n- Yêu cầu đổi chuyến được thực hiện trước thời điểm hệ thống đóng quyền đổi chuyến.\n- Booking có giao dịch thanh toán hợp lệ để hệ thống đối chiếu giá trị vé ban đầu."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Kết quả tiền khi đổi chuyến",
+      "score" : 0.670454353094101,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Kết quả tiền khi đổi chuyến\n\nSau khi người dùng chọn chuyến mới, hệ thống sẽ báo giá lại để so sánh với vé hiện tại.\n\nKết quả có thể là:\n\n- Người dùng cần thanh toán thêm nếu chuyến hoặc hạng vé mới có chi phí cao hơn sau khi cộng phí đổi chuyến.\n- Người dùng có thể được hoàn chênh lệch nếu chuyến hoặc hạng vé mới có chi phí thấp hơn và chính sách cho phép.\n- Không phát sinh thêm tiền nếu tổng tiền sau khi tính lại không thay đổi.\n\nĐổi chuyến cũng có thể ảnh hưởng đến ghế và dịch vụ đã chọn trước đó. Người dùng có thể cần chọn lại ghế hoặc kiểm tra lại dịch vụ nếu các lựa chọn cũ không còn phù hợp với chuyến mới."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Điều kiện flight mới",
+      "score" : 0.6700973510742188,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Điều kiện flight mới\n\nFlight mới phải hợp lệ:\n\n- Khác flight hiện tại.\n- Cùng sân bay đi và sân bay đến với segment đang đổi.\n- Fare mới còn khả dụng.\n- Đủ ghế cho các passenger có ghế riêng.\n- Nếu là itinerary nối chuyến, phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.\n\nInfant phải đi cùng ít nhất một adult trong thay đổi."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Khi nào phải tra cứu dữ liệu thực tế",
+      "score" : 0.6597638428211212,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Khi nào phải tra cứu dữ liệu thực tế\n\nPhải tra cứu dữ liệu thực tế nếu khách hỏi:\n\n- Vé của tôi có đổi được không?\n- Đổi sang chuyến này mất bao nhiêu?\n- Tôi hủy vé được bao nhiêu tiền?\n- Booking đã check-in rồi có hủy được không?\n- Ticket nào trong booking còn active?"
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and is in English.",
+    "durationMillis" : 2106
+  }, {
+    "executionId" : "LANG-004/original/run-3",
+    "caseId" : "LANG-004",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "How long is a flight-change quote valid?",
+    "expectedBehavior" : "[LANG=en] Answer in English; state 15 minutes.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "A flight-change quote is valid for 15 minutes. If the quote expires, you will need to create a new one because ticket prices, available seats, or flight conditions may have changed.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "change-cancellation-and-refund-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Giới hạn thời gian đổi chuyến",
+      "score" : 0.7768405228853226,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Giới hạn thời gian đổi chuyến\n\nHệ thống chỉ cho đổi chuyến trước giờ khởi hành trong một khoảng thời gian đủ an toàn để xử lý lại vé, ghế, dịch vụ và thanh toán phát sinh.\n\n- Hiện tại yêu cầu đổi chuyến online bị khóa trong vòng 180 phút trước giờ khởi hành.\n- Báo giá đổi chuyến chỉ có hiệu lực trong 15 phút.\n- Nếu báo giá hết hạn, người dùng cần tạo báo giá mới vì giá vé, ghế trống hoặc điều kiện chuyến bay có thể đã thay đổi.\n- Với một quote cụ thể, phải gọi API để kiểm tra thời điểm hết hạn và trạng thái hiện tại trước khi xác nhận quote còn dùng được.\n- Không kết luận chắc chắn quote đã hết hạn chỉ bằng cách lấy số phút người dùng cung cấp so với mốc 15 phút. Cần nói quote có thể đã hết hạn và phải kiểm tra quote cụ thể qua API; nếu API xác nhận hết hạn thì tạo quote mới.\n- Với hành trình nối chuyến, chuyến mới vẫn phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.\n\nCác mốc này là giới hạn hệ thống hiện tại. Nếu cấu hình vận hành thay đổi, cần ưu tiên dữ liệu trả về tại thời điểm người dùng thao tác."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Đổi chuyến bay",
+      "score" : 0.6707645952701569,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Đổi chuyến bay\n\nNgười dùng chỉ có thể đổi chuyến khi booking và vé còn đủ điều kiện. Các điều kiện chính gồm:\n\n- Booking đã được xác nhận sau thanh toán.\n- Booking chưa bị khóa do check-in.\n- Vé cần đổi đã được xuất và vẫn còn hiệu lực.\n- Hạng vé của vé đó cho phép đổi chuyến.\n- Yêu cầu đổi chuyến được thực hiện trước thời điểm hệ thống đóng quyền đổi chuyến.\n- Booking có giao dịch thanh toán hợp lệ để hệ thống đối chiếu giá trị vé ban đầu."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Kết quả tiền khi đổi chuyến",
+      "score" : 0.670454353094101,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Kết quả tiền khi đổi chuyến\n\nSau khi người dùng chọn chuyến mới, hệ thống sẽ báo giá lại để so sánh với vé hiện tại.\n\nKết quả có thể là:\n\n- Người dùng cần thanh toán thêm nếu chuyến hoặc hạng vé mới có chi phí cao hơn sau khi cộng phí đổi chuyến.\n- Người dùng có thể được hoàn chênh lệch nếu chuyến hoặc hạng vé mới có chi phí thấp hơn và chính sách cho phép.\n- Không phát sinh thêm tiền nếu tổng tiền sau khi tính lại không thay đổi.\n\nĐổi chuyến cũng có thể ảnh hưởng đến ghế và dịch vụ đã chọn trước đó. Người dùng có thể cần chọn lại ghế hoặc kiểm tra lại dịch vụ nếu các lựa chọn cũ không còn phù hợp với chuyến mới."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Điều kiện flight mới",
+      "score" : 0.6700973510742188,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Điều kiện flight mới\n\nFlight mới phải hợp lệ:\n\n- Khác flight hiện tại.\n- Cùng sân bay đi và sân bay đến với segment đang đổi.\n- Fare mới còn khả dụng.\n- Đủ ghế cho các passenger có ghế riêng.\n- Nếu là itinerary nối chuyến, phải đảm bảo thời gian nối chuyến tối thiểu 90 phút.\n\nInfant phải đi cùng ít nhất một adult trong thay đổi."
+    }, {
+      "sourceFile" : "change-cancellation-and-refund-policy.md",
+      "headingPath" : "Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Khi nào phải tra cứu dữ liệu thực tế",
+      "score" : 0.6597638428211212,
+      "content" : "Source: change-cancellation-and-refund-policy.md\nHeading: Chính Sách Đổi Chuyến, Hủy Vé Và Hoàn Tiền > Khi nào phải tra cứu dữ liệu thực tế\n\nPhải tra cứu dữ liệu thực tế nếu khách hỏi:\n\n- Vé của tôi có đổi được không?\n- Đổi sang chuyến này mất bao nhiêu?\n- Tôi hủy vé được bao nhiêu tiền?\n- Booking đã check-in rồi có hủy được không?\n- Ticket nào trong booking còn active?"
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and is in English.",
+    "durationMillis" : 2531
+  }, {
+    "executionId" : "LANG-005/original/run-1",
+    "caseId" : "LANG-005",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Can every INCLUDED fare select every seat for free?",
+    "expectedBehavior" : "[LANG=en] Answer in English; say no, only included seat categories are free and higher categories may cost extra.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "No, not every included fare can select every seat for free. Seat selection rights and fees depend on the specific fare class:\n\n- **Economy:** Seat selection can be done in advance, but it may incur additional fees depending on the seat type.\n- **Premium:** Standard seats are included for free, but higher-tier seats may incur a fee.\n- **Business and First:** Seats up to Extra Legroom are included for free, subject to availability.\n\nAdditionally, certain seats may still be unavailable due to prior bookings, sales, fare incompatibility, or flight configuration locks. For a specific booking, you need to check the actual seat selection rights and real-time system results.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Quyền chọn ghế theo hạng vé",
+      "score" : 0.7144165635108948,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Quyền chọn ghế theo hạng vé\n\nQuyền chọn ghế phụ thuộc vào hạng vé khách đã mua:\n\n| Hạng vé | Chính sách chọn ghế |\n| --- | --- |\n| Economy | Được chọn ghế trước, có thể phát sinh phí tùy loại ghế. |\n| Premium | Được chọn trước; ghế tiêu chuẩn được bao gồm trong hạng vé. Ghế cao hơn có thể phát sinh phí. |\n| Business | Được chọn trước; các nhóm ghế đến Extra Legroom được bao gồm trong hạng vé nếu còn chỗ. |\n| First | Được chọn trước; các nhóm ghế đến Extra Legroom được bao gồm trong hạng vé nếu còn chỗ. |\n\nMột số hạng vé hoặc cấu hình đặc biệt có thể không cho chọn ghế trước, hoặc chỉ cho chọn ghế khi làm check-in. Khi khách hỏi về booking cụ thể, cần kiểm tra quyền chọn ghế thực tế của booking đó.\n\nAlias quyền chọn ghế của fare:\n\n| Alias | Ý nghĩa |\n| --- | --- |\n| `CHECKIN_ONLY` | Chỉ được chọn ghế trong luồng check-in, không được chọn ghế trước luồng này. |\n| `NOT_ALLOWED` | Không được chọn ghế trước. |"
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Chọn ghế theo hạng vé",
+      "score" : 0.6988544464111328,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Chọn ghế theo hạng vé\n\nQuyền chọn ghế phụ thuộc hạng vé:\n\n- Economy: có thể chọn ghế trước và có thể phát sinh phụ thu.\n- Premium: được bao gồm ghế tiêu chuẩn.\n- Business và First: được bao gồm ghế extra legroom.\n\nMột số ghế vẫn có thể không khả dụng do đã được giữ, đã bán, không phù hợp với fare hoặc bị khóa bởi cấu hình chuyến bay. Chi tiết loại ghế và phụ thu nằm trong `seat-selection-policy.md`."
+    }, {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Phí chọn ghế",
+      "score" : 0.6726083755493164,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Phí chọn ghế\n\nPhí chọn ghế phụ thuộc vào nhóm ghế, loại ghế và quyền lợi đi kèm hạng vé.\n\nCác mức phí tham chiếu dưới đây đang áp dụng theo VND. Với booking dùng loại tiền tệ khác, không được tự quy đổi phí ghế sang ngoại tệ; cần tra cứu hệ thống để biết booking đó có hỗ trợ phụ phí ghế hay không.\n\nAlias nghiệp vụ cho nhóm ghế:\n\n| Alias | Tên hiển thị | Phí tham chiếu |\n| --- | --- | ---: |\n| STANDARD | Tiêu chuẩn | 0 VND |\n| PREFERRED | Ưu tiên | 40,000 VND |\n| EXIT_ROW | Hàng thoát hiểm | 120,000 VND |\n| EXTRA_LEGROOM | Rộng chân | 180,000 VND |\n\nNhóm ghế tham chiếu theo cấu hình hiện tại:\n\n| Nhóm ghế | Phí tham chiếu |\n| --- | ---: |\n| Tiêu chuẩn | 0 VND |\n| Ưu tiên | 40,000 VND |\n| Hàng thoát hiểm | 120,000 VND |\n| Rộng chân | 180,000 VND |\n\nAlias nghiệp vụ cho loại ghế:\n\n| Alias | Tên hiển thị | Phí tham chiếu |\n| --- | --- | ---: |\n| MIDDLE | Ghế giữa | 0 VND |\n| WINDOW | Ghế cửa sổ | 20,000 VND |\n| AISLE | Ghế lối đi | 20,000 VND |\n\nLoại ghế tham chiếu theo cấu hình hiện tại:\n\n| Loại ghế | Phí tham chiếu |\n| --- | ---: |\n| Ghế giữa | 0 VND |\n| Ghế cửa sổ | 20,000 VND |\n| Ghế lối đi | 20,000 VND |\n\nPhí thực tế không nên tự cộng thủ công cho booking cụ thể. Hệ thống sẽ tính dựa trên ghế khách chọn, hạng vé, quyền lợi miễn phí và loại tiền tệ của booking.\n\nHiện tại, phụ phí chọn ghế được hỗ trợ chắc chắn cho booking VND. Nếu booking không dùng VND và ghế mới có phát sinh phụ phí, hệ thống có thể từ chối thao tác thay vì tự đổi tiền."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quan hệ giữa hạng vé và dịch vụ bổ sung",
+      "score" : 0.67058464884758,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quan hệ giữa hạng vé và dịch vụ bổ sung\n\nMột số hạng vé có thể đã bao gồm sẵn quyền lợi như hành lý ký gửi, hành lý xách tay, suất ăn, ưu tiên lên máy bay, phòng chờ hoặc quyền chọn ghế.\n\nDịch vụ bổ sung là phần khách mua thêm ngoài quyền lợi sẵn có của hạng vé. Vì vậy, trước khi tư vấn khách có cần mua thêm hay không, cần kiểm tra hạng vé của khách đã bao gồm quyền lợi nào.\n\nNếu hạng vé đã bao gồm ưu tiên lên máy bay, khách không cần mua thêm dịch vụ ưu tiên lên máy bay.\n\nNếu hạng vé đã bao gồm phòng chờ sân bay, khách không cần mua thêm dịch vụ phòng chờ.\n\nVới hai quyền lợi này, backend có thể chặn mua trùng khi fare đã bao gồm sẵn quyền lợi. Vì vậy cần nói rõ khách không cần mua thêm và không được cam kết hệ thống sẽ cho phép mua trùng.\n\nHành lý mua thêm là phần cộng thêm ngoài hạn mức hành lý miễn phí của hạng vé.\n\nSuất ăn đặt trước là dịch vụ mua thêm. Một hạng vé có thể đã có quyền lợi suất ăn, nhưng khách vẫn có thể cần tra cứu catalog hiện tại để biết có thể đặt thêm suất ăn nào.\n\nBảo hiểm du lịch là dịch vụ mua thêm riêng, không được xem là quyền lợi mặc định của hạng vé."
+    }, {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.6692043244838715,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all criteria and is in English",
+    "durationMillis" : 2246
+  }, {
+    "executionId" : "LANG-005/original/run-2",
+    "caseId" : "LANG-005",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Can every INCLUDED fare select every seat for free?",
+    "expectedBehavior" : "[LANG=en] Answer in English; say no, only included seat categories are free and higher categories may cost extra.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "No, not every fare with included seat selection can choose every seat for free. \n\nThe seat selection rights depend on the specific fare class:\n- **Economy:** Standard or other seat selections may incur a fee.\n- **Premium:** Standard seats are included, but higher-tier seats may incur a fee.\n- **Business and First:** Seat selections up to Extra Legroom are included if available.\n\nAdditionally, certain seats may still be unavailable due to being already held, sold, incompatible with the fare, or locked by flight configuration. For a specific booking, you need to check the actual seat selection rights and pricing directly from the system.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Quyền chọn ghế theo hạng vé",
+      "score" : 0.7144165635108948,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Quyền chọn ghế theo hạng vé\n\nQuyền chọn ghế phụ thuộc vào hạng vé khách đã mua:\n\n| Hạng vé | Chính sách chọn ghế |\n| --- | --- |\n| Economy | Được chọn ghế trước, có thể phát sinh phí tùy loại ghế. |\n| Premium | Được chọn trước; ghế tiêu chuẩn được bao gồm trong hạng vé. Ghế cao hơn có thể phát sinh phí. |\n| Business | Được chọn trước; các nhóm ghế đến Extra Legroom được bao gồm trong hạng vé nếu còn chỗ. |\n| First | Được chọn trước; các nhóm ghế đến Extra Legroom được bao gồm trong hạng vé nếu còn chỗ. |\n\nMột số hạng vé hoặc cấu hình đặc biệt có thể không cho chọn ghế trước, hoặc chỉ cho chọn ghế khi làm check-in. Khi khách hỏi về booking cụ thể, cần kiểm tra quyền chọn ghế thực tế của booking đó.\n\nAlias quyền chọn ghế của fare:\n\n| Alias | Ý nghĩa |\n| --- | --- |\n| `CHECKIN_ONLY` | Chỉ được chọn ghế trong luồng check-in, không được chọn ghế trước luồng này. |\n| `NOT_ALLOWED` | Không được chọn ghế trước. |"
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Chọn ghế theo hạng vé",
+      "score" : 0.6988544464111328,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Chọn ghế theo hạng vé\n\nQuyền chọn ghế phụ thuộc hạng vé:\n\n- Economy: có thể chọn ghế trước và có thể phát sinh phụ thu.\n- Premium: được bao gồm ghế tiêu chuẩn.\n- Business và First: được bao gồm ghế extra legroom.\n\nMột số ghế vẫn có thể không khả dụng do đã được giữ, đã bán, không phù hợp với fare hoặc bị khóa bởi cấu hình chuyến bay. Chi tiết loại ghế và phụ thu nằm trong `seat-selection-policy.md`."
+    }, {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Phí chọn ghế",
+      "score" : 0.6726083755493164,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Phí chọn ghế\n\nPhí chọn ghế phụ thuộc vào nhóm ghế, loại ghế và quyền lợi đi kèm hạng vé.\n\nCác mức phí tham chiếu dưới đây đang áp dụng theo VND. Với booking dùng loại tiền tệ khác, không được tự quy đổi phí ghế sang ngoại tệ; cần tra cứu hệ thống để biết booking đó có hỗ trợ phụ phí ghế hay không.\n\nAlias nghiệp vụ cho nhóm ghế:\n\n| Alias | Tên hiển thị | Phí tham chiếu |\n| --- | --- | ---: |\n| STANDARD | Tiêu chuẩn | 0 VND |\n| PREFERRED | Ưu tiên | 40,000 VND |\n| EXIT_ROW | Hàng thoát hiểm | 120,000 VND |\n| EXTRA_LEGROOM | Rộng chân | 180,000 VND |\n\nNhóm ghế tham chiếu theo cấu hình hiện tại:\n\n| Nhóm ghế | Phí tham chiếu |\n| --- | ---: |\n| Tiêu chuẩn | 0 VND |\n| Ưu tiên | 40,000 VND |\n| Hàng thoát hiểm | 120,000 VND |\n| Rộng chân | 180,000 VND |\n\nAlias nghiệp vụ cho loại ghế:\n\n| Alias | Tên hiển thị | Phí tham chiếu |\n| --- | --- | ---: |\n| MIDDLE | Ghế giữa | 0 VND |\n| WINDOW | Ghế cửa sổ | 20,000 VND |\n| AISLE | Ghế lối đi | 20,000 VND |\n\nLoại ghế tham chiếu theo cấu hình hiện tại:\n\n| Loại ghế | Phí tham chiếu |\n| --- | ---: |\n| Ghế giữa | 0 VND |\n| Ghế cửa sổ | 20,000 VND |\n| Ghế lối đi | 20,000 VND |\n\nPhí thực tế không nên tự cộng thủ công cho booking cụ thể. Hệ thống sẽ tính dựa trên ghế khách chọn, hạng vé, quyền lợi miễn phí và loại tiền tệ của booking.\n\nHiện tại, phụ phí chọn ghế được hỗ trợ chắc chắn cho booking VND. Nếu booking không dùng VND và ghế mới có phát sinh phụ phí, hệ thống có thể từ chối thao tác thay vì tự đổi tiền."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quan hệ giữa hạng vé và dịch vụ bổ sung",
+      "score" : 0.67058464884758,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quan hệ giữa hạng vé và dịch vụ bổ sung\n\nMột số hạng vé có thể đã bao gồm sẵn quyền lợi như hành lý ký gửi, hành lý xách tay, suất ăn, ưu tiên lên máy bay, phòng chờ hoặc quyền chọn ghế.\n\nDịch vụ bổ sung là phần khách mua thêm ngoài quyền lợi sẵn có của hạng vé. Vì vậy, trước khi tư vấn khách có cần mua thêm hay không, cần kiểm tra hạng vé của khách đã bao gồm quyền lợi nào.\n\nNếu hạng vé đã bao gồm ưu tiên lên máy bay, khách không cần mua thêm dịch vụ ưu tiên lên máy bay.\n\nNếu hạng vé đã bao gồm phòng chờ sân bay, khách không cần mua thêm dịch vụ phòng chờ.\n\nVới hai quyền lợi này, backend có thể chặn mua trùng khi fare đã bao gồm sẵn quyền lợi. Vì vậy cần nói rõ khách không cần mua thêm và không được cam kết hệ thống sẽ cho phép mua trùng.\n\nHành lý mua thêm là phần cộng thêm ngoài hạn mức hành lý miễn phí của hạng vé.\n\nSuất ăn đặt trước là dịch vụ mua thêm. Một hạng vé có thể đã có quyền lợi suất ăn, nhưng khách vẫn có thể cần tra cứu catalog hiện tại để biết có thể đặt thêm suất ăn nào.\n\nBảo hiểm du lịch là dịch vụ mua thêm riêng, không được xem là quyền lợi mặc định của hạng vé."
+    }, {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.6692043244838715,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all criteria and is in English",
+    "durationMillis" : 2341
+  }, {
+    "executionId" : "LANG-005/original/run-3",
+    "caseId" : "LANG-005",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Can every INCLUDED fare select every seat for free?",
+    "expectedBehavior" : "[LANG=en] Answer in English; say no, only included seat categories are free and higher categories may cost extra.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "No, not every fare can select every seat for free. Seat selection rights and fees depend on the specific fare class:\n\n- **Economy:** Standard and other seats may be selected, but fees can apply depending on the seat type.\n- **Premium:** Standard seats are included for free, but higher-tier seats may incur a fee.\n- **Business and First:** Seats up to Extra Legroom are included for free if available.\n\nAdditionally, certain seats may be unavailable due to prior bookings, sales, or flight configurations. For a specific booking, you need to check the actual seat selection rights and pricing directly from the system.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Quyền chọn ghế theo hạng vé",
+      "score" : 0.7144165635108948,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Quyền chọn ghế theo hạng vé\n\nQuyền chọn ghế phụ thuộc vào hạng vé khách đã mua:\n\n| Hạng vé | Chính sách chọn ghế |\n| --- | --- |\n| Economy | Được chọn ghế trước, có thể phát sinh phí tùy loại ghế. |\n| Premium | Được chọn trước; ghế tiêu chuẩn được bao gồm trong hạng vé. Ghế cao hơn có thể phát sinh phí. |\n| Business | Được chọn trước; các nhóm ghế đến Extra Legroom được bao gồm trong hạng vé nếu còn chỗ. |\n| First | Được chọn trước; các nhóm ghế đến Extra Legroom được bao gồm trong hạng vé nếu còn chỗ. |\n\nMột số hạng vé hoặc cấu hình đặc biệt có thể không cho chọn ghế trước, hoặc chỉ cho chọn ghế khi làm check-in. Khi khách hỏi về booking cụ thể, cần kiểm tra quyền chọn ghế thực tế của booking đó.\n\nAlias quyền chọn ghế của fare:\n\n| Alias | Ý nghĩa |\n| --- | --- |\n| `CHECKIN_ONLY` | Chỉ được chọn ghế trong luồng check-in, không được chọn ghế trước luồng này. |\n| `NOT_ALLOWED` | Không được chọn ghế trước. |"
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Chọn ghế theo hạng vé",
+      "score" : 0.6988544464111328,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Chọn ghế theo hạng vé\n\nQuyền chọn ghế phụ thuộc hạng vé:\n\n- Economy: có thể chọn ghế trước và có thể phát sinh phụ thu.\n- Premium: được bao gồm ghế tiêu chuẩn.\n- Business và First: được bao gồm ghế extra legroom.\n\nMột số ghế vẫn có thể không khả dụng do đã được giữ, đã bán, không phù hợp với fare hoặc bị khóa bởi cấu hình chuyến bay. Chi tiết loại ghế và phụ thu nằm trong `seat-selection-policy.md`."
+    }, {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Phí chọn ghế",
+      "score" : 0.6726083755493164,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Phí chọn ghế\n\nPhí chọn ghế phụ thuộc vào nhóm ghế, loại ghế và quyền lợi đi kèm hạng vé.\n\nCác mức phí tham chiếu dưới đây đang áp dụng theo VND. Với booking dùng loại tiền tệ khác, không được tự quy đổi phí ghế sang ngoại tệ; cần tra cứu hệ thống để biết booking đó có hỗ trợ phụ phí ghế hay không.\n\nAlias nghiệp vụ cho nhóm ghế:\n\n| Alias | Tên hiển thị | Phí tham chiếu |\n| --- | --- | ---: |\n| STANDARD | Tiêu chuẩn | 0 VND |\n| PREFERRED | Ưu tiên | 40,000 VND |\n| EXIT_ROW | Hàng thoát hiểm | 120,000 VND |\n| EXTRA_LEGROOM | Rộng chân | 180,000 VND |\n\nNhóm ghế tham chiếu theo cấu hình hiện tại:\n\n| Nhóm ghế | Phí tham chiếu |\n| --- | ---: |\n| Tiêu chuẩn | 0 VND |\n| Ưu tiên | 40,000 VND |\n| Hàng thoát hiểm | 120,000 VND |\n| Rộng chân | 180,000 VND |\n\nAlias nghiệp vụ cho loại ghế:\n\n| Alias | Tên hiển thị | Phí tham chiếu |\n| --- | --- | ---: |\n| MIDDLE | Ghế giữa | 0 VND |\n| WINDOW | Ghế cửa sổ | 20,000 VND |\n| AISLE | Ghế lối đi | 20,000 VND |\n\nLoại ghế tham chiếu theo cấu hình hiện tại:\n\n| Loại ghế | Phí tham chiếu |\n| --- | ---: |\n| Ghế giữa | 0 VND |\n| Ghế cửa sổ | 20,000 VND |\n| Ghế lối đi | 20,000 VND |\n\nPhí thực tế không nên tự cộng thủ công cho booking cụ thể. Hệ thống sẽ tính dựa trên ghế khách chọn, hạng vé, quyền lợi miễn phí và loại tiền tệ của booking.\n\nHiện tại, phụ phí chọn ghế được hỗ trợ chắc chắn cho booking VND. Nếu booking không dùng VND và ghế mới có phát sinh phụ phí, hệ thống có thể từ chối thao tác thay vì tự đổi tiền."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quan hệ giữa hạng vé và dịch vụ bổ sung",
+      "score" : 0.67058464884758,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quan hệ giữa hạng vé và dịch vụ bổ sung\n\nMột số hạng vé có thể đã bao gồm sẵn quyền lợi như hành lý ký gửi, hành lý xách tay, suất ăn, ưu tiên lên máy bay, phòng chờ hoặc quyền chọn ghế.\n\nDịch vụ bổ sung là phần khách mua thêm ngoài quyền lợi sẵn có của hạng vé. Vì vậy, trước khi tư vấn khách có cần mua thêm hay không, cần kiểm tra hạng vé của khách đã bao gồm quyền lợi nào.\n\nNếu hạng vé đã bao gồm ưu tiên lên máy bay, khách không cần mua thêm dịch vụ ưu tiên lên máy bay.\n\nNếu hạng vé đã bao gồm phòng chờ sân bay, khách không cần mua thêm dịch vụ phòng chờ.\n\nVới hai quyền lợi này, backend có thể chặn mua trùng khi fare đã bao gồm sẵn quyền lợi. Vì vậy cần nói rõ khách không cần mua thêm và không được cam kết hệ thống sẽ cho phép mua trùng.\n\nHành lý mua thêm là phần cộng thêm ngoài hạn mức hành lý miễn phí của hạng vé.\n\nSuất ăn đặt trước là dịch vụ mua thêm. Một hạng vé có thể đã có quyền lợi suất ăn, nhưng khách vẫn có thể cần tra cứu catalog hiện tại để biết có thể đặt thêm suất ăn nào.\n\nBảo hiểm du lịch là dịch vụ mua thêm riêng, không được xem là quyền lợi mặc định của hạng vé."
+    }, {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.6692043244838715,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all criteria and is in English",
+    "durationMillis" : 2451
+  }, {
+    "executionId" : "LANG-006/original/run-1",
+    "caseId" : "LANG-006",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "What documents do I need for a Japanese visa?",
+    "expectedBehavior" : "[LANG=en] Answer in English; do not invent requirements and direct the user to official sources or support.",
+    "routeCategory" : "UNSAFE_OR_UNCONFIRMED_FALLBACK",
+    "answer" : "Requirements for visas, passports, entry permits, and transit documents are not fixed in our system data and can change depending on your nationality, point of origin, and the latest regulations set by destination countries. \n\nFor a Japanese visa, please check the official government sources (such as the Japanese Embassy or Consulate website) or contact our support staff to ensure you have the most accurate and up-to-date document requirements.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "travel-documents-policy.md", "fare-passenger-and-baggage-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh",
+      "score" : 0.6079992353916168,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh\n\nYêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.\n\nCác thông tin sau cần được kiểm tra từ nguồn chính thức theo từng quốc gia và thời điểm:\n\n- Hộ chiếu cần còn hạn bao nhiêu tháng.\n- Quốc gia điểm đến có yêu cầu visa hay không.\n- Hành khách quá cảnh có cần visa hoặc giấy phép quá cảnh không.\n- Trẻ em đi quốc tế cần giấy tờ pháp lý nào.\n- Quy định nhập cảnh mới nhất của điểm đến."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách",
+      "score" : 0.593885600566864,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách\n\nThông tin giấy tờ phụ thuộc hành trình nội địa/quốc tế, quốc tịch, độ tuổi và yêu cầu tại điểm đến. Quy định chi tiết về giấy tờ nằm trong `travel-documents-policy.md`.\n\nVới câu hỏi về visa, nhập cảnh, hộ chiếu còn hạn bao lâu hoặc giấy tờ cho trẻ em/em bé ở một quốc gia cụ thể, cần kiểm tra nguồn chính thức hoặc kênh hỗ trợ phù hợp. Không nên trả lời chắc chắn nếu hệ thống chưa có policy chính thức cho trường hợp đó."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Người lớn",
+      "score" : 0.5898650288581848,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Người lớn\n\nNgười lớn cần cung cấp quốc tịch, loại giấy tờ và số giấy tờ khi đặt vé.\n\nVới tuyến bay được xác định là nội địa, khách cần chuẩn bị giấy tờ tùy thân hợp lệ để làm thủ tục và đối chiếu tại sân bay.\n\nVới tuyến bay được xác định là quốc tế, khách thường cần hộ chiếu hợp lệ và có thể cần visa, giấy phép nhập cảnh hoặc giấy tờ bổ sung tùy quốc tịch, điểm đến, điểm quá cảnh và thời điểm bay."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Giấy tờ được hệ thống hỗ trợ",
+      "score" : 0.5630750954151154,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Giấy tờ được hệ thống hỗ trợ\n\nHệ thống hiện hỗ trợ hai loại giấy tờ định danh khi lưu thông tin hành khách:\n\n| Loại giấy tờ | Mô tả |\n| --- | --- |\n| Giấy tờ tùy thân trong nước | Ví dụ căn cước công dân hoặc giấy tờ định danh tương đương |\n| Hộ chiếu | Dùng cho hành khách cần thông tin hộ chiếu, đặc biệt với hành trình quốc tế |\n\nNếu có ngày hết hạn giấy tờ, ngày hết hạn phải sau ngày sinh của hành khách."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Trẻ em và em bé",
+      "score" : 0.5345911979675293,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Trẻ em và em bé\n\nKhi đặt vé, giấy tờ của trẻ em và em bé có thể không bắt buộc trong một số luồng đặt chỗ. Điều này chỉ phản ánh yêu cầu nhập dữ liệu của hệ thống, không phải cam kết rằng trẻ em hoặc em bé không cần giấy tờ tại sân bay.\n\nNgười đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em bé, đặc biệt trong các trường hợp:\n\n- Chuyến bay quốc tế.\n- Trẻ em hoặc em bé cần hộ chiếu.\n- Trẻ em không đi cùng cha, mẹ hoặc người giám hộ.\n- Trẻ em đi một mình.\n- Điểm đến hoặc điểm quá cảnh có yêu cầu giấy tờ riêng.\n\nCác giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all criteria, avoids invention, directs to official sources, in English",
+    "durationMillis" : 2458
+  }, {
+    "executionId" : "LANG-006/original/run-2",
+    "caseId" : "LANG-006",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "What documents do I need for a Japanese visa?",
+    "expectedBehavior" : "[LANG=en] Answer in English; do not invent requirements and direct the user to official sources or support.",
+    "routeCategory" : "UNSAFE_OR_UNCONFIRMED_FALLBACK",
+    "answer" : "Requirements regarding visas, passports, and entry permits for Japan are not fixed in our system documentation. Visa and entry requirements depend on your nationality, the specific destination regulations, and the time of travel. \n\nSince visa and immigration policies are subject to change and are not officially confirmed within our system, please check the official government sources for Japan or contact our support staff for the most up-to-date and accurate document requirements.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "travel-documents-policy.md", "fare-passenger-and-baggage-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh",
+      "score" : 0.6079992353916168,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh\n\nYêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.\n\nCác thông tin sau cần được kiểm tra từ nguồn chính thức theo từng quốc gia và thời điểm:\n\n- Hộ chiếu cần còn hạn bao nhiêu tháng.\n- Quốc gia điểm đến có yêu cầu visa hay không.\n- Hành khách quá cảnh có cần visa hoặc giấy phép quá cảnh không.\n- Trẻ em đi quốc tế cần giấy tờ pháp lý nào.\n- Quy định nhập cảnh mới nhất của điểm đến."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách",
+      "score" : 0.593885600566864,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách\n\nThông tin giấy tờ phụ thuộc hành trình nội địa/quốc tế, quốc tịch, độ tuổi và yêu cầu tại điểm đến. Quy định chi tiết về giấy tờ nằm trong `travel-documents-policy.md`.\n\nVới câu hỏi về visa, nhập cảnh, hộ chiếu còn hạn bao lâu hoặc giấy tờ cho trẻ em/em bé ở một quốc gia cụ thể, cần kiểm tra nguồn chính thức hoặc kênh hỗ trợ phù hợp. Không nên trả lời chắc chắn nếu hệ thống chưa có policy chính thức cho trường hợp đó."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Người lớn",
+      "score" : 0.5898650288581848,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Người lớn\n\nNgười lớn cần cung cấp quốc tịch, loại giấy tờ và số giấy tờ khi đặt vé.\n\nVới tuyến bay được xác định là nội địa, khách cần chuẩn bị giấy tờ tùy thân hợp lệ để làm thủ tục và đối chiếu tại sân bay.\n\nVới tuyến bay được xác định là quốc tế, khách thường cần hộ chiếu hợp lệ và có thể cần visa, giấy phép nhập cảnh hoặc giấy tờ bổ sung tùy quốc tịch, điểm đến, điểm quá cảnh và thời điểm bay."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Giấy tờ được hệ thống hỗ trợ",
+      "score" : 0.5630750954151154,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Giấy tờ được hệ thống hỗ trợ\n\nHệ thống hiện hỗ trợ hai loại giấy tờ định danh khi lưu thông tin hành khách:\n\n| Loại giấy tờ | Mô tả |\n| --- | --- |\n| Giấy tờ tùy thân trong nước | Ví dụ căn cước công dân hoặc giấy tờ định danh tương đương |\n| Hộ chiếu | Dùng cho hành khách cần thông tin hộ chiếu, đặc biệt với hành trình quốc tế |\n\nNếu có ngày hết hạn giấy tờ, ngày hết hạn phải sau ngày sinh của hành khách."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Trẻ em và em bé",
+      "score" : 0.5345911979675293,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Trẻ em và em bé\n\nKhi đặt vé, giấy tờ của trẻ em và em bé có thể không bắt buộc trong một số luồng đặt chỗ. Điều này chỉ phản ánh yêu cầu nhập dữ liệu của hệ thống, không phải cam kết rằng trẻ em hoặc em bé không cần giấy tờ tại sân bay.\n\nNgười đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em bé, đặc biệt trong các trường hợp:\n\n- Chuyến bay quốc tế.\n- Trẻ em hoặc em bé cần hộ chiếu.\n- Trẻ em không đi cùng cha, mẹ hoặc người giám hộ.\n- Trẻ em đi một mình.\n- Điểm đến hoặc điểm quá cảnh có yêu cầu giấy tờ riêng.\n\nCác giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all criteria, avoids invention, directs to official sources, in English",
+    "durationMillis" : 2250
+  }, {
+    "executionId" : "LANG-006/original/run-3",
+    "caseId" : "LANG-006",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "What documents do I need for a Japanese visa?",
+    "expectedBehavior" : "[LANG=en] Answer in English; do not invent requirements and direct the user to official sources or support.",
+    "routeCategory" : "UNSAFE_OR_UNCONFIRMED_FALLBACK",
+    "answer" : "Requirements regarding visas, passports, entry permits, and transit are not fixed data in our system. Because visa regulations depend on your nationality, the specific time of travel, and the latest entry policies of Japan, please check the official government sources for Japan or contact our support staff to ensure you have the correct and most up-to-date documentation.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "travel-documents-policy.md", "fare-passenger-and-baggage-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh",
+      "score" : 0.6079992353916168,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh\n\nYêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.\n\nCác thông tin sau cần được kiểm tra từ nguồn chính thức theo từng quốc gia và thời điểm:\n\n- Hộ chiếu cần còn hạn bao nhiêu tháng.\n- Quốc gia điểm đến có yêu cầu visa hay không.\n- Hành khách quá cảnh có cần visa hoặc giấy phép quá cảnh không.\n- Trẻ em đi quốc tế cần giấy tờ pháp lý nào.\n- Quy định nhập cảnh mới nhất của điểm đến."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách",
+      "score" : 0.593885600566864,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách\n\nThông tin giấy tờ phụ thuộc hành trình nội địa/quốc tế, quốc tịch, độ tuổi và yêu cầu tại điểm đến. Quy định chi tiết về giấy tờ nằm trong `travel-documents-policy.md`.\n\nVới câu hỏi về visa, nhập cảnh, hộ chiếu còn hạn bao lâu hoặc giấy tờ cho trẻ em/em bé ở một quốc gia cụ thể, cần kiểm tra nguồn chính thức hoặc kênh hỗ trợ phù hợp. Không nên trả lời chắc chắn nếu hệ thống chưa có policy chính thức cho trường hợp đó."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Người lớn",
+      "score" : 0.5898650288581848,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Người lớn\n\nNgười lớn cần cung cấp quốc tịch, loại giấy tờ và số giấy tờ khi đặt vé.\n\nVới tuyến bay được xác định là nội địa, khách cần chuẩn bị giấy tờ tùy thân hợp lệ để làm thủ tục và đối chiếu tại sân bay.\n\nVới tuyến bay được xác định là quốc tế, khách thường cần hộ chiếu hợp lệ và có thể cần visa, giấy phép nhập cảnh hoặc giấy tờ bổ sung tùy quốc tịch, điểm đến, điểm quá cảnh và thời điểm bay."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Giấy tờ được hệ thống hỗ trợ",
+      "score" : 0.5630750954151154,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Giấy tờ được hệ thống hỗ trợ\n\nHệ thống hiện hỗ trợ hai loại giấy tờ định danh khi lưu thông tin hành khách:\n\n| Loại giấy tờ | Mô tả |\n| --- | --- |\n| Giấy tờ tùy thân trong nước | Ví dụ căn cước công dân hoặc giấy tờ định danh tương đương |\n| Hộ chiếu | Dùng cho hành khách cần thông tin hộ chiếu, đặc biệt với hành trình quốc tế |\n\nNếu có ngày hết hạn giấy tờ, ngày hết hạn phải sau ngày sinh của hành khách."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Trẻ em và em bé",
+      "score" : 0.5345911979675293,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Trẻ em và em bé\n\nKhi đặt vé, giấy tờ của trẻ em và em bé có thể không bắt buộc trong một số luồng đặt chỗ. Điều này chỉ phản ánh yêu cầu nhập dữ liệu của hệ thống, không phải cam kết rằng trẻ em hoặc em bé không cần giấy tờ tại sân bay.\n\nNgười đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em bé, đặc biệt trong các trường hợp:\n\n- Chuyến bay quốc tế.\n- Trẻ em hoặc em bé cần hộ chiếu.\n- Trẻ em không đi cùng cha, mẹ hoặc người giám hộ.\n- Trẻ em đi một mình.\n- Điểm đến hoặc điểm quá cảnh có yêu cầu giấy tờ riêng.\n\nCác giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all criteria, avoids invention, directs to official sources, in English",
+    "durationMillis" : 2111
+  }, {
+    "executionId" : "LANG-007/original/run-1",
+    "caseId" : "LANG-007",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Quand l'enregistrement en ligne ouvre-t-il et ferme-t-il pour un vol intérieur ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; indiquer une ouverture 24 heures avant le départ et une fermeture 40 minutes avant le départ.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Pour un vol intérieur, l'enregistrement en ligne (check-in online) :\n- Ouvre : 24 heures avant l'heure de départ.\n- Ferme : 40 minutes avant l'heure de départ.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.7977485060691833,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.739193856716156,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.6672658026218414,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.6470723450183868,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.6425658166408539,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correct facts and written in French as required.",
+    "durationMillis" : 2083
+  }, {
+    "executionId" : "LANG-007/original/run-2",
+    "caseId" : "LANG-007",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Quand l'enregistrement en ligne ouvre-t-il et ferme-t-il pour un vol intérieur ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; indiquer une ouverture 24 heures avant le départ et une fermeture 40 minutes avant le départ.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Pour un vol intérieur, l'enregistrement en ligne (check-in online) :\n- **Ouvre** : 24 heures avant l'heure de départ.\n- **Ferme** : 40 minutes avant l'heure de départ.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.7977485060691833,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.739193856716156,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.6672658026218414,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.6470723450183868,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.6425658166408539,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correct facts and written in French as required.",
+    "durationMillis" : 2048
+  }, {
+    "executionId" : "LANG-007/original/run-3",
+    "caseId" : "LANG-007",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Quand l'enregistrement en ligne ouvre-t-il et ferme-t-il pour un vol intérieur ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; indiquer une ouverture 24 heures avant le départ et une fermeture 40 minutes avant le départ.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Pour un vol intérieur, l'enregistrement en ligne ouvre 24 heures et ferme 40 minutes avant l'heure de départ.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "checkin-and-boarding-policy.md", "airport-operations-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa",
+      "score" : 0.7977485060691833,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay nội địa\n\n- Mở check-in online: 24 giờ trước giờ khởi hành.\n- Đóng check-in online: 40 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.739193856716156,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in tại quầy sân bay",
+      "score" : 0.6672658026218414,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in tại quầy sân bay\n\nQuầy check-in tại sân bay áp dụng theo loại hành trình và thông báo vận hành thực tế tại sân bay.\n\nVới chuyến bay nội địa:\n\n- Khách nên có mặt tại sân bay tối thiểu 2 giờ trước giờ khởi hành nếu có hành lý ký gửi hoặc cần hỗ trợ tại quầy.\n- Quầy check-in thường mở trước giờ khởi hành và có thể đóng trước giờ bay theo quy định vận hành.\n\nVới chuyến bay quốc tế:\n\n- Khách nên có mặt tại sân bay tối thiểu 3 giờ trước giờ khởi hành để làm thủ tục giấy tờ, hành lý và kiểm tra an ninh/xuất nhập cảnh.\n- Quầy check-in quốc tế có thể đóng sớm hơn chuyến bay nội địa.\n\nGiờ mở/đóng quầy chính xác có thể thay đổi theo sân bay, chuyến bay và thông báo vận hành. Nếu hệ thống không có dữ liệu quầy check-in theo thời gian thực, khách cần kiểm tra thông báo sân bay hoặc liên hệ nhân viên hỗ trợ."
+    }, {
+      "sourceFile" : "airport-operations-policy.md",
+      "headingPath" : "Chính sách vận hành sân bay > Check-in online",
+      "score" : 0.6470723450183868,
+      "content" : "Source: airport-operations-policy.md\nHeading: Chính sách vận hành sân bay > Check-in online\n\nĐiều kiện check-in online, cửa sổ check-in và boarding pass được mô tả chi tiết trong `checkin-and-boarding-policy.md`.\n\nTrạng thái check-in của một booking cụ thể là dữ liệu động. Khi khách hỏi \"tôi check-in được chưa\", \"boarding pass của tôi đâu\", hoặc \"booking của tôi đã bị khóa chưa\", cần kiểm tra booking thực tế trước khi trả lời."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Điều kiện check-in",
+      "score" : 0.6425658166408539,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Điều kiện check-in\n\nHành khách có thể check-in online khi booking và vé đã đủ điều kiện:\n\n- Booking đã được xác nhận.\n- Vé đã được xuất.\n- Hành khách thuộc booking và vé còn hợp lệ.\n- Hành khách chưa check-in trước đó cho vé/chặng bay đó.\n- Hành khách đã có ghế hợp lệ.\n- Chuyến bay đang trong cửa sổ check-in online.\n\nNếu hành khách chưa có ghế, hệ thống có thể yêu cầu chọn ghế trước khi hoàn tất check-in.\n\nVới booking cụ thể, hệ thống phải gọi API check-in để kiểm tra đồng thời trạng thái vé, ghế, chuyến bay và cửa sổ thời gian; không được kết luận chỉ từ chính sách chung."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correct facts and written in French as required.",
+    "durationMillis" : 1918
+  }, {
+    "executionId" : "LANG-008/original/run-1",
+    "caseId" : "LANG-008",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Que signifie le statut de réservation PENDING_PAYMENT ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; expliquer que la réservation est créée mais que le paiement n'a pas abouti et qu'elle reste soumise à son délai d'expiration.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Le statut de réservation `PENDING_PAYMENT` signifie que la réservation a été créée, mais que le paiement n'a pas encore été effectué avec succès. Dans cet état, la réservation est toujours soumise à un délai de conservation (limite de temps pour le maintien de la place).\n\nVoici ce qu'il est possible ou non de faire avec ce statut :\n\n**Ce qui est autorisé (si la réservation n'a pas expiré et qu'aucun paiement n'est en cours) :**\n- Choisir des sièges à l'avance.\n- Sélectionner des services additionnels.\n- Créer un paiement si la réservation se trouve toujours dans la fenêtre de paiement autorisée.\n\n**Ce qui n'est pas autorisé :**\n- Il n'est pas possible de s'enregistrer (check-in).\n- Il n'est pas possible de modifier le vol.\n- Il n'est pas possible d'effectuer une annulation ou un remboursement selon le flux post-paiement.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.7960683256387711,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7794977426528931,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7730289995670319,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`",
+      "score" : 0.7088729739189148,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`\n\nThay đổi tạo ra khoản cần hoàn tiền và hệ thống đang xử lý hoàn tiền. Không nên nói refund đã hoàn tất nếu chưa có trạng thái thành công từ hệ thống."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`",
+      "score" : 0.7034387588500977,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`\n\nThay đổi đã được xác nhận ở mức yêu cầu thanh toán thêm, nhưng user chưa tạo hoặc chưa hoàn tất payment cho khoản chênh lệch."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correct facts and written in French as required.",
+    "durationMillis" : 2850
+  }, {
+    "executionId" : "LANG-008/original/run-2",
+    "caseId" : "LANG-008",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Que signifie le statut de réservation PENDING_PAYMENT ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; expliquer que la réservation est créée mais que le paiement n'a pas abouti et qu'elle reste soumise à son délai d'expiration.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Le statut de réservation `PENDING_PAYMENT` signifie que la réservation a été créée, mais que le paiement n'a pas encore été effectué avec succès. Dans cet état, la réservation est toujours soumise à un délai limite de conservation (expiration).\n\nDans ce statut, vous pouvez :\n- Choisir des sièges (si la réservation n'a pas expiré et qu'aucun paiement n'est en attente).\n- Sélectionner des services additionnels (sous les mêmes conditions).\n- Créer un paiement (si la réservation est toujours dans la fenêtre de paiement autorisée).\n\nCependant, une réservation `PENDING_PAYMENT` ne peut pas faire l'objet d'un enregistrement (check-in), d'une modification de vol, ou d'une annulation/remboursement selon le flux post-paiement.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.7960683256387711,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7794977426528931,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7730289995670319,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`",
+      "score" : 0.7088729739189148,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`\n\nThay đổi tạo ra khoản cần hoàn tiền và hệ thống đang xử lý hoàn tiền. Không nên nói refund đã hoàn tất nếu chưa có trạng thái thành công từ hệ thống."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`",
+      "score" : 0.7034387588500977,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`\n\nThay đổi đã được xác nhận ở mức yêu cầu thanh toán thêm, nhưng user chưa tạo hoặc chưa hoàn tất payment cho khoản chênh lệch."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correct facts and written in French as required.",
+    "durationMillis" : 2294
+  }, {
+    "executionId" : "LANG-008/original/run-3",
+    "caseId" : "LANG-008",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Que signifie le statut de réservation PENDING_PAYMENT ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; expliquer que la réservation est créée mais que le paiement n'a pas abouti et qu'elle reste soumise à son délai d'expiration.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Le statut de réservation `PENDING_PAYMENT` signifie que la réservation a été créée mais n'a pas encore été payée avec succès. Dans cet état, la réservation est toujours soumise à un délai de conservation (limite de temps pour le maintien de la place).\n\nPendant que la réservation est en statut `PENDING_PAYMENT`, vous pouvez :\n- Choisir un siège à l'avance (si la réservation n'a pas expiré et qu'aucun paiement n'est en attente).\n- Sélectionner des services additionnels (si la réservation n'a pas expiré et qu'aucun paiement n'est en attente).\n- Créer un paiement (si la réservation est toujours dans la fenêtre de paiement autorisée).\n\nCependant, une réservation avec le statut `PENDING_PAYMENT` ne peut pas être enregistrée (check-in), modifiée ou annulée/remboursée selon les flux applicables après paiement.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.7960683256387711,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7794977426528931,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7730289995670319,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`",
+      "score" : 0.7088729739189148,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `REFUND_PENDING`\n\nThay đổi tạo ra khoản cần hoàn tiền và hệ thống đang xử lý hoàn tiền. Không nên nói refund đã hoàn tất nếu chưa có trạng thái thành công từ hệ thống."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`",
+      "score" : 0.7034387588500977,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_REQUIRED`\n\nThay đổi đã được xác nhận ở mức yêu cầu thanh toán thêm, nhưng user chưa tạo hoặc chưa hoàn tất payment cho khoản chênh lệch."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correct facts and written in French as required.",
+    "durationMillis" : 2742
+  }, {
+    "executionId" : "LANG-009/original/run-1",
+    "caseId" : "LANG-009",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Un bébé peut-il sélectionner un siège séparé ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; répondre non, car un bébé n'a pas de siège séparé selon la politique actuelle.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Non, un bébé (voyageant avec un adulte sans siège séparé) ne dispose pas de siège propre et ne peut donc pas sélectionner de siège séparé dans le système.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "travel-documents-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.7533485889434814,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé",
+      "score" : 0.7257732450962067,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé\n\nEm bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.\n\nSố em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách",
+      "score" : 0.6789176762104034,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách\n\nMỗi booking phải có ít nhất một hành khách có ghế, tức là người lớn hoặc trẻ em. Hệ thống không cho tạo booking chỉ có em bé vì em bé không có ghế riêng.\n\nSố lượng hành khách khai báo phải khớp với danh sách hành khách thực tế trong booking. Nếu hành khách chọn sai loại tuổi, hệ thống có thể từ chối vì loại hành khách phải phù hợp với ngày sinh tại ngày bay."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Thông tin hành khách khi đặt vé",
+      "score" : 0.6645845770835876,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Thông tin hành khách khi đặt vé\n\nKhi đặt vé, hệ thống cần thông tin cơ bản của từng hành khách:\n\n- Họ và tên.\n- Ngày sinh.\n- Giới tính.\n- Loại hành khách: người lớn, trẻ em hoặc em bé.\n- Quốc tịch và giấy tờ định danh theo yêu cầu của từng loại hành khách.\n\nLoại hành khách được xác định theo tuổi tại ngày bay:\n\n| Loại hành khách | Độ tuổi |\n| --- | --- |\n| Người lớn | Từ 12 tuổi trở lên |\n| Trẻ em | Từ 2 tuổi đến dưới 12 tuổi |\n| Em bé | Dưới 2 tuổi |\n\nEm bé phải đi cùng người lớn. Số lượng em bé không được nhiều hơn số lượng người lớn trong booking."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách",
+      "score" : 0.662896066904068,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách\n\nDịch vụ được áp dụng theo từng hành khách trong booking, không mặc định áp dụng cho toàn bộ booking nếu khách chỉ chọn cho một người.\n\nVới suất ăn, khách có thể chọn nhiều lựa chọn nếu catalog và giao diện hiện tại cho phép.\n\nVới các nhóm dịch vụ còn lại, mỗi hành khách thường chỉ chọn một gói trong cùng nhóm dịch vụ tại một thời điểm. Ví dụ, một hành khách không nên chọn đồng thời hai gói bảo hiểm khác nhau trong cùng một lần xử lý.\n\nTrẻ sơ sinh có thể không được áp dụng đầy đủ mọi dịch vụ như người lớn hoặc trẻ em. Khi câu hỏi liên quan đến một booking cụ thể, cần kiểm tra dữ liệu hành khách và dịch vụ hiện tại trước khi khẳng định."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correctly answered in French and stated that an infant does not have a separate seat.",
+    "durationMillis" : 2089
+  }, {
+    "executionId" : "LANG-009/original/run-2",
+    "caseId" : "LANG-009",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Un bébé peut-il sélectionner un siège séparé ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; répondre non, car un bébé n'a pas de siège séparé selon la politique actuelle.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Non, un bébé (voyageant avec un adulte) ne dispose pas de siège séparé et ne peut donc pas sélectionner de siège individuel dans le système.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "travel-documents-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.7533485889434814,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé",
+      "score" : 0.7257732450962067,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé\n\nEm bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.\n\nSố em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách",
+      "score" : 0.6789176762104034,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách\n\nMỗi booking phải có ít nhất một hành khách có ghế, tức là người lớn hoặc trẻ em. Hệ thống không cho tạo booking chỉ có em bé vì em bé không có ghế riêng.\n\nSố lượng hành khách khai báo phải khớp với danh sách hành khách thực tế trong booking. Nếu hành khách chọn sai loại tuổi, hệ thống có thể từ chối vì loại hành khách phải phù hợp với ngày sinh tại ngày bay."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Thông tin hành khách khi đặt vé",
+      "score" : 0.6645845770835876,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Thông tin hành khách khi đặt vé\n\nKhi đặt vé, hệ thống cần thông tin cơ bản của từng hành khách:\n\n- Họ và tên.\n- Ngày sinh.\n- Giới tính.\n- Loại hành khách: người lớn, trẻ em hoặc em bé.\n- Quốc tịch và giấy tờ định danh theo yêu cầu của từng loại hành khách.\n\nLoại hành khách được xác định theo tuổi tại ngày bay:\n\n| Loại hành khách | Độ tuổi |\n| --- | --- |\n| Người lớn | Từ 12 tuổi trở lên |\n| Trẻ em | Từ 2 tuổi đến dưới 12 tuổi |\n| Em bé | Dưới 2 tuổi |\n\nEm bé phải đi cùng người lớn. Số lượng em bé không được nhiều hơn số lượng người lớn trong booking."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách",
+      "score" : 0.662896066904068,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách\n\nDịch vụ được áp dụng theo từng hành khách trong booking, không mặc định áp dụng cho toàn bộ booking nếu khách chỉ chọn cho một người.\n\nVới suất ăn, khách có thể chọn nhiều lựa chọn nếu catalog và giao diện hiện tại cho phép.\n\nVới các nhóm dịch vụ còn lại, mỗi hành khách thường chỉ chọn một gói trong cùng nhóm dịch vụ tại một thời điểm. Ví dụ, một hành khách không nên chọn đồng thời hai gói bảo hiểm khác nhau trong cùng một lần xử lý.\n\nTrẻ sơ sinh có thể không được áp dụng đầy đủ mọi dịch vụ như người lớn hoặc trẻ em. Khi câu hỏi liên quan đến một booking cụ thể, cần kiểm tra dữ liệu hành khách và dịch vụ hiện tại trước khi khẳng định."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correctly answered in French and stated that an infant does not have a separate seat.",
+    "durationMillis" : 2036
+  }, {
+    "executionId" : "LANG-009/original/run-3",
+    "caseId" : "LANG-009",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Un bébé peut-il sélectionner un siège séparé ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; répondre non, car un bébé n'a pas de siège séparé selon la politique actuelle.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Non, un bébé (voyageant avec un adulte sans siège séparé) ne dispose pas de son propre siège et ne peut donc pas sélectionner de siège séparé dans le système.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "seat-selection-policy.md", "fare-passenger-and-baggage-policy.md", "travel-documents-policy.md", "ancillary-services-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "seat-selection-policy.md",
+      "headingPath" : "Chính sách chọn ghế > Ai được chọn ghế",
+      "score" : 0.7533485889434814,
+      "content" : "Source: seat-selection-policy.md\nHeading: Chính sách chọn ghế > Ai được chọn ghế\n\nNgười lớn và trẻ em có ghế riêng nên có thể chọn ghế theo điều kiện của hạng vé.\n\nEm bé đi kèm người lớn không có ghế riêng, nên không được chọn ghế riêng trong hệ thống.\n\nMỗi hành khách có ghế riêng chỉ được giữ một ghế trên mỗi chặng bay. Một ghế cũng chỉ được gán cho một hành khách tại cùng thời điểm."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé",
+      "score" : 0.7257732450962067,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Loại hành khách > Em bé\n\nEm bé (`INFANT`) là hành khách dưới 2 tuổi tính theo ngày bay. Giá vé em bé bằng 10% giá vé người lớn cùng fare. Em bé không có ghế riêng và không được chọn ghế riêng.\n\nSố em bé trong booking không được vượt quá số người lớn. Khi đổi chuyến, em bé phải được đổi cùng ít nhất một người lớn trong cùng yêu cầu thay đổi."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách",
+      "score" : 0.6789176762104034,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Điều kiện số lượng hành khách\n\nMỗi booking phải có ít nhất một hành khách có ghế, tức là người lớn hoặc trẻ em. Hệ thống không cho tạo booking chỉ có em bé vì em bé không có ghế riêng.\n\nSố lượng hành khách khai báo phải khớp với danh sách hành khách thực tế trong booking. Nếu hành khách chọn sai loại tuổi, hệ thống có thể từ chối vì loại hành khách phải phù hợp với ngày sinh tại ngày bay."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Thông tin hành khách khi đặt vé",
+      "score" : 0.6645845770835876,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Thông tin hành khách khi đặt vé\n\nKhi đặt vé, hệ thống cần thông tin cơ bản của từng hành khách:\n\n- Họ và tên.\n- Ngày sinh.\n- Giới tính.\n- Loại hành khách: người lớn, trẻ em hoặc em bé.\n- Quốc tịch và giấy tờ định danh theo yêu cầu của từng loại hành khách.\n\nLoại hành khách được xác định theo tuổi tại ngày bay:\n\n| Loại hành khách | Độ tuổi |\n| --- | --- |\n| Người lớn | Từ 12 tuổi trở lên |\n| Trẻ em | Từ 2 tuổi đến dưới 12 tuổi |\n| Em bé | Dưới 2 tuổi |\n\nEm bé phải đi cùng người lớn. Số lượng em bé không được nhiều hơn số lượng người lớn trong booking."
+    }, {
+      "sourceFile" : "ancillary-services-policy.md",
+      "headingPath" : "Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách",
+      "score" : 0.662896066904068,
+      "content" : "Source: ancillary-services-policy.md\nHeading: Chính sách dịch vụ bổ sung > Quy tắc chọn dịch vụ theo hành khách\n\nDịch vụ được áp dụng theo từng hành khách trong booking, không mặc định áp dụng cho toàn bộ booking nếu khách chỉ chọn cho một người.\n\nVới suất ăn, khách có thể chọn nhiều lựa chọn nếu catalog và giao diện hiện tại cho phép.\n\nVới các nhóm dịch vụ còn lại, mỗi hành khách thường chỉ chọn một gói trong cùng nhóm dịch vụ tại một thời điểm. Ví dụ, một hành khách không nên chọn đồng thời hai gói bảo hiểm khác nhau trong cùng một lần xử lý.\n\nTrẻ sơ sinh có thể không được áp dụng đầy đủ mọi dịch vụ như người lớn hoặc trẻ em. Khi câu hỏi liên quan đến một booking cụ thể, cần kiểm tra dữ liệu hành khách và dịch vụ hiện tại trước khi khẳng định."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correctly answered in French and stated that an infant does not have a separate seat.",
+    "durationMillis" : 2066
+  }, {
+    "executionId" : "LANG-010/original/run-1",
+    "caseId" : "LANG-010",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Combien de mois mon passeport doit-il rester valide pour un vol international ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; ne pas inventer une durée et orienter vers une source officielle ou l'assistance.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Pour un vol international, la durée de validité requise de votre passeport n'est pas une donnée fixe et dépend entièrement des exigences du pays de destination, de votre nationalité et des réglementations en vigueur. \n\nVeuillez vérifier cette information auprès des sources officielles du pays concerné ou contacter notre personnel de soutien pour obtenir des instructions précises concernant votre voyage.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "travel-documents-policy.md", "fare-passenger-and-baggage-policy.md", "checkin-and-boarding-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh",
+      "score" : 0.660076767206192,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh\n\nYêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.\n\nCác thông tin sau cần được kiểm tra từ nguồn chính thức theo từng quốc gia và thời điểm:\n\n- Hộ chiếu cần còn hạn bao nhiêu tháng.\n- Quốc gia điểm đến có yêu cầu visa hay không.\n- Hành khách quá cảnh có cần visa hoặc giấy phép quá cảnh không.\n- Trẻ em đi quốc tế cần giấy tờ pháp lý nào.\n- Quy định nhập cảnh mới nhất của điểm đến."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách",
+      "score" : 0.6434336304664612,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách\n\nThông tin giấy tờ phụ thuộc hành trình nội địa/quốc tế, quốc tịch, độ tuổi và yêu cầu tại điểm đến. Quy định chi tiết về giấy tờ nằm trong `travel-documents-policy.md`.\n\nVới câu hỏi về visa, nhập cảnh, hộ chiếu còn hạn bao lâu hoặc giấy tờ cho trẻ em/em bé ở một quốc gia cụ thể, cần kiểm tra nguồn chính thức hoặc kênh hỗ trợ phù hợp. Không nên trả lời chắc chắn nếu hệ thống chưa có policy chính thức cho trường hợp đó."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Người lớn",
+      "score" : 0.6311417520046234,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Người lớn\n\nNgười lớn cần cung cấp quốc tịch, loại giấy tờ và số giấy tờ khi đặt vé.\n\nVới tuyến bay được xác định là nội địa, khách cần chuẩn bị giấy tờ tùy thân hợp lệ để làm thủ tục và đối chiếu tại sân bay.\n\nVới tuyến bay được xác định là quốc tế, khách thường cần hộ chiếu hợp lệ và có thể cần visa, giấy phép nhập cảnh hoặc giấy tờ bổ sung tùy quốc tịch, điểm đến, điểm quá cảnh và thời điểm bay."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.6139362156391144,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Trẻ em và em bé",
+      "score" : 0.5933301448822021,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Trẻ em và em bé\n\nKhi đặt vé, giấy tờ của trẻ em và em bé có thể không bắt buộc trong một số luồng đặt chỗ. Điều này chỉ phản ánh yêu cầu nhập dữ liệu của hệ thống, không phải cam kết rằng trẻ em hoặc em bé không cần giấy tờ tại sân bay.\n\nNgười đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em bé, đặc biệt trong các trường hợp:\n\n- Chuyến bay quốc tế.\n- Trẻ em hoặc em bé cần hộ chiếu.\n- Trẻ em không đi cùng cha, mẹ hoặc người giám hộ.\n- Trẻ em đi một mình.\n- Điểm đến hoặc điểm quá cảnh có yêu cầu giấy tờ riêng.\n\nCác giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correctly answered in French, avoided inventing a duration, and directed to official sources/support.",
+    "durationMillis" : 2223
+  }, {
+    "executionId" : "LANG-010/original/run-2",
+    "caseId" : "LANG-010",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Combien de mois mon passeport doit-il rester valide pour un vol international ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; ne pas inventer une durée et orienter vers une source officielle ou l'assistance.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Les exigences de validité du passeport (comme le nombre de mois requis) dépendent de votre nationalité, de votre destination, de vos points de transit et des réglementations en vigueur au moment du voyage. Ces informations ne sont pas fixes et doivent être vérifiées auprès des sources officielles du pays de destination ou auprès de notre personnel d'assistance.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "travel-documents-policy.md", "fare-passenger-and-baggage-policy.md", "checkin-and-boarding-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh",
+      "score" : 0.660076767206192,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh\n\nYêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.\n\nCác thông tin sau cần được kiểm tra từ nguồn chính thức theo từng quốc gia và thời điểm:\n\n- Hộ chiếu cần còn hạn bao nhiêu tháng.\n- Quốc gia điểm đến có yêu cầu visa hay không.\n- Hành khách quá cảnh có cần visa hoặc giấy phép quá cảnh không.\n- Trẻ em đi quốc tế cần giấy tờ pháp lý nào.\n- Quy định nhập cảnh mới nhất của điểm đến."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách",
+      "score" : 0.6434336304664612,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách\n\nThông tin giấy tờ phụ thuộc hành trình nội địa/quốc tế, quốc tịch, độ tuổi và yêu cầu tại điểm đến. Quy định chi tiết về giấy tờ nằm trong `travel-documents-policy.md`.\n\nVới câu hỏi về visa, nhập cảnh, hộ chiếu còn hạn bao lâu hoặc giấy tờ cho trẻ em/em bé ở một quốc gia cụ thể, cần kiểm tra nguồn chính thức hoặc kênh hỗ trợ phù hợp. Không nên trả lời chắc chắn nếu hệ thống chưa có policy chính thức cho trường hợp đó."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Người lớn",
+      "score" : 0.6311417520046234,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Người lớn\n\nNgười lớn cần cung cấp quốc tịch, loại giấy tờ và số giấy tờ khi đặt vé.\n\nVới tuyến bay được xác định là nội địa, khách cần chuẩn bị giấy tờ tùy thân hợp lệ để làm thủ tục và đối chiếu tại sân bay.\n\nVới tuyến bay được xác định là quốc tế, khách thường cần hộ chiếu hợp lệ và có thể cần visa, giấy phép nhập cảnh hoặc giấy tờ bổ sung tùy quốc tịch, điểm đến, điểm quá cảnh và thời điểm bay."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.6139362156391144,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Trẻ em và em bé",
+      "score" : 0.5933301448822021,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Trẻ em và em bé\n\nKhi đặt vé, giấy tờ của trẻ em và em bé có thể không bắt buộc trong một số luồng đặt chỗ. Điều này chỉ phản ánh yêu cầu nhập dữ liệu của hệ thống, không phải cam kết rằng trẻ em hoặc em bé không cần giấy tờ tại sân bay.\n\nNgười đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em bé, đặc biệt trong các trường hợp:\n\n- Chuyến bay quốc tế.\n- Trẻ em hoặc em bé cần hộ chiếu.\n- Trẻ em không đi cùng cha, mẹ hoặc người giám hộ.\n- Trẻ em đi một mình.\n- Điểm đến hoặc điểm quá cảnh có yêu cầu giấy tờ riêng.\n\nCác giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correctly answered in French, avoided inventing a duration, and directed to official sources/support.",
+    "durationMillis" : 2140
+  }, {
+    "executionId" : "LANG-010/original/run-3",
+    "caseId" : "LANG-010",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Combien de mois mon passeport doit-il rester valide pour un vol international ?",
+    "expectedBehavior" : "[LANG=fr] Répondre en français ; ne pas inventer une durée et orienter vers une source officielle ou l'assistance.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Pour les vols internationaux, les exigences concernant la durée de validité restante du passeport (par exemple, 3 ou 6 mois) ne sont pas des données fixes et dépendent de votre nationalité, de votre destination et des éventuelles escales. \n\nNous vous invitons à vérifier ces informations auprès des sources officielles du pays de destination ou à contacter notre personnel d'assistance pour obtenir des précisions adaptées à votre voyage.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "travel-documents-policy.md", "fare-passenger-and-baggage-policy.md", "checkin-and-boarding-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh",
+      "score" : 0.660076767206192,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Hộ chiếu, visa và nhập cảnh\n\nYêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.\n\nCác thông tin sau cần được kiểm tra từ nguồn chính thức theo từng quốc gia và thời điểm:\n\n- Hộ chiếu cần còn hạn bao nhiêu tháng.\n- Quốc gia điểm đến có yêu cầu visa hay không.\n- Hành khách quá cảnh có cần visa hoặc giấy phép quá cảnh không.\n- Trẻ em đi quốc tế cần giấy tờ pháp lý nào.\n- Quy định nhập cảnh mới nhất của điểm đến."
+    }, {
+      "sourceFile" : "fare-passenger-and-baggage-policy.md",
+      "headingPath" : "Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách",
+      "score" : 0.6434336304664612,
+      "content" : "Source: fare-passenger-and-baggage-policy.md\nHeading: Chính sách hạng vé, hành khách và hành lý > Giấy tờ hành khách\n\nThông tin giấy tờ phụ thuộc hành trình nội địa/quốc tế, quốc tịch, độ tuổi và yêu cầu tại điểm đến. Quy định chi tiết về giấy tờ nằm trong `travel-documents-policy.md`.\n\nVới câu hỏi về visa, nhập cảnh, hộ chiếu còn hạn bao lâu hoặc giấy tờ cho trẻ em/em bé ở một quốc gia cụ thể, cần kiểm tra nguồn chính thức hoặc kênh hỗ trợ phù hợp. Không nên trả lời chắc chắn nếu hệ thống chưa có policy chính thức cho trường hợp đó."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Người lớn",
+      "score" : 0.6311417520046234,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Người lớn\n\nNgười lớn cần cung cấp quốc tịch, loại giấy tờ và số giấy tờ khi đặt vé.\n\nVới tuyến bay được xác định là nội địa, khách cần chuẩn bị giấy tờ tùy thân hợp lệ để làm thủ tục và đối chiếu tại sân bay.\n\nVới tuyến bay được xác định là quốc tế, khách thường cần hộ chiếu hợp lệ và có thể cần visa, giấy phép nhập cảnh hoặc giấy tờ bổ sung tùy quốc tịch, điểm đến, điểm quá cảnh và thời điểm bay."
+    }, {
+      "sourceFile" : "checkin-and-boarding-policy.md",
+      "headingPath" : "Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế",
+      "score" : 0.6139362156391144,
+      "content" : "Source: checkin-and-boarding-policy.md\nHeading: Chính sách check-in và boarding > Cửa sổ check-in online > Chuyến bay quốc tế\n\n- Mở check-in online: 48 giờ trước giờ khởi hành.\n- Đóng check-in online: 60 phút trước giờ khởi hành."
+    }, {
+      "sourceFile" : "travel-documents-policy.md",
+      "headingPath" : "Chính sách giấy tờ hành khách > Trẻ em và em bé",
+      "score" : 0.5933301448822021,
+      "content" : "Source: travel-documents-policy.md\nHeading: Chính sách giấy tờ hành khách > Trẻ em và em bé\n\nKhi đặt vé, giấy tờ của trẻ em và em bé có thể không bắt buộc trong một số luồng đặt chỗ. Điều này chỉ phản ánh yêu cầu nhập dữ liệu của hệ thống, không phải cam kết rằng trẻ em hoặc em bé không cần giấy tờ tại sân bay.\n\nNgười đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em bé, đặc biệt trong các trường hợp:\n\n- Chuyến bay quốc tế.\n- Trẻ em hoặc em bé cần hộ chiếu.\n- Trẻ em không đi cùng cha, mẹ hoặc người giám hộ.\n- Trẻ em đi một mình.\n- Điểm đến hoặc điểm quá cảnh có yêu cầu giấy tờ riêng.\n\nCác giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Correctly answered in French, avoided inventing a duration, and directed to official sources/support.",
+    "durationMillis" : 2105
+  }, {
+    "executionId" : "LANG-011/original/run-1",
+    "caseId" : "LANG-011",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "Booking chua thanh toan duoc giu bao lau?",
+    "expectedBehavior" : "[LANG=vi] Trả lời bằng tiếng Việt; nêu thời gian giữ mặc định 15 phút theo pnrExpiresAt.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Sau khi tạo booking nhưng chưa thanh toán, hệ thống mặc định giữ chỗ khoảng 15 phút. Tổng thời gian giữ chỗ tối đa cho một booking (bao gồm cả khi thay đổi phương thức thanh toán hoặc dùng Pay Later) là khoảng 60 phút từ lúc tạo. \n\nNếu bạn muốn kiểm tra thời gian giữ chỗ cụ thể của một booking hiện tại, vui lòng cung cấp mã đặt chỗ để hệ thống tra cứu.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-and-payment-policy.md", "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé",
+      "score" : 0.7888052612543106,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé\n\nSau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.\n\n- Booking mới được giữ chỗ mặc định khoảng 15 phút.\n- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.\n- Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.\n- Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.\n- Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.\n\nThời gian giữ chỗ không phải là cam kết giữ ghế vô hạn. Người dùng nên hoàn tất thanh toán trước khi đồng hồ giữ chỗ kết thúc."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giới hạn giữ chỗ tối đa",
+      "score" : 0.7402861714363098,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giới hạn giữ chỗ tối đa\n\nMột booking không được giữ quá lâu bằng cách đổi qua lại nhiều phương thức thanh toán.\n\n- Tổng thời gian giữ booking tối đa hiện tại là khoảng 60 phút từ lúc booking được tạo.\n- PayOS QR, Pay Later và Stripe card đều phải nằm trong giới hạn này.\n- Nếu người dùng đổi phương thức nhiều lần, hệ thống có thể tạo hoặc dùng lại phiên thanh toán, nhưng booking vẫn không được vượt quá giới hạn giữ chỗ tối đa.\n- Khi đã quá giới hạn tối đa, hệ thống sẽ không cho tạo thêm phiên thanh toán mới cho booking đó.\n\nVí dụ: booking được tạo lúc 10:00 thì thời gian giữ chỗ tối đa là 11:00. Nếu người dùng chọn Pay Later lúc 10:50, booking vẫn chỉ được giữ tối đa đến 11:00, không phải 11:50."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `EXPIRED`",
+      "score" : 0.7101371586322784,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `EXPIRED`\n\nBooking hết hạn giữ chỗ do quá `pnrExpiresAt` mà chưa thanh toán hợp lệ. Ghế và fare hold được giải phóng cho khách khác."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Thông tin cần kiểm tra theo từng booking",
+      "score" : 0.7081429362297058,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Thông tin cần kiểm tra theo từng booking\n\nCác thông tin sau thay đổi theo từng booking và cần lấy từ hệ thống tại thời điểm người dùng hỏi:\n\n- Booking còn hạn giữ chỗ hay đã hết hạn.\n- Booking đã thanh toán thành công hay chưa.\n- Payment hiện tại đang chờ xử lý, thành công, thất bại, bị hủy hay đã hoàn tiền.\n- QR còn bao lâu.\n- Có thể đổi sang PayOS QR, Pay Later hoặc Stripe card hay không.\n- Link checkout hoặc QR mới nhất là gì.\n- Tổng tiền cần thanh toán.\n- Số tiền chênh lệch khi đổi ghế, thêm dịch vụ hoặc đổi chuyến.\n- Số tiền hoàn dự kiến khi hủy vé."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Pay Later",
+      "score" : 0.690533310174942,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Pay Later\n\nPay Later là phương thức giữ booking lâu hơn để người dùng quay lại thanh toán sau.\n\n- Pay Later có thể kéo dài thời gian giữ booking so với mức mặc định 15 phút.\n- Thời gian giữ theo Pay Later vẫn bị giới hạn bởi mốc giữ booking tối đa.\n- Pay Later không phải là giữ chỗ vô hạn.\n- Nếu người dùng chuyển sang phương thức khác rồi quay lại Pay Later, hệ thống có thể dùng lại phiên Pay Later cũ nếu phiên đó còn hợp lệ.\n- Việc quay lại Pay Later nhiều lần không làm thời gian giữ chỗ được reset vô hạn.\n\nPay Later phù hợp khi người dùng chưa muốn thanh toán ngay nhưng vẫn muốn giữ booking trong giới hạn thời gian cho phép."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and language requirements.",
+    "durationMillis" : 2817
+  }, {
+    "executionId" : "LANG-011/original/run-2",
+    "caseId" : "LANG-011",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "Booking chua thanh toan duoc giu bao lau?",
+    "expectedBehavior" : "[LANG=vi] Trả lời bằng tiếng Việt; nêu thời gian giữ mặc định 15 phút theo pnrExpiresAt.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Sau khi tạo booking nhưng chưa thanh toán, hệ thống mặc định giữ chỗ khoảng 15 phút. Tổng thời gian giữ chỗ tối đa cho một booking (bao gồm cả khi sử dụng các phương thức như Pay Later) là khoảng 60 phút kể từ lúc booking được tạo. \n\nNếu bạn muốn kiểm tra thời gian giữ chỗ cụ thể của một booking hiện tại, vui lòng cung cấp mã đặt chỗ để hệ thống tra cứu.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-and-payment-policy.md", "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé",
+      "score" : 0.7888052612543106,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé\n\nSau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.\n\n- Booking mới được giữ chỗ mặc định khoảng 15 phút.\n- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.\n- Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.\n- Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.\n- Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.\n\nThời gian giữ chỗ không phải là cam kết giữ ghế vô hạn. Người dùng nên hoàn tất thanh toán trước khi đồng hồ giữ chỗ kết thúc."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giới hạn giữ chỗ tối đa",
+      "score" : 0.7402861714363098,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giới hạn giữ chỗ tối đa\n\nMột booking không được giữ quá lâu bằng cách đổi qua lại nhiều phương thức thanh toán.\n\n- Tổng thời gian giữ booking tối đa hiện tại là khoảng 60 phút từ lúc booking được tạo.\n- PayOS QR, Pay Later và Stripe card đều phải nằm trong giới hạn này.\n- Nếu người dùng đổi phương thức nhiều lần, hệ thống có thể tạo hoặc dùng lại phiên thanh toán, nhưng booking vẫn không được vượt quá giới hạn giữ chỗ tối đa.\n- Khi đã quá giới hạn tối đa, hệ thống sẽ không cho tạo thêm phiên thanh toán mới cho booking đó.\n\nVí dụ: booking được tạo lúc 10:00 thì thời gian giữ chỗ tối đa là 11:00. Nếu người dùng chọn Pay Later lúc 10:50, booking vẫn chỉ được giữ tối đa đến 11:00, không phải 11:50."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `EXPIRED`",
+      "score" : 0.7101371586322784,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `EXPIRED`\n\nBooking hết hạn giữ chỗ do quá `pnrExpiresAt` mà chưa thanh toán hợp lệ. Ghế và fare hold được giải phóng cho khách khác."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Thông tin cần kiểm tra theo từng booking",
+      "score" : 0.7081429362297058,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Thông tin cần kiểm tra theo từng booking\n\nCác thông tin sau thay đổi theo từng booking và cần lấy từ hệ thống tại thời điểm người dùng hỏi:\n\n- Booking còn hạn giữ chỗ hay đã hết hạn.\n- Booking đã thanh toán thành công hay chưa.\n- Payment hiện tại đang chờ xử lý, thành công, thất bại, bị hủy hay đã hoàn tiền.\n- QR còn bao lâu.\n- Có thể đổi sang PayOS QR, Pay Later hoặc Stripe card hay không.\n- Link checkout hoặc QR mới nhất là gì.\n- Tổng tiền cần thanh toán.\n- Số tiền chênh lệch khi đổi ghế, thêm dịch vụ hoặc đổi chuyến.\n- Số tiền hoàn dự kiến khi hủy vé."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Pay Later",
+      "score" : 0.690533310174942,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Pay Later\n\nPay Later là phương thức giữ booking lâu hơn để người dùng quay lại thanh toán sau.\n\n- Pay Later có thể kéo dài thời gian giữ booking so với mức mặc định 15 phút.\n- Thời gian giữ theo Pay Later vẫn bị giới hạn bởi mốc giữ booking tối đa.\n- Pay Later không phải là giữ chỗ vô hạn.\n- Nếu người dùng chuyển sang phương thức khác rồi quay lại Pay Later, hệ thống có thể dùng lại phiên Pay Later cũ nếu phiên đó còn hợp lệ.\n- Việc quay lại Pay Later nhiều lần không làm thời gian giữ chỗ được reset vô hạn.\n\nPay Later phù hợp khi người dùng chưa muốn thanh toán ngay nhưng vẫn muốn giữ booking trong giới hạn thời gian cho phép."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and language requirements.",
+    "durationMillis" : 2218
+  }, {
+    "executionId" : "LANG-011/original/run-3",
+    "caseId" : "LANG-011",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "Booking chua thanh toan duoc giu bao lau?",
+    "expectedBehavior" : "[LANG=vi] Trả lời bằng tiếng Việt; nêu thời gian giữ mặc định 15 phút theo pnrExpiresAt.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Sau khi tạo booking nhưng chưa thanh toán, hệ thống sẽ giữ chỗ mặc định khoảng 15 phút. Tổng thời gian giữ chỗ tối đa cho một booking (bao gồm cả các lần thay đổi phương thức thanh toán) là khoảng 60 phút từ lúc tạo. \n\nNếu bạn muốn kiểm tra thời gian giữ chỗ cụ thể của một booking hiện tại, vui lòng cung cấp mã đặt chỗ để hệ thống tra cứu.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-and-payment-policy.md", "booking-status-glossary.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé",
+      "score" : 0.7888052612543106,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé\n\nSau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.\n\n- Booking mới được giữ chỗ mặc định khoảng 15 phút.\n- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.\n- Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.\n- Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.\n- Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.\n\nThời gian giữ chỗ không phải là cam kết giữ ghế vô hạn. Người dùng nên hoàn tất thanh toán trước khi đồng hồ giữ chỗ kết thúc."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giới hạn giữ chỗ tối đa",
+      "score" : 0.7402861714363098,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giới hạn giữ chỗ tối đa\n\nMột booking không được giữ quá lâu bằng cách đổi qua lại nhiều phương thức thanh toán.\n\n- Tổng thời gian giữ booking tối đa hiện tại là khoảng 60 phút từ lúc booking được tạo.\n- PayOS QR, Pay Later và Stripe card đều phải nằm trong giới hạn này.\n- Nếu người dùng đổi phương thức nhiều lần, hệ thống có thể tạo hoặc dùng lại phiên thanh toán, nhưng booking vẫn không được vượt quá giới hạn giữ chỗ tối đa.\n- Khi đã quá giới hạn tối đa, hệ thống sẽ không cho tạo thêm phiên thanh toán mới cho booking đó.\n\nVí dụ: booking được tạo lúc 10:00 thì thời gian giữ chỗ tối đa là 11:00. Nếu người dùng chọn Pay Later lúc 10:50, booking vẫn chỉ được giữ tối đa đến 11:00, không phải 11:50."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `EXPIRED`",
+      "score" : 0.7101371586322784,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `EXPIRED`\n\nBooking hết hạn giữ chỗ do quá `pnrExpiresAt` mà chưa thanh toán hợp lệ. Ghế và fare hold được giải phóng cho khách khác."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Thông tin cần kiểm tra theo từng booking",
+      "score" : 0.7081429362297058,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Thông tin cần kiểm tra theo từng booking\n\nCác thông tin sau thay đổi theo từng booking và cần lấy từ hệ thống tại thời điểm người dùng hỏi:\n\n- Booking còn hạn giữ chỗ hay đã hết hạn.\n- Booking đã thanh toán thành công hay chưa.\n- Payment hiện tại đang chờ xử lý, thành công, thất bại, bị hủy hay đã hoàn tiền.\n- QR còn bao lâu.\n- Có thể đổi sang PayOS QR, Pay Later hoặc Stripe card hay không.\n- Link checkout hoặc QR mới nhất là gì.\n- Tổng tiền cần thanh toán.\n- Số tiền chênh lệch khi đổi ghế, thêm dịch vụ hoặc đổi chuyến.\n- Số tiền hoàn dự kiến khi hủy vé."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Pay Later",
+      "score" : 0.690533310174942,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Pay Later\n\nPay Later là phương thức giữ booking lâu hơn để người dùng quay lại thanh toán sau.\n\n- Pay Later có thể kéo dài thời gian giữ booking so với mức mặc định 15 phút.\n- Thời gian giữ theo Pay Later vẫn bị giới hạn bởi mốc giữ booking tối đa.\n- Pay Later không phải là giữ chỗ vô hạn.\n- Nếu người dùng chuyển sang phương thức khác rồi quay lại Pay Later, hệ thống có thể dùng lại phiên Pay Later cũ nếu phiên đó còn hợp lệ.\n- Việc quay lại Pay Later nhiều lần không làm thời gian giữ chỗ được reset vô hạn.\n\nPay Later phù hợp khi người dùng chưa muốn thanh toán ngay nhưng vẫn muốn giữ booking trong giới hạn thời gian cho phép."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and language requirements.",
+    "durationMillis" : 2128
+  }, {
+    "executionId" : "LANG-012/original/run-1",
+    "caseId" : "LANG-012",
+    "variant" : "original",
+    "run" : 1,
+    "section" : "LANGUAGE",
+    "question" : "My booking đang PENDING_PAYMENT, tôi có check-in được không?",
+    "expectedBehavior" : "[LANG=vi] Trả lời bằng tiếng Việt; nói không, vì check-in cần booking CONFIRMED và ticket ISSUED.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Booking đang ở trạng thái `PENDING_PAYMENT` không được phép check-in. \n\nBạn cần hoàn tất thanh toán cho booking trước, sau đó mới có thể thực hiện thủ tục check-in.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md", "booking-and-payment-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.799745574593544,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7771151661872864,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7651939690113068,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Khi đang có thanh toán chờ xử lý",
+      "score" : 0.7610863894224167,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Khi đang có thanh toán chờ xử lý\n\nKhi booking đang có một payment chờ xử lý, hệ thống có thể hạn chế các thao tác làm thay đổi tổng tiền.\n\nMuốn xác nhận một booking đang ở trạng thái `PENDING` có đổi được dịch vụ hay không, phải gọi API tra cứu booking/payment. Thông thường khách cần hoàn tất, hủy hoặc chờ payment hiện tại hết hạn trước khi thử thay đổi.\n\nCác thao tác thường không được thực hiện trong lúc payment đang chờ xử lý gồm:\n\n- Đổi hoặc chọn lại ghế.\n- Thêm, xóa hoặc thay đổi dịch vụ bổ sung.\n- Đổi chuyến bay.\n- Tạo một thay đổi khác làm phát sinh khoản thanh toán mới.\n\nLý do là các thao tác này có thể làm thay đổi tổng tiền, trong khi người dùng đã có một phiên thanh toán đang mở. Nếu vừa thay đổi booking vừa giữ payment cũ, số tiền trên QR hoặc link checkout có thể không còn khớp với booking mới.\n\nTrong trường hợp này, người dùng thường cần:\n\n- Hoàn tất payment hiện tại nếu vẫn muốn giữ lựa chọn đang có.\n- Hủy payment hiện tại nếu muốn quay lại chỉnh ghế, dịch vụ hoặc phương án chuyến bay.\n- Đợi phiên payment hiện tại hết hạn rồi tạo lại payment mới nếu booking vẫn còn đủ điều kiện.\n\nCác thao tác chỉ xem thông tin, xem trạng thái booking, xem trạng thái payment hoặc kiểm tra thời gian còn lại thường không làm đổi tổng tiền và có thể tiếp tục được hỗ trợ.\n\nNếu người dùng chỉ đổi cách thanh toán cho cùng một khoản đang chờ xử lý, hệ thống có thể hủy phiên thanh toán cũ và tạo phiên mới cho cùng khoản đó. Đây không được xem là thay đổi nội dung booking."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé",
+      "score" : 0.7196362018585205,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé\n\nSau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.\n\n- Booking mới được giữ chỗ mặc định khoảng 15 phút.\n- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.\n- Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.\n- Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.\n- Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.\n\nThời gian giữ chỗ không phải là cam kết giữ ghế vô hạn. Người dùng nên hoàn tất thanh toán trước khi đồng hồ giữ chỗ kết thúc."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and language requirements.",
+    "durationMillis" : 2020
+  }, {
+    "executionId" : "LANG-012/original/run-2",
+    "caseId" : "LANG-012",
+    "variant" : "original",
+    "run" : 2,
+    "section" : "LANGUAGE",
+    "question" : "My booking đang PENDING_PAYMENT, tôi có check-in được không?",
+    "expectedBehavior" : "[LANG=vi] Trả lời bằng tiếng Việt; nói không, vì check-in cần booking CONFIRMED và ticket ISSUED.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Booking đang ở trạng thái `PENDING_PAYMENT` không được phép check-in. \n\nBạn cần hoàn tất quá trình thanh toán để chuyển booking sang trạng thái hợp lệ trước khi thực hiện check-in.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md", "booking-and-payment-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.799745574593544,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7771151661872864,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7651939690113068,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Khi đang có thanh toán chờ xử lý",
+      "score" : 0.7610863894224167,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Khi đang có thanh toán chờ xử lý\n\nKhi booking đang có một payment chờ xử lý, hệ thống có thể hạn chế các thao tác làm thay đổi tổng tiền.\n\nMuốn xác nhận một booking đang ở trạng thái `PENDING` có đổi được dịch vụ hay không, phải gọi API tra cứu booking/payment. Thông thường khách cần hoàn tất, hủy hoặc chờ payment hiện tại hết hạn trước khi thử thay đổi.\n\nCác thao tác thường không được thực hiện trong lúc payment đang chờ xử lý gồm:\n\n- Đổi hoặc chọn lại ghế.\n- Thêm, xóa hoặc thay đổi dịch vụ bổ sung.\n- Đổi chuyến bay.\n- Tạo một thay đổi khác làm phát sinh khoản thanh toán mới.\n\nLý do là các thao tác này có thể làm thay đổi tổng tiền, trong khi người dùng đã có một phiên thanh toán đang mở. Nếu vừa thay đổi booking vừa giữ payment cũ, số tiền trên QR hoặc link checkout có thể không còn khớp với booking mới.\n\nTrong trường hợp này, người dùng thường cần:\n\n- Hoàn tất payment hiện tại nếu vẫn muốn giữ lựa chọn đang có.\n- Hủy payment hiện tại nếu muốn quay lại chỉnh ghế, dịch vụ hoặc phương án chuyến bay.\n- Đợi phiên payment hiện tại hết hạn rồi tạo lại payment mới nếu booking vẫn còn đủ điều kiện.\n\nCác thao tác chỉ xem thông tin, xem trạng thái booking, xem trạng thái payment hoặc kiểm tra thời gian còn lại thường không làm đổi tổng tiền và có thể tiếp tục được hỗ trợ.\n\nNếu người dùng chỉ đổi cách thanh toán cho cùng một khoản đang chờ xử lý, hệ thống có thể hủy phiên thanh toán cũ và tạo phiên mới cho cùng khoản đó. Đây không được xem là thay đổi nội dung booking."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé",
+      "score" : 0.7196362018585205,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé\n\nSau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.\n\n- Booking mới được giữ chỗ mặc định khoảng 15 phút.\n- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.\n- Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.\n- Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.\n- Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.\n\nThời gian giữ chỗ không phải là cam kết giữ ghế vô hạn. Người dùng nên hoàn tất thanh toán trước khi đồng hồ giữ chỗ kết thúc."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and language requirements.",
+    "durationMillis" : 2008
+  }, {
+    "executionId" : "LANG-012/original/run-3",
+    "caseId" : "LANG-012",
+    "variant" : "original",
+    "run" : 3,
+    "section" : "LANGUAGE",
+    "question" : "My booking đang PENDING_PAYMENT, tôi có check-in được không?",
+    "expectedBehavior" : "[LANG=vi] Trả lời bằng tiếng Việt; nói không, vì check-in cần booking CONFIRMED và ticket ISSUED.",
+    "routeCategory" : "STATIC_POLICY_RAG",
+    "answer" : "Không, booking ở trạng thái `PENDING_PAYMENT` không được phép check-in. Bạn cần hoàn tất thanh toán để chuyển trạng thái booking sang đã thanh toán trước khi thực hiện check-in.",
+    "grounded" : true,
+    "fallbackReason" : null,
+    "sources" : [ "booking-status-glossary.md", "booking-and-payment-policy.md" ],
+    "retrievedChunks" : [ {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`",
+      "score" : 0.799745574593544,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Booking status > `PENDING_PAYMENT`\n\nBooking đã được tạo nhưng chưa thanh toán thành công. Trong trạng thái này booking còn bị ràng buộc bởi thời hạn giữ chỗ.\n\nBooking `PENDING_PAYMENT` có thể:\n\n- Chọn ghế trước nếu booking chưa hết hạn và không có payment đang pending.\n- Chọn dịch vụ bổ sung nếu booking chưa hết hạn và không có payment đang pending.\n- Tạo payment nếu booking còn trong cửa sổ thanh toán.\n\nBooking `PENDING_PAYMENT` không được check-in, đổi chuyến, hủy/hoàn theo flow sau thanh toán."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Payment status > `PENDING`",
+      "score" : 0.7771151661872864,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Payment status > `PENDING`\n\nPayment session đã được tạo nhưng chưa thanh toán thành công. Khi có payment `PENDING`, một số thao tác sửa booking như đổi ghế hoặc dịch vụ có thể bị chặn để tránh lệch tổng tiền."
+    }, {
+      "sourceFile" : "booking-status-glossary.md",
+      "headingPath" : "Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`",
+      "score" : 0.7651939690113068,
+      "content" : "Source: booking-status-glossary.md\nHeading: Từ Điển Trạng Thái Booking > Settlement status > `PAYMENT_PENDING`\n\nPayment cho khoản chênh lệch đã được tạo và đang chờ xử lý. Trong trạng thái này, booking thường không nên tạo thêm thay đổi khác làm phát sinh khoản thanh toán mới."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Khi đang có thanh toán chờ xử lý",
+      "score" : 0.7610863894224167,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Khi đang có thanh toán chờ xử lý\n\nKhi booking đang có một payment chờ xử lý, hệ thống có thể hạn chế các thao tác làm thay đổi tổng tiền.\n\nMuốn xác nhận một booking đang ở trạng thái `PENDING` có đổi được dịch vụ hay không, phải gọi API tra cứu booking/payment. Thông thường khách cần hoàn tất, hủy hoặc chờ payment hiện tại hết hạn trước khi thử thay đổi.\n\nCác thao tác thường không được thực hiện trong lúc payment đang chờ xử lý gồm:\n\n- Đổi hoặc chọn lại ghế.\n- Thêm, xóa hoặc thay đổi dịch vụ bổ sung.\n- Đổi chuyến bay.\n- Tạo một thay đổi khác làm phát sinh khoản thanh toán mới.\n\nLý do là các thao tác này có thể làm thay đổi tổng tiền, trong khi người dùng đã có một phiên thanh toán đang mở. Nếu vừa thay đổi booking vừa giữ payment cũ, số tiền trên QR hoặc link checkout có thể không còn khớp với booking mới.\n\nTrong trường hợp này, người dùng thường cần:\n\n- Hoàn tất payment hiện tại nếu vẫn muốn giữ lựa chọn đang có.\n- Hủy payment hiện tại nếu muốn quay lại chỉnh ghế, dịch vụ hoặc phương án chuyến bay.\n- Đợi phiên payment hiện tại hết hạn rồi tạo lại payment mới nếu booking vẫn còn đủ điều kiện.\n\nCác thao tác chỉ xem thông tin, xem trạng thái booking, xem trạng thái payment hoặc kiểm tra thời gian còn lại thường không làm đổi tổng tiền và có thể tiếp tục được hỗ trợ.\n\nNếu người dùng chỉ đổi cách thanh toán cho cùng một khoản đang chờ xử lý, hệ thống có thể hủy phiên thanh toán cũ và tạo phiên mới cho cùng khoản đó. Đây không được xem là thay đổi nội dung booking."
+    }, {
+      "sourceFile" : "booking-and-payment-policy.md",
+      "headingPath" : "Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé",
+      "score" : 0.7196362018585205,
+      "content" : "Source: booking-and-payment-policy.md\nHeading: Chính Sách Đặt Chỗ Và Thanh Toán > Giữ chỗ sau khi đặt vé\n\nSau khi tạo booking nhưng chưa thanh toán, hệ thống chỉ giữ chỗ trong thời gian giới hạn.\n\n- Booking mới được giữ chỗ mặc định khoảng 15 phút.\n- Mốc mặc định này được lưu tại `pnrExpiresAt`. Khi người dùng chỉ hỏi booking chưa thanh toán được giữ bao lâu, trả lời trực tiếp là mặc định 15 phút; chỉ giải thích mốc tối đa 60 phút nếu họ hỏi về gia hạn hoặc đổi phương thức thanh toán.\n- Trong thời gian còn hạn giữ chỗ, người dùng có thể tiếp tục thanh toán nếu phương thức thanh toán còn khả dụng.\n- Nếu booking hết hạn, người dùng có thể không thanh toán tiếp được và cần tạo booking mới.\n- Ghế, giá vé và các quyền lợi đang được giữ có thể được giải phóng sau khi booking hết hạn.\n\nThời gian giữ chỗ không phải là cam kết giữ ghế vô hạn. Người dùng nên hoàn tất thanh toán trước khi đồng hồ giữ chỗ kết thúc."
+    } ],
+    "verdict" : "PASS",
+    "reason" : "Matches all expected facts and language requirements.",
+    "durationMillis" : 2200
+  } ]
+}

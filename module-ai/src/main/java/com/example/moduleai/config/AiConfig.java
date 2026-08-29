@@ -9,12 +9,18 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
   AiAgentProperties.class,
   AiProviderProperties.class,
-  AiAgentGuardrailProperties.class
+  AiAgentGuardrailProperties.class,
+  AiChatProperties.class
 })
 public class AiConfig {
 
   @Bean
   ToolCatalog toolCatalog() {
     return new ToolCatalog();
+  }
+
+  @Bean
+  java.time.Clock aiClock() {
+    return java.time.Clock.systemUTC();
   }
 }

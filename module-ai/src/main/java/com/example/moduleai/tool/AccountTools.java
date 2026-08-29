@@ -47,7 +47,8 @@ public class AccountTools extends AbstractAgentTool {
       tool = "update_current_profile",
       operation = ToolOperation.WRITE,
       access = ToolAccess.AUTHENTICATED,
-      confirmationRequired = true)
+      confirmationRequired = true,
+      idempotencyRequired = true)
   public ToolResult<AccountToolService.CurrentProfileView> update_current_profile(
       UpdateCurrentProfileInput input, ToolContext toolContext) {
     AgentToolContext context = AgentToolContext.from(toolContext);

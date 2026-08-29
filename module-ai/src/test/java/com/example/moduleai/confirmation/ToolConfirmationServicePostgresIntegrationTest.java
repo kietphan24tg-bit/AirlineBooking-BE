@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.example.common.exception.AppException;
 import com.example.moduleai.config.AiAgentGuardrailProperties;
 import com.example.moduleai.config.AiAgentProperties;
+import com.example.moduleai.conversation.ChatConversationRepository;
 import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.observability.AiObservability;
 import com.example.moduleai.rollout.AgentRolloutMode;
@@ -89,6 +90,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
 
   @MockitoBean private ToolCatalog toolCatalog;
   @MockitoBean private ToolExecutionGuard toolExecutionGuard;
+  @MockitoBean private ChatConversationRepository conversationRepository;
   @MockitoBean private ToolConfirmationRegistry confirmationRegistry;
   @MockitoBean private ToolExecutionReconcilerRegistry reconcilerRegistry;
   @MockitoBean private AiObservability observability;
@@ -240,6 +242,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
     proposal.setUpdatedAt(now);
     proposal.setConfirmationHmac(
         signer.sign(
+            null,
             proposalId,
             USER_ID,
             "confirm_seat_change",
@@ -312,6 +315,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
         ToolProposalSnapshotFactory snapshotFactory,
         ToolConfirmationRegistry confirmationRegistry,
         ToolExecutionReconcilerRegistry reconcilerRegistry,
+        ChatConversationRepository conversationRepository,
         ObjectMapper objectMapper,
         AiAgentProperties properties,
         AgentRolloutProperties rolloutProperties,
@@ -326,6 +330,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
           snapshotFactory,
           confirmationRegistry,
           reconcilerRegistry,
+          conversationRepository,
           objectMapper,
           properties,
           rolloutProperties,

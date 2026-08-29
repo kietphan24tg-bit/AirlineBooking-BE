@@ -56,7 +56,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest(
     classes = AgentToolLiveValidationTest.LiveValidationConfig.class,
     properties = {
+      "spring.ai.google.genai.api-key=${GEMINI_KEY}",
+      "spring.ai.google.genai.chat.options.model=gemini-1.5-flash",
       "spring.ai.google.genai.chat.options.temperature=0",
+      "logging.level.org.springframework.ai=DEBUG",
+      "logging.level.com.google.genai=DEBUG",
       "app.ai.agent.guardrail.max-model-rounds-per-turn=2",
       "spring.autoconfigure.exclude="
           + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
@@ -64,21 +68,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
           + "org.springframework.boot.orm.jpa.autoconfigure.HibernateJpaAutoConfiguration,"
           + "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration,"
           + "org.springframework.boot.data.redis.autoconfigure.RedisAutoConfiguration,"
-          + "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration"
+          + "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration,"
+          + "org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration,"
+          + "org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiTextEmbeddingAutoConfiguration,"
+          + "org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration"
     })
 @Tag("agent-live")
 @EnabledIfEnvironmentVariable(named = "GEMINI_KEY", matches = ".+")
 class AgentToolLiveValidationTest {
 
-  @DynamicPropertySource
-  static void registerLiveProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.ai.google.genai.api-key", () -> System.getenv("GEMINI_KEY"));
-    registry.add("spring.ai.google.genai.chat.options.model", () -> "gemini-3.5-flash-lite");
-  }
-
   private final Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
   private final AgentToolContext authenticatedContext =
-      new AgentToolContext(null, 77L, Set.of("ROLE_USER"), false, null, null, null, Map.of());
+      new AgentToolContext(null, null, 77L, Set.of("ROLE_USER"), false, null, null, null, Map.of());
 
   @Autowired private AgentToolOrchestrator orchestrator;
   @Autowired private ToolCatalog toolCatalog;
@@ -164,9 +165,7 @@ class AgentToolLiveValidationTest {
   @SpringBootConfiguration
   @EnableAutoConfiguration
   @EnableConfigurationProperties({
-    AiAgentGuardrailProperties.class,
-    GoogleGenAiConnectionProperties.class,
-    GoogleGenAiChatProperties.class
+    AiAgentGuardrailProperties.class
   })
   @Import(LiveValidationTools.class)
   static class LiveValidationConfig {
