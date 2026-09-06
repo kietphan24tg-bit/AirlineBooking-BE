@@ -20,6 +20,7 @@ dependencies {
     implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
     implementation 'io.github.resilience4j:resilience4j-bulkhead:2.4.0'
     implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.4.0'
@@ -40,6 +41,7 @@ tasks.named('test') {
     useJUnitPlatform {
         excludeTags 'rag-live'
         excludeTags 'agent-live'
+        excludeTags 'postgres-integration'
     }
 }
 
@@ -102,7 +104,8 @@ tasks.register('ragLiveValidation', Test) {
     systemProperty 'rag.validation.resume-from', findProperty('ragValidationResumeFrom') ?: ''
     systemProperty 'rag.validation.report-dir', findProperty('ragValidationReportDir') ?: 'build/reports/rag-validation'
     systemProperty 'rag.validation.commit', findProperty('ragValidationCommit') ?: (System.getenv('GITHUB_SHA') ?: 'unknown')
-    systemProperty 'rag.validation.chat-model', findProperty('ragValidationChatModel') ?: 'gemini-3.5-flash-lite'
+    systemProperty 'rag.validation.chat-provider', findProperty('ragValidationChatProvider') ?: 'google-genai'
+    systemProperty 'rag.validation.chat-model', findProperty('ragValidationChatModel') ?: 'gemini-3.5-flash'
     systemProperty 'rag.validation.embedding-model', findProperty('ragValidationEmbeddingModel') ?: 'gemini-embedding-001'
     if (findProperty('ragValidationRunId')) {
         systemProperty 'rag.validation.run-id', findProperty('ragValidationRunId')
@@ -116,6 +119,39 @@ tasks.register('agentLiveValidation', Test) {
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform {
         includeTags 'agent-live'
+    }
+
+    def envFile = rootProject.file('.env')
+    if (envFile.exists()) {
+        envFile.eachLine('UTF-8') { rawLine ->
+            def line = rawLine?.trim()
+            if (!line || line.startsWith('#')) {
+                return
+            }
+            def separatorIndex = line.indexOf('=')
+            if (separatorIndex <= 0) {
+                return
+            }
+            def key = line.substring(0, separatorIndex).trim()
+            def value = line.substring(separatorIndex + 1).trim()
+            if (value.length() >= 2 && value.startsWith('"') && value.endsWith('"')) {
+                value = value.substring(1, value.length() - 1)
+            }
+            environment key, value
+        }
+    }
+}
+
+tasks.register('postgresIntegrationTest', Test) {
+    group = 'verification'
+    description = 'Runs PostgreSQL integration tests against the configured external datasource.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'postgres-integration'
+    }
+    filter {
+        includeTestsMatching 'com.example.moduleai.confirmation.ToolConfirmationServicePostgresIntegrationTest'
     }
 
     def envFile = rootProject.file('.env')

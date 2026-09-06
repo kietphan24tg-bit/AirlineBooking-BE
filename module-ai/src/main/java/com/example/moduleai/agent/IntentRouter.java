@@ -121,7 +121,8 @@ public class IntentRouter {
       return bookingScoped(
           rawMessage, "booking_tickets", "GET /api/bookings/{bookingId}/tickets", false, false);
     }
-    if (containsAny(normalized, "doi ghe 12a sang 14c", "doi ghe trong manage booking")) {
+    if (containsAny(
+        normalized, "doi ghe 12a sang 14c", "doi ghe trong manage booking co can tra them tien")) {
       return bookingScoped(
           rawMessage,
           "seat_change_preview",

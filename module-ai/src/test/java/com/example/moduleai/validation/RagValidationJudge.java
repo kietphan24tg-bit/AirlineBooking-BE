@@ -33,8 +33,7 @@ final class RagValidationJudge {
   private Map<String, JudgeDecision> evaluateBatch(List<JudgeInput> batch) {
     String response;
     try {
-      response =
-          chatClient.prompt().system(systemPrompt()).user(renderBatch(batch)).call().content();
+      response = judge(renderBatch(batch));
     } catch (RuntimeException ex) {
       return retryBatchIndividually(batch);
     }
@@ -54,13 +53,7 @@ final class RagValidationJudge {
 
   private Map<String, JudgeDecision> retrySingle(JudgeInput input) {
     try {
-      String response =
-          chatClient
-              .prompt()
-              .system(systemPrompt())
-              .user(renderBatch(List.of(input)))
-              .call()
-              .content();
+      String response = judge(renderBatch(List.of(input)));
       return parse(response);
     } catch (RuntimeException ex) {
       return Map.of(
@@ -77,6 +70,13 @@ final class RagValidationJudge {
     return decisions;
   }
 
+  private String judge(String prompt) {
+    // The judge is test infrastructure and must not share the production generation circuit
+    // breaker.
+    // Transport timeouts are configured on the provider HTTP client by the live-test application.
+    return chatClient.prompt().system(systemPrompt()).user(prompt).call().content();
+  }
+
   private String systemPrompt() {
     return """
         You are a strict QA judge for an airline-booking RAG chatbot.
@@ -86,6 +86,9 @@ final class RagValidationJudge {
         - RAG: PASS only when all material facts in expected behavior are present and no unsupported fact is added.
         - FALLBACK: PASS only when the answer clearly avoids guessing and directs the user to an
           official source or support when appropriate.
+        - Judge expected behavior semantically, not by literal phrase matching. In particular,
+          "business confirmation required" is satisfied when the answer clearly says the system has
+          no finalized/official policy and directs the user to an official source or support.
         - API routing and endpoint correctness are checked deterministically outside this judge. PASS
           when the answer does not invent current personal/dynamic data and directs the user to a
           system lookup, Manage Booking, authentication, or a genuinely missing identifier. Do not

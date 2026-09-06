@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("app.ai.provider")
 public class AiProviderProperties {
 
-  private Duration timeout = Duration.ofSeconds(25);
+  private Duration timeout = Duration.ofSeconds(45);
   private int maxConcurrentCalls = 4;
   private int queueCapacity = 4;
   private int rateLimitPermits = 120;

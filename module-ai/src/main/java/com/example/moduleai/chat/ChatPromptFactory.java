@@ -1,6 +1,7 @@
 package com.example.moduleai.chat;
 
 import com.example.moduleai.conversation.ChatMemorySnapshot;
+import com.example.moduleai.conversation.ChatStructuredState;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.ai.document.Document;
@@ -23,22 +24,25 @@ public class ChatPromptFactory {
       String retrievalQuestion,
       ChatMemorySnapshot memory,
       List<Document> contextDocuments) {
-    return """
-        User question:
-        %s
+    StringBuilder prompt = new StringBuilder();
+    prompt.append("User question:\n").append(originalQuestion).append("\n\n");
+    prompt.append("Retrieval question:\n").append(retrievalQuestion).append("\n\n");
 
-        Retrieval question:
-        %s
+    if (memory != null) {
+      if (memory.summary() != null && !memory.summary().isBlank()) {
+        prompt.append("Conversation summary:\n").append(memory.summary()).append("\n\n");
+      }
+      if (memory.state() != null && !ChatStructuredState.empty().equals(memory.state())) {
+        prompt.append("Structured state:\n").append(memory.state()).append("\n\n");
+      }
+      String recent = recentConversation(memory);
+      if (!recent.isBlank()) {
+        prompt.append("Recent conversation:\n").append(recent).append("\n\n");
+      }
+    }
 
-        Conversation summary:
-        %s
-
-        Structured state:
-        %s
-
-        Recent conversation:
-        %s
-
+    prompt.append(
+        """
         Answer language rule:
         Identify the primary language of the user question above and write the entire answer in that
         language. This also applies to policy fallbacks, refusals, warnings, and support guidance.
@@ -47,14 +51,10 @@ public class ChatPromptFactory {
         Context:
         %s
         """
-        .formatted(
-            originalQuestion,
-            retrievalQuestion,
-            memory == null || memory.summary() == null ? "" : memory.summary(),
-            memory == null || memory.state() == null ? "" : memory.state(),
-            recentConversation(memory),
-            context(contextDocuments))
-        .trim();
+            .formatted(context(contextDocuments))
+            .trim());
+
+    return prompt.toString().trim();
   }
 
   private String recentConversation(ChatMemorySnapshot memory) {

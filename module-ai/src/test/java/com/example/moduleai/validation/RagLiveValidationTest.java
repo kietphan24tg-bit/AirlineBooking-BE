@@ -9,6 +9,7 @@ import com.example.moduleai.chat.ChatPromptFactory;
 import com.example.moduleai.chat.ChatResponseMapper;
 import com.example.moduleai.chat.ChatService;
 import com.example.moduleai.chat.RagChatTrace;
+import com.example.moduleai.config.AiProviderHttpClientConfiguration;
 import com.example.moduleai.config.AiProviderProperties;
 import com.example.moduleai.dto.ChatRequest;
 import com.example.moduleai.dto.RagChatResponse;
@@ -91,6 +92,10 @@ class RagLiveValidationTest {
       Path.of(System.getProperty("rag.validation.report-dir", "build/reports/rag-validation"));
   private static final long DELAY_MILLIS =
       Math.max(0L, Long.getLong("rag.validation.delay-millis", 5_000L));
+  private static final String CHAT_PROVIDER =
+      System.getProperty("rag.validation.chat-provider", "google-genai");
+  private static final String CHAT_MODEL =
+      System.getProperty("rag.validation.chat-model", "gemini-3.5-flash");
 
   private final RagIngestionService ingestionService;
   private final ChatService chatService;
@@ -124,13 +129,16 @@ class RagLiveValidationTest {
     registry.add("spring.datasource.hikari.data-source-properties.prepareThreshold", () -> "0");
     registry.add("spring.datasource.hikari.data-source-properties.socketTimeout", () -> "120");
     registry.add("spring.ai.retry.max-attempts", () -> "1");
+    registry.add("app.ai.provider.google-http-timeout-enabled", () -> "true");
+    registry.add("spring.ai.model.chat", () -> CHAT_PROVIDER);
+    registry.add("spring.ai.model.embedding", () -> "google-genai");
     registry.add(
         "spring.autoconfigure.exclude",
         () ->
             "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
                 + "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration");
     registry.add("spring.ai.google.genai.api-key", () -> requiredEnvironment("GEMINI_KEY"));
-    registry.add("spring.ai.google.genai.chat.options.model", () -> "gemini-3.5-flash-lite");
+    registry.add("spring.ai.google.genai.chat.options.model", () -> CHAT_MODEL);
     registry.add("spring.ai.google.genai.chat.options.temperature", () -> "0.0");
     registry.add("spring.ai.google.genai.chat.options.max-output-tokens", () -> "800");
     registry.add(
@@ -139,6 +147,16 @@ class RagLiveValidationTest {
     registry.add("spring.ai.google.genai.embedding.text.task-type", () -> "RETRIEVAL_DOCUMENT");
     registry.add("spring.ai.google.genai.embedding.text.dimensions", () -> "768");
     registry.add("spring.ai.google.genai.embedding.text.auto-truncate", () -> "true");
+    registry.add("spring.ai.openai.api-key", () -> optionalEnvironment("GROQ_API_KEY"));
+    registry.add(
+        "spring.ai.openai.base-url",
+        () -> environmentOr("GROQ_BASE_URL", "https://api.groq.com/openai/v1"));
+    registry.add("app.ai.provider.timeout", () -> environmentOr("APP_AI_PROVIDER_TIMEOUT", "45s"));
+    registry.add("spring.ai.openai.timeout", () -> environmentOr("APP_AI_PROVIDER_TIMEOUT", "45s"));
+    registry.add("spring.ai.openai.max-retries", () -> "1");
+    registry.add("spring.ai.openai.chat.options.model", () -> CHAT_MODEL);
+    registry.add("spring.ai.openai.chat.options.temperature", () -> "0.0");
+    registry.add("spring.ai.openai.chat.options.max-tokens", () -> "800");
     registry.add("spring.ai.vectorstore.pgvector.initialize-schema", () -> "true");
     registry.add("spring.ai.vectorstore.pgvector.index-type", () -> "HNSW");
     registry.add("spring.ai.vectorstore.pgvector.distance-type", () -> "COSINE_DISTANCE");
@@ -432,7 +450,7 @@ class RagLiveValidationTest {
         runId,
         Instant.now().toString(),
         commit,
-        System.getProperty("rag.validation.chat-model", "gemini-3.5-flash-lite"),
+        CHAT_MODEL,
         System.getProperty("rag.validation.embedding-model", "gemini-embedding-001"),
         TOP_K,
         REPEATS,
@@ -468,7 +486,7 @@ class RagLiveValidationTest {
     }
   }
 
-  private String environmentOr(String key, String fallback) {
+  private static String environmentOr(String key, String fallback) {
     String value = System.getenv(key);
     return value == null || value.isBlank() ? fallback : value;
   }
@@ -479,6 +497,11 @@ class RagLiveValidationTest {
       throw new IllegalStateException("Missing required environment variable: " + key);
     }
     return value;
+  }
+
+  private static String optionalEnvironment(String key) {
+    String value = System.getenv(key);
+    return value == null ? "" : value;
   }
 
   @SpringBootConfiguration(proxyBeanMethods = false)
@@ -494,6 +517,7 @@ class RagLiveValidationTest {
     ChatResponseMapper.class,
     ChatService.class,
     AiObservability.class,
+    AiProviderHttpClientConfiguration.class,
     AiProviderGuard.class,
     IntentRouter.class,
     RagValidationJudge.class

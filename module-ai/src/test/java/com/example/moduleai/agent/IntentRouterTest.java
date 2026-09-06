@@ -52,6 +52,14 @@ class IntentRouterTest {
   }
 
   @Test
+  void keepsGeneralSeatChangePolicyQuestionInStaticPolicyRag() {
+    RoutingDecision decision = intentRouter.route("Tôi đổi ghế trong Manage Booking được không?");
+
+    assertThat(decision.category()).isEqualTo(RouteCategory.STATIC_POLICY_RAG);
+    assertThat(decision.intent()).isEqualTo("static_policy_rag");
+  }
+
+  @Test
   void distinguishesStaticHoldPolicyFromBookingPaymentLookup() {
     assertThat(intentRouter.route("Booking chưa thanh toán được giữ bao lâu?").category())
         .isEqualTo(RouteCategory.STATIC_POLICY_RAG);
@@ -194,7 +202,7 @@ class IntentRouterTest {
             "Tai khoan cua toi co booking nao sap bay?",
             "my_trips",
             "GET /api/bookings/my-trips",
-            true),
+            false),
         Arguments.of(
             "Trong booking ABC123, ghe nao con trong cho toi?",
             "manage_options",

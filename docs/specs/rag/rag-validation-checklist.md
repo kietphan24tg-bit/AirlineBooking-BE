@@ -81,7 +81,7 @@ Các câu này phải trả lời được bằng RAG, không cần gọi API.
 | RAG-037 | Net refund được tính thế nào? | Nêu công thức từ snapshot: fare net + seat refund + service refund - refund fee; không tự tính số tiền cụ thể nếu chưa gọi preview API. |
 | RAG-038 | Stripe refund thường mất bao lâu? | Nêu 5-10 ngày làm việc theo provider estimate, thực tế phụ thuộc ngân hàng phát hành thẻ. |
 | RAG-039 | PayOS refund thường mất bao lâu? | Nêu yêu cầu hoàn tiền được ghi nhận và xử lý 24/7, thời gian tiền về thực tế phụ thuộc ngân hàng nhận. |
-| RAG-040 | Mã khuyến mãi không áp dụng trong những trường hợp nào? | Nêu not found, disabled, not active yet, expired, usage limit, min amount, scope không khớp. |
+| RAG-040 | Mã khuyến mãi không áp dụng trong những trường hợp nào? | Nêu not found, disabled, not active yet, expired, usage limit, min amount, scope không khớp, hoặc chuyến/hạng vé hết chỗ. |
 | RAG-041 | Giá vé có phụ thuộc currency và tax/fee không? | Nói có, và giá cuối phải lấy từ backend. |
 | RAG-042 | Hệ thống hiện đã chốt rule passport/visa chưa? | Nói chưa chốt chi tiết; visa/entry requirement cần nguồn chính thức. |
 | RAG-043 | Tôi đổi ghế trong Manage Booking được không? | Nêu được nếu booking còn hợp lệ; ghế mới phải đúng chuyến, đúng hạng vé, còn trống, và cần kiểm tra booking cụ thể. |

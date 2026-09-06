@@ -4,6 +4,7 @@ import com.example.moduleai.tool.core.AgentToolContext;
 import com.example.moduleai.tool.core.ToolPolicy;
 import com.example.moduleai.tool.core.ToolResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,7 +26,14 @@ public record ToolDescriptor(
   public ToolResult<?> invoke(
       ObjectMapper objectMapper, String canonicalArguments, AgentToolContext context) {
     try {
-      Object input = objectMapper.readValue(canonicalArguments, inputType);
+      JsonNode arguments = objectMapper.readTree(canonicalArguments);
+      if (arguments.isObject() && arguments.size() == 1 && arguments.has("input")) {
+        arguments = arguments.get("input");
+      }
+      Object input = objectMapper.treeToValue(arguments, inputType);
+      if (!method.trySetAccessible()) {
+        throw new IllegalStateException("Tool method is not accessible: " + name);
+      }
       Object result = method.invoke(bean, input, new ToolContext(context.toToolContextMap()));
       return (ToolResult<?>) result;
     } catch (InvocationTargetException exception) {

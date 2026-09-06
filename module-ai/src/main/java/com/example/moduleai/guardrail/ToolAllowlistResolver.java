@@ -79,6 +79,9 @@ public class ToolAllowlistResolver {
   }
 
   private boolean isAllowed(ToolDescriptor descriptor, AgentToolContext context) {
+    if (descriptor == null) {
+      return false;
+    }
     if (!descriptor.exposedToLlm()) {
       return false;
     }

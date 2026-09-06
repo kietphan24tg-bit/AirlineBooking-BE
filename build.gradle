@@ -23,7 +23,7 @@ spotless {
 
     format 'misc', {
         target '.gitattributes', '.gitignore', '**/*.md'
-        targetExclude '**/build/**', '**/.gradle/**'
+        targetExclude '**/build/**', '**/.gradle/**', '**/docs/reports/**'
         trimTrailingWhitespace()
         endWithNewline()
     }

@@ -34,11 +34,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ToolContext;
-import org.springframework.ai.model.google.genai.autoconfigure.chat.GoogleGenAiChatProperties;
-import org.springframework.ai.model.google.genai.autoconfigure.chat.GoogleGenAiConnectionProperties;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -47,6 +45,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -56,11 +55,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest(
     classes = AgentToolLiveValidationTest.LiveValidationConfig.class,
     properties = {
-      "spring.ai.google.genai.api-key=${GEMINI_KEY}",
-      "spring.ai.google.genai.chat.options.model=gemini-1.5-flash",
+      "spring.ai.model.embedding=none",
+      "spring.ai.openai.api-key=${GROQ_API_KEY:unused-live-test-key}",
+      "spring.ai.openai.base-url=${GROQ_BASE_URL:https://api.groq.com/openai/v1}",
+      "spring.ai.openai.chat.options.model=${GROQ_MODEL:qwen/qwen3.8-27b}",
+      "spring.ai.openai.chat.options.temperature=0",
+      "spring.ai.google.genai.chat.options.model=${GEMINI_MODEL:gemini-3.1-flash-lite}",
       "spring.ai.google.genai.chat.options.temperature=0",
       "logging.level.org.springframework.ai=DEBUG",
-      "logging.level.com.google.genai=DEBUG",
       "app.ai.agent.guardrail.max-model-rounds-per-turn=2",
       "spring.autoconfigure.exclude="
           + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
@@ -74,8 +76,67 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
           + "org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration"
     })
 @Tag("agent-live")
-@EnabledIfEnvironmentVariable(named = "GEMINI_KEY", matches = ".+")
+@EnabledIf("isLiveAiConfigured")
 class AgentToolLiveValidationTest {
+
+  static String resolveGeminiKey() {
+    String key = System.getenv("GEMINI_KEY");
+    if (isSet(key)) {
+      return key;
+    }
+    key = System.getenv("GEMINI_API_KEY");
+    if (isSet(key)) {
+      return key;
+    }
+    key = System.getenv("GOOGLE_GENAI_API_KEY");
+    if (isSet(key)) {
+      return key;
+    }
+    key = System.getenv("SPRING_AI_GOOGLE_GENAI_API_KEY");
+    if (isSet(key)) {
+      return key;
+    }
+    return null;
+  }
+
+  static boolean isLiveAiConfigured() {
+    String requestedProvider = System.getenv("SPRING_AI_MODEL_CHAT");
+    boolean hasGemini = isSet(resolveGeminiKey());
+    boolean hasGroq = isSet(System.getenv("GROQ_API_KEY"));
+
+    if ("google-genai".equalsIgnoreCase(requestedProvider)) {
+      return hasGemini;
+    }
+    if ("openai".equalsIgnoreCase(requestedProvider)) {
+      return hasGroq;
+    }
+    return hasGemini || hasGroq;
+  }
+
+  private static boolean isSet(String val) {
+    return val != null && !val.isBlank();
+  }
+
+  @DynamicPropertySource
+  static void configureLiveProvider(DynamicPropertyRegistry registry) {
+    String geminiKey = resolveGeminiKey();
+    String groqKey = System.getenv("GROQ_API_KEY");
+    String requestedProvider = System.getenv("SPRING_AI_MODEL_CHAT");
+
+    if ("google-genai".equalsIgnoreCase(requestedProvider)
+        || (requestedProvider == null && isSet(geminiKey))) {
+      registry.add("spring.ai.model.chat", () -> "google-genai");
+      if (isSet(geminiKey)) {
+        registry.add("spring.ai.google.genai.api-key", () -> geminiKey);
+      }
+    } else if ("openai".equalsIgnoreCase(requestedProvider)
+        || (requestedProvider == null && isSet(groqKey))) {
+      registry.add("spring.ai.model.chat", () -> "openai");
+      if (isSet(groqKey)) {
+        registry.add("spring.ai.openai.api-key", () -> groqKey);
+      }
+    }
+  }
 
   private final Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
   private final AgentToolContext authenticatedContext =
@@ -164,9 +225,7 @@ class AgentToolLiveValidationTest {
 
   @SpringBootConfiguration
   @EnableAutoConfiguration
-  @EnableConfigurationProperties({
-    AiAgentGuardrailProperties.class
-  })
+  @EnableConfigurationProperties({AiAgentGuardrailProperties.class})
   @Import(LiveValidationTools.class)
   static class LiveValidationConfig {
 
@@ -209,7 +268,8 @@ class AgentToolLiveValidationTest {
         AgentPayloadSanitizer payloadSanitizer,
         AgentTrustedContextResolver trustedContextResolver,
         AiAgentGuardrailProperties guardrailProperties,
-        ChatModel chatModel) {
+        ChatModel chatModel,
+        Environment environment) {
       return new AgentToolOrchestrator(
           inputGuard,
           contextFactory,
@@ -222,7 +282,8 @@ class AgentToolLiveValidationTest {
           payloadSanitizer,
           trustedContextResolver,
           guardrailProperties,
-          chatModel);
+          chatModel,
+          environment);
     }
   }
 

@@ -92,6 +92,10 @@ Payment đã được hoàn một phần. Trạng thái này có thể xuất hi
 
 ## Fare seat-selection mode
 
+### `PAID`
+
+Fare cho phép hành khách chọn ghế trước, nhưng ghế được chọn có thể phát sinh phụ thu. `PAID` không có nghĩa là mọi ghế đều chọn được; ghế vẫn phải còn trống và phù hợp với hạng vé, nhóm ghế và hành khách.
+
 ### `CHECKIN_ONLY`
 
 Fare chỉ cho hành khách chọn ghế trong luồng check-in, không được chọn ghế trước luồng này.

@@ -32,9 +32,12 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +51,18 @@ public class AgentToolOrchestrator {
           + "seat, payment, or account state. Ask for missing business input. Never claim that a "
           + "write or financial action completed unless the backend tool result says so.";
 
+  private static final Set<String> FORBIDDEN_TRUSTED_KEYS =
+      Set.of(
+          "userid",
+          "roles",
+          "role",
+          "proposalid",
+          "confirmed",
+          "confirmationstate",
+          "confirmationtoken",
+          "verifiedbookingid",
+          "idempotencykey");
+
   private final AgentInputGuard inputGuard;
   private final AgentRequestContextFactory contextFactory;
   private final ToolAllowlistResolver allowlistResolver;
@@ -60,6 +75,7 @@ public class AgentToolOrchestrator {
   private final AgentTrustedContextResolver trustedContextResolver;
   private final AiAgentGuardrailProperties guardrailProperties;
   private final ChatModel chatModel;
+  private final Environment environment;
 
   public AgentToolOrchestrator(
       AgentInputGuard inputGuard,
@@ -73,7 +89,8 @@ public class AgentToolOrchestrator {
       AgentPayloadSanitizer payloadSanitizer,
       AgentTrustedContextResolver trustedContextResolver,
       AiAgentGuardrailProperties guardrailProperties,
-      ChatModel chatModel) {
+      ChatModel chatModel,
+      Environment environment) {
     this.inputGuard = inputGuard;
     this.contextFactory = contextFactory;
     this.allowlistResolver = allowlistResolver;
@@ -86,6 +103,7 @@ public class AgentToolOrchestrator {
     this.trustedContextResolver = trustedContextResolver;
     this.guardrailProperties = guardrailProperties;
     this.chatModel = chatModel;
+    this.environment = environment;
   }
 
   public RagChatResponse handle(
@@ -136,12 +154,7 @@ public class AgentToolOrchestrator {
         allowlist.stream().map(ToolDescriptor::callback).collect(Collectors.toList());
 
     for (int i = 0; i < guardrailProperties.getMaxModelRoundsPerTurn(); i++) {
-      Prompt prompt =
-          new Prompt(
-              history,
-              GoogleGenAiChatOptions.builder()
-                  .toolCallbacks(toolCallbacks.toArray(new ToolCallback[0]))
-                  .build());
+      Prompt prompt = new Prompt(history, toolOptions(toolCallbacks));
 
       ChatResponse response = chatModel.call(prompt);
       AssistantMessage assistantMessage = response.getResult().getOutput();
@@ -154,6 +167,11 @@ public class AgentToolOrchestrator {
           return chatResponseMapper.fallback(
               "Mot yeu cau chi duoc phep thuc thi toi da mot tool trong mot luot.",
               "TOOL_CALL_BUDGET_EXCEEDED");
+        }
+
+        if (toolCalls.stream().anyMatch(call -> findDescriptor(allowlist, call.name()) == null)) {
+          observability.recordAgentGuardrailBlock("TOOL_NOT_ALLOWED");
+          return chatResponseMapper.fallback("Tool not allowed.", "TOOL_NOT_ALLOWED");
         }
 
         // Check for mixed/multiple mutation tools
@@ -176,8 +194,15 @@ public class AgentToolOrchestrator {
           }
 
           try {
-            com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(call.arguments());
-            com.fasterxml.jackson.databind.JsonNode inputNode = rootNode.has("input") ? rootNode.get("input") : rootNode;
+            com.fasterxml.jackson.databind.JsonNode rootNode =
+                objectMapper.readTree(call.arguments());
+            if (hasUntrustedContextKeys(rootNode)) {
+              observability.recordAgentGuardrailBlock("UNTRUSTED_TOOL_ARGUMENT");
+              return chatResponseMapper.fallback(
+                  "Yeu cau co chua tham so khong duoc phep.", "UNTRUSTED_TOOL_ARGUMENT");
+            }
+            com.fasterxml.jackson.databind.JsonNode inputNode =
+                rootNode.has("input") ? rootNode.get("input") : rootNode;
             Object input = objectMapper.treeToValue(inputNode, descriptor.inputType());
             AgentToolContext proposalContext =
                 trustedContextResolver.resolve(descriptor, input, context);
@@ -194,8 +219,6 @@ public class AgentToolOrchestrator {
             observability.recordAgentGuardrailBlock(exception.getCode());
             return chatResponseMapper.fallback(safeUserMessage(exception), exception.getCode());
           } catch (Exception exception) {
-            System.err.println("FAILED TO PARSE MUTATION ARGUMENTS: " + call.arguments());
-            exception.printStackTrace();
             observability.recordAgentGuardrailBlock("MUTATION_PROCESSING_FAILED");
             return chatResponseMapper.fallback(
                 "Khong the tao proposal an toan cho yeu cau nay. Vui long thu lai.",
@@ -208,13 +231,26 @@ public class AgentToolOrchestrator {
             if (descriptor == null) {
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
-                      call.id(), call.name(), "{\"error\": \"Tool is not allowed for this request.\"}"));
+                      call.id(),
+                      call.name(),
+                      "{\"error\": \"Tool is not allowed for this request.\"}"));
               continue;
             }
 
             try {
-              com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(call.arguments());
-              com.fasterxml.jackson.databind.JsonNode inputNode = rootNode.has("input") ? rootNode.get("input") : rootNode;
+              com.fasterxml.jackson.databind.JsonNode rootNode =
+                  objectMapper.readTree(call.arguments());
+              if (hasUntrustedContextKeys(rootNode)) {
+                observability.recordAgentGuardrailBlock("UNTRUSTED_TOOL_ARGUMENT");
+                toolResponses.add(
+                    new ToolResponseMessage.ToolResponse(
+                        call.id(),
+                        call.name(),
+                        "{\"error\": \"Untrusted tool argument detected.\"}"));
+                continue;
+              }
+              com.fasterxml.jackson.databind.JsonNode inputNode =
+                  rootNode.has("input") ? rootNode.get("input") : rootNode;
               Object input = objectMapper.treeToValue(inputNode, descriptor.inputType());
               AgentToolContext executionContext =
                   trustedContextResolver.resolve(descriptor, input, context);
@@ -230,13 +266,16 @@ public class AgentToolOrchestrator {
             } catch (AppException exception) {
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
-                      call.id(), call.name(), "{\"error\": \"" + safeUserMessage(exception) + "\"}"));
+                      call.id(),
+                      call.name(),
+                      "{\"error\": \"" + safeUserMessage(exception) + "\"}"));
             } catch (Exception e) {
-              System.err.println("FAILED TO PARSE ARGUMENTS: " + call.arguments());
-              e.printStackTrace();
+              observability.recordAgentGuardrailBlock("TOOL_PROCESSING_FAILED");
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
-                      call.id(), call.name(), "{\"error\": \"Tool execution is temporarily unavailable.\"}"));
+                      call.id(),
+                      call.name(),
+                      "{\"error\": \"Tool execution is temporarily unavailable.\"}"));
             }
           }
           history.add(ToolResponseMessage.builder().responses(toolResponses).build());
@@ -247,6 +286,26 @@ public class AgentToolOrchestrator {
     }
 
     return chatResponseMapper.fallback("Model budget exceeded.", "MODEL_BUDGET_EXCEEDED");
+  }
+
+  private ChatOptions toolOptions(List<ToolCallback> toolCallbacks) {
+    ToolCallback[] callbacks = toolCallbacks.toArray(new ToolCallback[0]);
+    String provider = environment.getProperty("spring.ai.model.chat");
+    if ("openai".equals(provider)) {
+      return OpenAiChatOptions.builder()
+          .model(environment.getProperty("spring.ai.openai.chat.options.model", "qwen/qwen3.8-27b"))
+          .toolCallbacks(callbacks)
+          .build();
+    }
+    if (provider == null || "google-genai".equals(provider)) {
+      return GoogleGenAiChatOptions.builder()
+          .model(
+              environment.getProperty(
+                  "spring.ai.google.genai.chat.options.model", "gemini-3.1-flash-lite"))
+          .toolCallbacks(callbacks)
+          .build();
+    }
+    throw new IllegalStateException("Unsupported Agent chat provider: " + provider);
   }
 
   private ToolDescriptor findDescriptor(Set<ToolDescriptor> allowlist, String name) {
@@ -302,5 +361,28 @@ public class AgentToolOrchestrator {
       return exception.getMessage();
     }
     return "Agent tool tam thoi khong kha dung. Vui long thu lai sau.";
+  }
+
+  private boolean hasUntrustedContextKeys(com.fasterxml.jackson.databind.JsonNode rootNode) {
+    if (rootNode == null || rootNode.isNull()) {
+      return false;
+    }
+    if (rootNode.isObject()) {
+      var fields = rootNode.fields();
+      while (fields.hasNext()) {
+        var field = fields.next();
+        String key = field.getKey().toLowerCase(java.util.Locale.ROOT);
+        if (FORBIDDEN_TRUSTED_KEYS.contains(key) || hasUntrustedContextKeys(field.getValue())) {
+          return true;
+        }
+      }
+    } else if (rootNode.isArray()) {
+      for (com.fasterxml.jackson.databind.JsonNode child : rootNode) {
+        if (hasUntrustedContextKeys(child)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }

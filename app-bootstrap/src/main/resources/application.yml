@@ -3,7 +3,17 @@ spring:
         name: airline-booking
     profiles:
         active: ${SPRING_PROFILES_ACTIVE:local}
+    autoconfigure:
+        exclude:
+            - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+            - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+            - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+            - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+            - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
     ai:
+        model:
+            chat: ${APP_AI_CHAT_PROVIDER:google-genai}
+            embedding: google-genai
         retry:
             # The application guard owns failure handling; avoid nested Spring AI retries.
             max-attempts: ${APP_AI_PROVIDER_SDK_MAX_ATTEMPTS:1}
@@ -22,6 +32,16 @@ spring:
                         task-type: RETRIEVAL_DOCUMENT
                         dimensions: ${APP_AI_RAG_EMBEDDING_DIMENSIONS:768}
                         auto-truncate: true
+        openai:
+            api-key: ${GROQ_API_KEY:}
+            base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+            timeout: ${APP_AI_PROVIDER_TIMEOUT:45s}
+            max-retries: ${APP_AI_PROVIDER_SDK_MAX_ATTEMPTS:1}
+            chat:
+                options:
+                    model: ${GROQ_MODEL:qwen/qwen3.8-27b}
+                    temperature: 0.2
+                    max-tokens: 800
         vectorstore:
             pgvector:
                 initialize-schema: ${APP_AI_RAG_VECTORSTORE_INITIALIZE_SCHEMA:true}
@@ -122,6 +142,7 @@ app:
                 max-output-json-bytes: ${APP_AI_AGENT_GUARDRAIL_MAX_OUTPUT_JSON_BYTES:16384}
         provider:
             timeout: ${APP_AI_PROVIDER_TIMEOUT:25s}
+            google-http-timeout-enabled: ${APP_AI_PROVIDER_GOOGLE_HTTP_TIMEOUT_ENABLED:true}
             max-concurrent-calls: ${APP_AI_PROVIDER_MAX_CONCURRENT_CALLS:4}
             queue-capacity: ${APP_AI_PROVIDER_QUEUE_CAPACITY:4}
             rate-limit-permits: ${APP_AI_PROVIDER_RATE_LIMIT_PERMITS:120}

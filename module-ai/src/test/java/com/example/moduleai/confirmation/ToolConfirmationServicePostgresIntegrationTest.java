@@ -37,7 +37,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -55,33 +57,74 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(classes = ToolConfirmationServicePostgresIntegrationTest.JpaConfig.class)
-@Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Tag("postgres-integration")
+@EnabledIf("isPostgresTestAvailable")
 class ToolConfirmationServicePostgresIntegrationTest {
 
   private static final String HMAC_SECRET = "postgres-agent-confirmation-secret-32+";
   private static final long USER_ID = 91L;
 
-  @Container
   static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName("agent_tool_test")
           .withUsername("postgres")
           .withPassword("postgres");
 
+  static boolean isPostgresTestAvailable() {
+    boolean optInExternal =
+        "true".equalsIgnoreCase(System.getenv("AGENT_TEST_USE_EXTERNAL_DATABASE"))
+            && System.getenv("SPRING_DATASOURCE_URL") != null
+            && System.getenv("SPRING_DATASOURCE_URL").startsWith("jdbc:postgresql:");
+    if (optInExternal) {
+      return true;
+    }
+    try {
+      return org.testcontainers.DockerClientFactory.instance().isDockerAvailable();
+    } catch (Throwable t) {
+      return false;
+    }
+  }
+
   @DynamicPropertySource
   static void configureDataSource(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-    registry.add("spring.datasource.username", POSTGRES::getUsername);
-    registry.add("spring.datasource.password", POSTGRES::getPassword);
-    registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
-    registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    registry.add("spring.flyway.enabled", () -> "false");
+    boolean optInExternal =
+        "true".equalsIgnoreCase(System.getenv("AGENT_TEST_USE_EXTERNAL_DATABASE"))
+            && System.getenv("SPRING_DATASOURCE_URL") != null
+            && System.getenv("SPRING_DATASOURCE_URL").startsWith("jdbc:postgresql:");
+
+    if (optInExternal) {
+      String externalUrl = System.getenv("SPRING_DATASOURCE_URL");
+      registry.add("spring.datasource.url", () -> disablePreparedStatements(externalUrl));
+      registry.add(
+          "spring.datasource.username",
+          () -> valueOrDefault(System.getenv("SPRING_DATASOURCE_USERNAME"), "postgres"));
+      registry.add(
+          "spring.datasource.password",
+          () -> valueOrDefault(System.getenv("SPRING_DATASOURCE_PASSWORD"), "postgres"));
+      registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+      registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+      registry.add("spring.flyway.enabled", () -> "false");
+    } else {
+      POSTGRES.start();
+      registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+      registry.add("spring.datasource.username", POSTGRES::getUsername);
+      registry.add("spring.datasource.password", POSTGRES::getPassword);
+      registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
+      registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+      registry.add("spring.flyway.enabled", () -> "true");
+    }
     registry.add("spring.sql.init.mode", () -> "never");
+  }
+
+  private static String valueOrDefault(String value, String fallback) {
+    return value == null || value.isBlank() ? fallback : value;
+  }
+
+  private static String disablePreparedStatements(String jdbcUrl) {
+    return jdbcUrl + (jdbcUrl.contains("?") ? "&" : "?") + "prepareThreshold=0";
   }
 
   @Autowired private ToolConfirmationService service;
@@ -95,11 +138,15 @@ class ToolConfirmationServicePostgresIntegrationTest {
   @MockitoBean private ToolExecutionReconcilerRegistry reconcilerRegistry;
   @MockitoBean private AiObservability observability;
 
+  private final List<UUID> createdProposalIds = new java.util.concurrent.CopyOnWriteArrayList<>();
   private ExecutorService executorService;
 
   @AfterEach
   void tearDown() {
-    proposalRepository.deleteAll();
+    if (!createdProposalIds.isEmpty()) {
+      proposalRepository.deleteAllById(createdProposalIds);
+      createdProposalIds.clear();
+    }
     if (executorService != null) {
       executorService.shutdownNow();
     }
@@ -174,6 +221,45 @@ class ToolConfirmationServicePostgresIntegrationTest {
   }
 
   @Test
+  void replayConfirmFailsWithAlreadyClaimedAndNoSecondMutation() {
+    UUID proposalId = UUID.randomUUID();
+    ToolProposalEntity proposal =
+        savePendingProposal(proposalId, OffsetDateTime.now().plusMinutes(5));
+    AtomicInteger invocations = new AtomicInteger();
+
+    ToolDescriptor descriptor = mock(ToolDescriptor.class);
+    when(descriptor.inputType()).thenReturn((Class) Map.class);
+    when(descriptor.policy())
+        .thenReturn(
+            new ToolPolicy(
+                "confirm_seat_change",
+                ToolOperation.FINANCIAL,
+                ToolAccess.AUTHENTICATED,
+                true,
+                true));
+    when(descriptor.invoke(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              invocations.incrementAndGet();
+              return ToolResult.success("confirm_seat_change", Map.of("ok", true));
+            });
+    when(toolCatalog.descriptor("confirm_seat_change")).thenReturn(descriptor);
+
+    ToolProposalView firstView = service.confirm(proposalId, USER_ID);
+    assertThat(firstView.status()).isEqualTo("EXECUTED");
+    assertThat(invocations.get()).isEqualTo(1);
+
+    // Replay confirm attempt must fail with PROPOSAL_ALREADY_CLAIMED and NOT call invoke again
+    assertThatThrownBy(() -> service.confirm(proposalId, USER_ID))
+        .isInstanceOf(AppException.class)
+        .satisfies(
+            error ->
+                assertThat(((AppException) error).getCode()).isEqualTo("PROPOSAL_ALREADY_CLAIMED"));
+
+    assertThat(invocations.get()).as("Replay must not trigger a second mutation").isEqualTo(1);
+  }
+
+  @Test
   void wrongUserCannotConfirmAnotherUsersProposal() {
     UUID proposalId = UUID.randomUUID();
     savePendingProposal(proposalId, OffsetDateTime.now().plusMinutes(5));
@@ -226,6 +312,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
   }
 
   private ToolProposalEntity savePendingProposal(UUID proposalId, OffsetDateTime expiresAt) {
+    createdProposalIds.add(proposalId);
     OffsetDateTime now = OffsetDateTime.now();
     ToolProposalEntity proposal = new ToolProposalEntity();
     proposal.setId(proposalId);

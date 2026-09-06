@@ -66,6 +66,8 @@ Người đi cùng nên chuẩn bị giấy tờ hợp lệ cho trẻ em và em 
 
 Các giấy tờ có thể cần kiểm tra thêm gồm giấy khai sinh, giấy tờ tùy thân, hộ chiếu, giấy ủy quyền hoặc giấy tờ chứng minh quan hệ/người giám hộ.
 
+Yêu cầu cụ thể cho trẻ em đi một mình hiện là `Business confirmation required`. Danh sách trên chỉ là các nhóm giấy tờ cần kiểm tra, không phải checklist chính thức đã được xác nhận cho trẻ em đi một mình. Chatbot phải nói hệ thống chưa có quy định chính thức và hướng khách kiểm tra nguồn chính thức hoặc nhân viên hỗ trợ, thay vì tự xác nhận một danh sách giấy tờ.
+
 ## Hộ chiếu, visa và nhập cảnh
 
 Yêu cầu về hộ chiếu, visa, giấy phép nhập cảnh và quá cảnh không phải là dữ liệu cố định trong tài liệu này.

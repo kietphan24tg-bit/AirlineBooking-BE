@@ -1,6 +1,7 @@
 package com.example.moduleai.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -81,6 +82,107 @@ class ToolAllowlistResolverTest {
         new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
     assertThat(resolver.resolve(decision("manage_options"), authenticated))
         .containsExactly(descriptor);
+  }
+
+  @Test
+  void rolloutModeOff_deniesMutations() {
+    ToolCatalog catalog = mock(ToolCatalog.class);
+    ToolConfirmationRegistry confirmationRegistry = mock(ToolConfirmationRegistry.class);
+    ToolDescriptor mutation = descriptor("confirm_seat_change", ToolOperation.FINANCIAL);
+    when(catalog.descriptor("confirm_seat_change")).thenReturn(mutation);
+    when(confirmationRegistry.hasCompleteHandler("confirm_seat_change")).thenReturn(true);
+
+    AiAgentProperties agentProperties = new AiAgentProperties();
+    agentProperties.setActionsEnabled(true);
+    AgentRolloutProperties rollout = new AgentRolloutProperties();
+    rollout.setMode(AgentRolloutMode.OFF);
+
+    ToolAllowlistResolver resolver =
+        new ToolAllowlistResolver(catalog, agentProperties, rollout, confirmationRegistry);
+    AgentToolContext context =
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
+
+    assertThat(resolver.resolve(decision("seat_change_confirm"), context)).isEmpty();
+  }
+
+  @Test
+  void canaryUserFilter_allowsOnlyCanaryUsers() {
+    ToolCatalog catalog = mock(ToolCatalog.class);
+    ToolConfirmationRegistry confirmationRegistry = mock(ToolConfirmationRegistry.class);
+    ToolDescriptor mutation = descriptor("confirm_seat_change", ToolOperation.FINANCIAL);
+    when(catalog.descriptor("confirm_seat_change")).thenReturn(mutation);
+    when(confirmationRegistry.hasCompleteHandler("confirm_seat_change")).thenReturn(true);
+
+    AiAgentProperties agentProperties = new AiAgentProperties();
+    agentProperties.setActionsEnabled(true);
+    AgentRolloutProperties rollout = new AgentRolloutProperties();
+    rollout.setMode(AgentRolloutMode.LIVE);
+    rollout.setEnabledTools(Set.of("confirm_seat_change"));
+    rollout.setCanaryUserIds(Set.of(100L));
+
+    ToolAllowlistResolver resolver =
+        new ToolAllowlistResolver(catalog, agentProperties, rollout, confirmationRegistry);
+
+    // Non-canary user 9L -> empty
+    AgentToolContext user9 =
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
+    assertThat(resolver.resolve(decision("seat_change_confirm"), user9)).isEmpty();
+
+    // Canary user 100L -> allowed
+    AgentToolContext user100 =
+        new AgentToolContext(null, null, 100L, Set.of(), false, null, null, null, Map.of());
+    assertThat(resolver.resolve(decision("seat_change_confirm"), user100))
+        .containsExactly(mutation);
+  }
+
+  @Test
+  void perToolEnablement_filtersUnlistedMutations() {
+    ToolCatalog catalog = mock(ToolCatalog.class);
+    ToolConfirmationRegistry confirmationRegistry = mock(ToolConfirmationRegistry.class);
+    ToolDescriptor seatChange = descriptor("confirm_seat_change", ToolOperation.FINANCIAL);
+    ToolDescriptor cancellation = descriptor("confirm_cancellation", ToolOperation.FINANCIAL);
+    ToolDescriptor cancellationPreview = descriptor("preview_cancellation", ToolOperation.PREVIEW);
+    when(catalog.descriptor("confirm_seat_change")).thenReturn(seatChange);
+    when(catalog.descriptor("confirm_cancellation")).thenReturn(cancellation);
+    when(catalog.descriptor("preview_cancellation")).thenReturn(cancellationPreview);
+    when(confirmationRegistry.hasCompleteHandler(any())).thenReturn(true);
+
+    AiAgentProperties agentProperties = new AiAgentProperties();
+    agentProperties.setActionsEnabled(true);
+    AgentRolloutProperties rollout = new AgentRolloutProperties();
+    rollout.setMode(AgentRolloutMode.LIVE);
+    rollout.setEnabledTools(Set.of("confirm_seat_change"));
+
+    ToolAllowlistResolver resolver =
+        new ToolAllowlistResolver(catalog, agentProperties, rollout, confirmationRegistry);
+    AgentToolContext context =
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
+
+    assertThat(resolver.resolve(decision("seat_change_confirm"), context))
+        .containsExactly(seatChange);
+    assertThat(resolver.resolve(decision("cancellation_preview"), context))
+        .doesNotContain(cancellation);
+  }
+
+  @Test
+  void incompleteHandler_deniesMutation() {
+    ToolCatalog catalog = mock(ToolCatalog.class);
+    ToolConfirmationRegistry confirmationRegistry = mock(ToolConfirmationRegistry.class);
+    ToolDescriptor mutation = descriptor("confirm_seat_change", ToolOperation.FINANCIAL);
+    when(catalog.descriptor("confirm_seat_change")).thenReturn(mutation);
+    when(confirmationRegistry.hasCompleteHandler("confirm_seat_change")).thenReturn(false);
+
+    AiAgentProperties agentProperties = new AiAgentProperties();
+    agentProperties.setActionsEnabled(true);
+    AgentRolloutProperties rollout = new AgentRolloutProperties();
+    rollout.setMode(AgentRolloutMode.LIVE);
+
+    ToolAllowlistResolver resolver =
+        new ToolAllowlistResolver(catalog, agentProperties, rollout, confirmationRegistry);
+    AgentToolContext context =
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
+
+    assertThat(resolver.resolve(decision("seat_change_confirm"), context)).isEmpty();
   }
 
   private RoutingDecision decision(String intent) {

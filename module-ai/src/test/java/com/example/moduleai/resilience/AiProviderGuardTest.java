@@ -34,7 +34,7 @@ class AiProviderGuardTest {
   void usesConservativeCircuitDefaults() {
     AiProviderProperties properties = new AiProviderProperties();
 
-    assertThat(properties.getTimeout()).isEqualTo(Duration.ofSeconds(25));
+    assertThat(properties.getTimeout()).isEqualTo(Duration.ofSeconds(45));
     assertThat(properties.getRateLimitPermits()).isEqualTo(120);
     assertThat(properties.getCircuitSlidingWindowSize()).isEqualTo(10);
     assertThat(properties.getCircuitMinimumCalls()).isEqualTo(10);
