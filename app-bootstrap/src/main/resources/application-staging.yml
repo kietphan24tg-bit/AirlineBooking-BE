@@ -42,6 +42,9 @@ logging:
     org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
 
 app:
+  rate-limit:
+    # Staging is single-replica and may continue with process-local limits during Redis outages.
+    redis-fallback-enabled: ${APP_RATE_LIMIT_REDIS_FALLBACK_ENABLED:true}
   flyway:
     # Reconcile checksums when scripts were changed after apply (avoids deploy failure on Render).
     repair-before-migrate: ${APP_FLYWAY_REPAIR_BEFORE_MIGRATE:true}
