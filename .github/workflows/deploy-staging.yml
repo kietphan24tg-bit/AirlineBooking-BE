@@ -136,7 +136,7 @@ jobs:
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           DEPLOYMENT_UUID: ${{ steps.coolify-deploy.outputs.deployment_uuid }}
           RESOURCE_UUID: ${{ steps.coolify-deploy.outputs.resource_uuid }}
-          STAGING_READINESS_URL: http://r5fyz2laprvyctuy8ppjfdvg.4.190.168.109.sslip.io/actuator/health/readiness
+          STAGING_READINESS_URL: http://20.196.153.39:8080/actuator/health/readiness
         run: |
           set -euo pipefail
           coolify_base=${COOLIFY_DEPLOY_WEBHOOK%%/api/v1/*}
