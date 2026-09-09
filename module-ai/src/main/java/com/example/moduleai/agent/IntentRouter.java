@@ -11,6 +11,10 @@ public class IntentRouter {
 
   private static final Pattern PAYMENT_ID_PATTERN = Pattern.compile("\\bpayment\\s+[a-z0-9-]+\\b");
   private static final Pattern FLIGHT_CODE_PATTERN = Pattern.compile("\\b[A-Z]{2}\\d{2,4}\\b");
+  private static final Pattern NORMALIZED_AIRPORT_ROUTE_PATTERN =
+      Pattern.compile("\\b(?:from|tu)\\s+[a-z]{3}\\s+(?:to|den)\\s+[a-z]{3}\\b");
+  private static final Pattern AIRPORT_PAIR_PATTERN =
+      Pattern.compile("\\b[A-Z]{3}\\s*[-/]\\s*[A-Z]{3}\\b");
 
   public RoutingDecision route(String message) {
     String normalized = normalize(message);
@@ -48,6 +52,17 @@ public class IntentRouter {
     }
     if (containsAll(normalized, "ghe", "con trong") && hasFlightCode(rawMessage)) {
       return flightScoped(rawMessage, "seat_map_lookup", "GET /api/flights/{flightId}/seats");
+    }
+    if (isFlightSearchRequest(normalized, rawMessage)) {
+      String intent =
+          containsAny(normalized, "re nhat", "cheapest", "lowest fare")
+              ? "flight_calendar_search"
+              : "flight_search";
+      String api =
+          "flight_calendar_search".equals(intent)
+              ? "GET /api/flights/search-calendar"
+              : "GET /api/flights/search";
+      return RoutingDecision.api(intent, api, List.of(), false, false);
     }
     if (containsAny(normalized, "ngay mai con ghe", "hom nay co chuyen bay nao re nhat")) {
       String intent = normalized.contains("re nhat") ? "flight_calendar_search" : "flight_search";
@@ -254,6 +269,24 @@ public class IntentRouter {
 
   private boolean hasFlightCode(String rawMessage) {
     return FLIGHT_CODE_PATTERN.matcher(rawMessage.toUpperCase(Locale.ROOT)).find();
+  }
+
+  private boolean isFlightSearchRequest(String normalized, String rawMessage) {
+    boolean asksToSearch =
+        containsAny(
+            normalized,
+            "tim chuyen bay",
+            "search flight",
+            "find flight",
+            "available flight",
+            "co chuyen bay nao",
+            "invent available flight");
+    if (!asksToSearch) {
+      return false;
+    }
+
+    return NORMALIZED_AIRPORT_ROUTE_PATTERN.matcher(normalized).find()
+        || AIRPORT_PAIR_PATTERN.matcher(rawMessage.toUpperCase(Locale.ROOT)).find();
   }
 
   private boolean containsAny(String normalized, String... candidates) {
