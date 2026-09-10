@@ -108,9 +108,7 @@ class AgentToolOrchestratorTest {
 
     var response =
         orchestrator.handle(
-            new ChatRequest("Check my booking"),
-            dynamicDecision("booking_lookup"),
-            authentication);
+            new ChatRequest("Check my booking"), dynamicDecision("booking_lookup"), authentication);
 
     assertThat(response.answerType()).isEqualTo(AnswerType.FALLBACK);
     assertThat(response.fallbackReason()).isEqualTo("AI_PROVIDER_UNAVAILABLE");
