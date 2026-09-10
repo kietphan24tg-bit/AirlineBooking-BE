@@ -25,6 +25,7 @@ import com.example.moduleai.tool.core.ToolAccess;
 import com.example.moduleai.tool.core.ToolOperation;
 import com.example.moduleai.tool.core.ToolResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -223,6 +224,37 @@ class AgentToolLiveValidationTest {
     verify(confirmationService).createProposal(any(), any(), any());
   }
 
+  @Test
+  void profileUpdateWithOptionalFieldsCreatesProposal() {
+    when(allowlistResolver.resolve(any(), any()))
+        .thenReturn(Set.of(toolCatalog.descriptor("live_update_demo_profile")));
+    ToolProposalView proposal =
+        new ToolProposalView(
+            UUID.randomUUID(),
+            "live_update_demo_profile",
+            ToolOperation.WRITE,
+            "PENDING",
+            "Confirm profile update",
+            Map.of("firstName", "AgentE2EConfirm"),
+            OffsetDateTime.now().plusMinutes(5),
+            "/api/chatbot/proposals/demo/confirm",
+            "/api/chatbot/proposals/demo/reject");
+    when(confirmationService.createProposal(any(), any(), any())).thenReturn(proposal);
+
+    var response =
+        orchestrator.handle(
+            new ChatRequest("Update my account profile and change my first name to AgentE2EConfirm."),
+            RoutingDecision.api("account_profile_update", "live", List.of(), true, false),
+            authentication);
+
+    assertThat(response.answerType())
+        .as("fallback=%s, answer=%s", response.fallbackReason(), response.answer())
+        .isEqualTo(AnswerType.CONFIRMATION_REQUIRED);
+    assertThat(response.proposal()).isEqualTo(proposal);
+    assertThat(LiveValidationTools.WRITE_INVOCATIONS.get()).isZero();
+    verify(confirmationService).createProposal(any(), any(), any());
+  }
+
   @SpringBootConfiguration
   @EnableAutoConfiguration
   @EnableConfigurationProperties({AiAgentGuardrailProperties.class})
@@ -236,7 +268,7 @@ class AgentToolLiveValidationTest {
 
     @Bean
     ObjectMapper objectMapper() {
-      return new ObjectMapper();
+      return new ObjectMapper().findAndRegisterModules();
     }
 
     @Bean
@@ -337,9 +369,30 @@ class AgentToolLiveValidationTest {
               "fromSeat", input.fromSeat(),
               "toSeat", input.toSeat()));
     }
+
+    @Tool(
+        description =
+            "Create a confirmation-required update to the authenticated user's profile. "
+                + "Call this when the user asks to update their account profile. "
+                + "For a first-name change, set firstName to the requested value and leave all "
+                + "other fields unspecified.")
+    @AgentToolPolicy(
+        tool = "live_update_demo_profile",
+        operation = ToolOperation.WRITE,
+        access = ToolAccess.AUTHENTICATED,
+        confirmationRequired = true,
+        idempotencyRequired = true)
+    public ToolResult<Map<String, Object>> live_update_demo_profile(
+        DemoProfileUpdateInput input, ToolContext toolContext) {
+      WRITE_INVOCATIONS.incrementAndGet();
+      return ToolResult.success("live_update_demo_profile", Map.of("firstName", input.firstName()));
+    }
   }
 
   public record DemoBookingLookupInput(String bookingCode) {}
 
   public record DemoSeatChangeInput(String bookingCode, String fromSeat, String toSeat) {}
+
+  public record DemoProfileUpdateInput(
+      String firstName, String lastName, LocalDate dob, String nationality, String identifyNumber) {}
 }

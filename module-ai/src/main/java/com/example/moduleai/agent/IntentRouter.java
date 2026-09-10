@@ -206,9 +206,9 @@ public class IntentRouter {
             "cap nhat",
             "doi ten",
             "thay doi",
-            "update profile",
-            "change my name",
-            "update my name");
+            "update",
+            "change my",
+            "change the");
   }
 
   private boolean isProfileLookupRequest(String normalized) {
