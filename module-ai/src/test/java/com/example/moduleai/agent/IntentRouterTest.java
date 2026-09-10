@@ -60,6 +60,16 @@ class IntentRouterTest {
   }
 
   @Test
+  void routesExplicitAccountProfileRequestsToDynamicApi() {
+    assertThat(intentRouter.route("Show my current account profile.").intent())
+        .isEqualTo("account_profile");
+    RoutingDecision update =
+        intentRouter.route("Update my account profile and change my name to AgentE2E.");
+    assertThat(update.intent()).isEqualTo("account_profile_update");
+    assertThat(update.requiresConfirmation()).isTrue();
+  }
+
+  @Test
   void normalizesVietnameseDStrokeForDynamicIntentRules() {
     assertThat(intentRouter.route("Tôi check-in được chưa?").category())
         .isEqualTo(RouteCategory.DYNAMIC_API_REQUIRED);

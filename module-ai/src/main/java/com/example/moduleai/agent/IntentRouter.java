@@ -32,6 +32,22 @@ public class IntentRouter {
   }
 
   private RoutingDecision routeDynamicApi(String normalized, String rawMessage) {
+    if (isProfileUpdateRequest(normalized)) {
+      return RoutingDecision.api(
+          "account_profile_update",
+          "PATCH /api/users/me",
+          List.of(RequiredContext.AUTHENTICATED_ACCOUNT),
+          true,
+          false);
+    }
+    if (isProfileLookupRequest(normalized)) {
+      return RoutingDecision.api(
+          "account_profile",
+          "GET /api/users/me",
+          List.of(RequiredContext.AUTHENTICATED_ACCOUNT),
+          false,
+          false);
+    }
     if (containsAll(normalized, "booking", "thanh toan")
         && containsAny(normalized, "chua", "roi")
         && !containsAny(normalized, "giu bao lau")) {
@@ -181,6 +197,29 @@ public class IntentRouter {
       return bookingScoped(rawMessage, "booking_lookup", "POST /api/bookings/lookup", true, false);
     }
     return null;
+  }
+
+  private boolean isProfileUpdateRequest(String normalized) {
+    return isProfileLookupRequest(normalized)
+        && containsAny(
+            normalized,
+            "cap nhat",
+            "doi ten",
+            "thay doi",
+            "update profile",
+            "change my name",
+            "update my name");
+  }
+
+  private boolean isProfileLookupRequest(String normalized) {
+    return containsAny(
+        normalized,
+        "ho so tai khoan",
+        "ho so cua toi",
+        "thong tin tai khoan",
+        "my account profile",
+        "my profile",
+        "current account profile");
   }
 
   private RoutingDecision bookingScoped(

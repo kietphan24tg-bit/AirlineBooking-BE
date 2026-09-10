@@ -185,6 +185,32 @@ class ToolAllowlistResolverTest {
     assertThat(resolver.resolve(decision("seat_change_confirm"), context)).isEmpty();
   }
 
+  @Test
+  void exposesAccountReadAndLiveProfileMutationForAuthenticatedUser() {
+    ToolCatalog catalog = mock(ToolCatalog.class);
+    ToolConfirmationRegistry confirmationRegistry = mock(ToolConfirmationRegistry.class);
+    ToolDescriptor read = descriptor("get_current_profile", ToolOperation.READ);
+    ToolDescriptor update = descriptor("update_current_profile", ToolOperation.WRITE);
+    when(catalog.descriptor("get_current_profile")).thenReturn(read);
+    when(catalog.descriptor("get_account_overview")).thenReturn(null);
+    when(catalog.descriptor("update_current_profile")).thenReturn(update);
+    when(confirmationRegistry.hasCompleteHandler("update_current_profile")).thenReturn(true);
+
+    AiAgentProperties agentProperties = new AiAgentProperties();
+    agentProperties.setActionsEnabled(true);
+    AgentRolloutProperties rollout = new AgentRolloutProperties();
+    rollout.setMode(AgentRolloutMode.LIVE);
+    rollout.setEnabledTools(Set.of("update_current_profile"));
+    ToolAllowlistResolver resolver =
+        new ToolAllowlistResolver(catalog, agentProperties, rollout, confirmationRegistry);
+    AgentToolContext authenticated =
+        new AgentToolContext(null, null, 9L, Set.of(), false, null, null, null, Map.of());
+
+    assertThat(resolver.resolve(decision("account_profile"), authenticated)).containsExactly(read);
+    assertThat(resolver.resolve(decision("account_profile_update"), authenticated))
+        .containsExactly(update);
+  }
+
   private RoutingDecision decision(String intent) {
     return RoutingDecision.api(intent, "test", List.of(RequiredContext.BOOKING_CODE), false, false);
   }

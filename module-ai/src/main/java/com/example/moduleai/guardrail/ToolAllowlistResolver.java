@@ -44,7 +44,9 @@ public class ToolAllowlistResolver {
           Map.entry(
               "service_change_preview", Set.of("preview_service_change", "confirm_service_change")),
           Map.entry("my_trips", Set.of("list_my_trips", "get_trip_detail")),
-          Map.entry("trip_detail", Set.of("get_trip_detail")));
+          Map.entry("trip_detail", Set.of("get_trip_detail")),
+          Map.entry("account_profile", Set.of("get_current_profile", "get_account_overview")),
+          Map.entry("account_profile_update", Set.of("update_current_profile")));
 
   private final ToolCatalog toolCatalog;
   private final AiAgentProperties agentProperties;
