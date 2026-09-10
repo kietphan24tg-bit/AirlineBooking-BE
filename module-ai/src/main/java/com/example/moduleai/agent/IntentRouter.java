@@ -202,13 +202,7 @@ public class IntentRouter {
   private boolean isProfileUpdateRequest(String normalized) {
     return isProfileLookupRequest(normalized)
         && containsAny(
-            normalized,
-            "cap nhat",
-            "doi ten",
-            "thay doi",
-            "update",
-            "change my",
-            "change the");
+            normalized, "cap nhat", "doi ten", "thay doi", "update", "change my", "change the");
   }
 
   private boolean isProfileLookupRequest(String normalized) {

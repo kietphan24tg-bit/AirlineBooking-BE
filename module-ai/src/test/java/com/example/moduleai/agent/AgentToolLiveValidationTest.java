@@ -243,7 +243,8 @@ class AgentToolLiveValidationTest {
 
     var response =
         orchestrator.handle(
-            new ChatRequest("Update my account profile and change my first name to AgentE2EConfirm."),
+            new ChatRequest(
+                "Update my account profile and change my first name to AgentE2EConfirm."),
             RoutingDecision.api("account_profile_update", "live", List.of(), true, false),
             authentication);
 
@@ -394,5 +395,9 @@ class AgentToolLiveValidationTest {
   public record DemoSeatChangeInput(String bookingCode, String fromSeat, String toSeat) {}
 
   public record DemoProfileUpdateInput(
-      String firstName, String lastName, LocalDate dob, String nationality, String identifyNumber) {}
+      String firstName,
+      String lastName,
+      LocalDate dob,
+      String nationality,
+      String identifyNumber) {}
 }
