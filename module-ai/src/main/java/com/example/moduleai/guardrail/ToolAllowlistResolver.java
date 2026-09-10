@@ -12,10 +12,15 @@ import com.example.moduleai.tool.core.ToolAccess;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ToolAllowlistResolver {
+public class ToolAllowlistResolver implements SmartInitializingSingleton {
+
+  private static final Logger log = LoggerFactory.getLogger(ToolAllowlistResolver.class);
 
   private static final Map<String, Set<String>> INTENT_TO_TOOLS =
       Map.ofEntries(
@@ -62,6 +67,19 @@ public class ToolAllowlistResolver {
     this.agentProperties = agentProperties;
     this.rolloutProperties = rolloutProperties;
     this.confirmationRegistry = confirmationRegistry;
+  }
+
+  @Override
+  public void afterSingletonsInstantiated() {
+    log.info(
+        "Agent action rollout: actionsEnabled={}, mode={}, enabledTools={}, confirmationHandlers={}",
+        agentProperties.isActionsEnabled(),
+        rolloutProperties.getMode(),
+        rolloutProperties.getEnabledTools(),
+        toolCatalog.descriptors().keySet().stream()
+            .filter(confirmationRegistry::hasCompleteHandler)
+            .sorted()
+            .toList());
   }
 
   public Set<ToolDescriptor> resolve(RoutingDecision decision, AgentToolContext context) {
