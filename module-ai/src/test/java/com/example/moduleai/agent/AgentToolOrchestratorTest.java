@@ -176,6 +176,11 @@ class AgentToolOrchestratorTest {
     assertThat(response.answerType()).isEqualTo(AnswerType.CONFIRMATION_REQUIRED);
     assertThat(response.proposal()).isEqualTo(proposal);
     verify(descriptor, never()).invoke(any(), any(), any());
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel).call(promptCaptor.capture());
+    assertThat(promptCaptor.getValue().getInstructions().get(0).getText())
+        .contains("Approved tools for this request: write_tool.")
+        .contains("make exactly one tool call");
   }
 
   @Test

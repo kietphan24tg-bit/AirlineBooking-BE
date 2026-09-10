@@ -146,7 +146,7 @@ public class AgentToolOrchestrator {
     AgentExecutionBudget.TurnBudget budget = executionBudget.newTurnBudget();
 
     List<Message> history = new ArrayList<>();
-    history.add(new SystemMessage(systemPolicy(memory)));
+    history.add(new SystemMessage(systemPolicy(memory, allowlist)));
     addRecentMessages(history, memory);
     history.add(new UserMessage(request.message()));
 
@@ -312,8 +312,17 @@ public class AgentToolOrchestrator {
     return allowlist.stream().filter(d -> d.name().equals(name)).findFirst().orElse(null);
   }
 
-  private String systemPolicy(ChatMemorySnapshot memory) {
+  private String systemPolicy(ChatMemorySnapshot memory, Set<ToolDescriptor> allowlist) {
     StringBuilder policy = new StringBuilder(AGENT_SYSTEM_POLICY);
+    String toolNames =
+        allowlist.stream().map(ToolDescriptor::name).sorted().collect(Collectors.joining(", "));
+    policy.append("\n\nApproved tools for this request: ").append(toolNames).append('.');
+    if (allowlist.stream().anyMatch(this::isMutation)) {
+      policy.append(
+          " This request permits a write action only through the approved tool. When the user"
+              + " supplies a matching update value, make exactly one tool call. Do not claim that"
+              + " the update tool is unavailable and do not claim that the update is complete.");
+    }
     if (memory == null) {
       return policy.toString();
     }
