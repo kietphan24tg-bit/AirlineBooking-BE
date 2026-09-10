@@ -136,7 +136,14 @@ class ToolCatalogTest {
               toolCatalog.callbacks().stream().map(c -> c.getToolDefinition().name()).toList());
       assertThat(toolCatalog.callbacks())
           .allSatisfy(
-              callback -> assertThat(callback.getToolDefinition().description()).isNotBlank());
+              callback -> {
+                assertThat(callback.getToolDefinition().description()).isNotBlank();
+                assertThat(callback.getToolDefinition().inputSchema())
+                    .doesNotContain("\"$defs\"")
+                    .doesNotContain("#/$defs/");
+              });
+      assertThat(toolCatalog.callback("search_flights").getToolDefinition().inputSchema())
+          .contains("fromAirportCode", "toAirportCode", "departureDate");
       assertThat(toolCatalog.policies().get("search_flights").operation())
           .isEqualTo(ToolOperation.READ);
       assertThat(toolCatalog.policies().get("search_flights").access())

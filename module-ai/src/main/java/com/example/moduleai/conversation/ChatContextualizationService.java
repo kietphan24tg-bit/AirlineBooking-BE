@@ -29,10 +29,12 @@ public class ChatContextualizationService {
                       .prompt()
                       .system(
                           """
-                          Rewrite the user's last message into a standalone question for retrieval and routing.
-                          Preserve the original language. Do not answer. Do not add facts.
-                          If the message is already standalone, return it unchanged.
-                          """)
+                           Rewrite the user's last message into a standalone question for retrieval and routing.
+                           Preserve the original language. Do not answer. Do not add facts.
+                           Preserve the requested action explicitly. For a flight-search follow-up, include the
+                           words "tim chuyen bay" or "search flights", plus the prior route and date.
+                           If the message is already standalone, return it unchanged.
+                           """)
                       .user(buildPrompt(message, memory))
                       .call()
                       .content());

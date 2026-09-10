@@ -146,8 +146,8 @@ public class AgentToolOrchestrator {
     AgentExecutionBudget.TurnBudget budget = executionBudget.newTurnBudget();
 
     List<Message> history = new ArrayList<>();
-    history.add(new SystemMessage(AGENT_SYSTEM_POLICY));
-    addMemory(history, memory);
+    history.add(new SystemMessage(systemPolicy(memory)));
+    addRecentMessages(history, memory);
     history.add(new UserMessage(request.message()));
 
     List<ToolCallback> toolCallbacks =
@@ -312,15 +312,23 @@ public class AgentToolOrchestrator {
     return allowlist.stream().filter(d -> d.name().equals(name)).findFirst().orElse(null);
   }
 
-  private void addMemory(List<Message> history, ChatMemorySnapshot memory) {
+  private String systemPolicy(ChatMemorySnapshot memory) {
+    StringBuilder policy = new StringBuilder(AGENT_SYSTEM_POLICY);
     if (memory == null) {
-      return;
+      return policy.toString();
     }
     if (memory.summary() != null && !memory.summary().isBlank()) {
-      history.add(new SystemMessage("Conversation summary:\n" + memory.summary()));
+      policy.append("\n\nConversation summary:\n").append(memory.summary());
     }
     if (memory.state() != null) {
-      history.add(new SystemMessage("Structured state:\n" + memory.state()));
+      policy.append("\n\nStructured state:\n").append(memory.state());
+    }
+    return policy.toString();
+  }
+
+  private void addRecentMessages(List<Message> history, ChatMemorySnapshot memory) {
+    if (memory == null) {
+      return;
     }
     if (memory.recentMessages() == null) {
       return;

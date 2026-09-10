@@ -281,12 +281,24 @@ public class IntentRouter {
             "available flight",
             "co chuyen bay nao",
             "invent available flight");
-    if (!asksToSearch) {
-      return false;
-    }
-
-    return NORMALIZED_AIRPORT_ROUTE_PATTERN.matcher(normalized).find()
-        || AIRPORT_PAIR_PATTERN.matcher(rawMessage.toUpperCase(Locale.ROOT)).find();
+    boolean filtersPreviousSearch =
+        containsAny(
+            normalized,
+            "chi lay",
+            "only show",
+            "only include",
+            "buoi sang",
+            "buoi chieu",
+            "buoi toi",
+            "morning flight",
+            "afternoon flight",
+            "evening flight",
+            "nonstop",
+            "direct flight");
+    boolean hasAirportRoute =
+        NORMALIZED_AIRPORT_ROUTE_PATTERN.matcher(normalized).find()
+            || AIRPORT_PAIR_PATTERN.matcher(rawMessage.toUpperCase(Locale.ROOT)).find();
+    return hasAirportRoute && (asksToSearch || filtersPreviousSearch);
   }
 
   private boolean containsAny(String normalized, String... candidates) {

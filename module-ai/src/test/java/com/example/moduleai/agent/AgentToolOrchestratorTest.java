@@ -13,6 +13,9 @@ import com.example.moduleai.chat.ChatResponseMapper;
 import com.example.moduleai.config.AiAgentGuardrailProperties;
 import com.example.moduleai.confirmation.ToolConfirmationService;
 import com.example.moduleai.confirmation.ToolProposalView;
+import com.example.moduleai.conversation.ChatMemorySnapshot;
+import com.example.moduleai.conversation.ChatMessageView;
+import com.example.moduleai.conversation.ChatStructuredState;
 import com.example.moduleai.dto.AnswerType;
 import com.example.moduleai.dto.ChatRequest;
 import com.example.moduleai.guardrail.AgentExecutionBudget;
@@ -111,6 +114,40 @@ class AgentToolOrchestratorTest {
     verify(chatModel, org.mockito.Mockito.times(2)).call(promptCaptor.capture());
     assertThat(promptCaptor.getAllValues().get(0).getInstructions().get(0))
         .isInstanceOf(SystemMessage.class);
+  }
+
+  @Test
+  void combinesPolicySummaryAndStateIntoOneSystemMessageForGemini() {
+    ToolDescriptor descriptor = descriptor("read_tool", ToolOperation.READ);
+    when(allowlistResolver.resolve(any(), any())).thenReturn(Set.of(descriptor));
+    when(chatModel.call(any(Prompt.class))).thenReturn(textResponse("Done"));
+    ChatMemorySnapshot memory =
+        new ChatMemorySnapshot(
+            "User is searching SGN to HAN.",
+            ChatStructuredState.empty(),
+            List.of(
+                new ChatMessageView(1L, "USER", "Find a flight", OffsetDateTime.now()),
+                new ChatMessageView(2L, "ASSISTANT", "Which date?", OffsetDateTime.now())));
+
+    orchestrator.handle(
+        new ChatRequest("Tomorrow"),
+        dynamicDecision("flight_search"),
+        authentication,
+        memory,
+        context);
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel).call(promptCaptor.capture());
+    List<org.springframework.ai.chat.messages.Message> instructions =
+        promptCaptor.getValue().getInstructions();
+    assertThat(instructions).filteredOn(SystemMessage.class::isInstance).hasSize(1);
+    assertThat(instructions.get(0).getText())
+        .contains("AirlineBooking operational assistant")
+        .contains("Conversation summary:")
+        .contains("Structured state:");
+    assertThat(instructions)
+        .extracting(org.springframework.ai.chat.messages.Message::getText)
+        .containsSubsequence("Find a flight", "Which date?", "Tomorrow");
   }
 
   @Test

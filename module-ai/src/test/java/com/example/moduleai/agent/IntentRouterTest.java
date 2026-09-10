@@ -51,6 +51,15 @@ class IntentRouterTest {
   }
 
   @Test
+  void routesStandaloneFlightFilterFollowUpToDynamicApi() {
+    RoutingDecision decision =
+        intentRouter.route("Chi lay cac chuyen bay buoi sang tu SGN den HAN vao ngay 2026-09-11");
+
+    assertThat(decision.category()).isEqualTo(RouteCategory.DYNAMIC_API_REQUIRED);
+    assertThat(decision.intent()).isEqualTo("flight_search");
+  }
+
+  @Test
   void normalizesVietnameseDStrokeForDynamicIntentRules() {
     assertThat(intentRouter.route("Tôi check-in được chưa?").category())
         .isEqualTo(RouteCategory.DYNAMIC_API_REQUIRED);

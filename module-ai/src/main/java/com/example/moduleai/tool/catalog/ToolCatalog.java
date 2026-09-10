@@ -73,7 +73,8 @@ public class ToolCatalog implements SmartInitializingSingleton {
           MethodToolCallbackProvider.builder().toolObjects(bean).build();
       Map<String, ToolCallback> callbacksByName = new LinkedHashMap<>();
       for (ToolCallback callback : callbackProvider.getToolCallbacks()) {
-        callbacksByName.put(callback.getToolDefinition().name(), callback);
+        ToolCallback normalizedCallback = SchemaNormalizingToolCallback.from(callback);
+        callbacksByName.put(normalizedCallback.getToolDefinition().name(), normalizedCallback);
       }
       for (Method method : bean.getClass().getDeclaredMethods()) {
         AgentToolPolicy annotation = method.getAnnotation(AgentToolPolicy.class);
