@@ -98,25 +98,6 @@ app:
     ai:
         agent:
             actions-enabled: ${APP_AI_AGENT_ACTIONS_ENABLED:false}
-        chat:
-            persistence-enabled: ${APP_AI_CHAT_PERSISTENCE_ENABLED:true}
-            memory-enabled: ${APP_AI_CHAT_MEMORY_ENABLED:true}
-            inactivity-timeout: ${APP_AI_CHAT_INACTIVITY_TIMEOUT:24h}
-            recent-turns: ${APP_AI_CHAT_RECENT_TURNS:8}
-            context-budget-chars: ${APP_AI_CHAT_CONTEXT_BUDGET_CHARS:24000}
-            summary-max-chars: ${APP_AI_CHAT_SUMMARY_MAX_CHARS:4000}
-            user-retention: ${APP_AI_CHAT_USER_RETENTION:30d}
-            guest-retention: ${APP_AI_CHAT_GUEST_RETENTION:7d}
-            guest-cookie-max-age: ${APP_AI_CHAT_GUEST_COOKIE_MAX_AGE:7d}
-            maintenance-delay: ${APP_AI_CHAT_MAINTENANCE_DELAY:1m}
-            summary-batch-size: ${APP_AI_CHAT_SUMMARY_BATCH_SIZE:10}
-            summary-claim-timeout: ${APP_AI_CHAT_SUMMARY_CLAIM_TIMEOUT:2m}
-            summary-max-attempts: ${APP_AI_CHAT_SUMMARY_MAX_ATTEMPTS:3}
-            guest-cookie-name: ${APP_AI_CHAT_GUEST_COOKIE_NAME:chat_guest}
-            guest-cookie-path: ${APP_AI_CHAT_GUEST_COOKIE_PATH:/api/chatbot}
-            guest-cookie-secure: ${APP_AI_CHAT_GUEST_COOKIE_SECURE:true}
-            guest-cookie-http-only: ${APP_AI_CHAT_GUEST_COOKIE_HTTP_ONLY:true}
-            guest-cookie-same-site: ${APP_AI_CHAT_GUEST_COOKIE_SAME_SITE:None}
             confirmation-hmac-secret: ${APP_AI_AGENT_CONFIRMATION_HMAC_SECRET:}
             proposal-ttl: ${APP_AI_AGENT_PROPOSAL_TTL:5m}
             executing-timeout: ${APP_AI_AGENT_EXECUTING_TIMEOUT:2m}
@@ -140,6 +121,25 @@ app:
                 max-output-string-length: ${APP_AI_AGENT_GUARDRAIL_MAX_OUTPUT_STRING_LENGTH:1024}
                 max-output-collection-items: ${APP_AI_AGENT_GUARDRAIL_MAX_OUTPUT_COLLECTION_ITEMS:20}
                 max-output-json-bytes: ${APP_AI_AGENT_GUARDRAIL_MAX_OUTPUT_JSON_BYTES:16384}
+        chat:
+            persistence-enabled: ${APP_AI_CHAT_PERSISTENCE_ENABLED:true}
+            memory-enabled: ${APP_AI_CHAT_MEMORY_ENABLED:true}
+            inactivity-timeout: ${APP_AI_CHAT_INACTIVITY_TIMEOUT:24h}
+            recent-turns: ${APP_AI_CHAT_RECENT_TURNS:8}
+            context-budget-chars: ${APP_AI_CHAT_CONTEXT_BUDGET_CHARS:24000}
+            summary-max-chars: ${APP_AI_CHAT_SUMMARY_MAX_CHARS:4000}
+            user-retention: ${APP_AI_CHAT_USER_RETENTION:30d}
+            guest-retention: ${APP_AI_CHAT_GUEST_RETENTION:7d}
+            guest-cookie-max-age: ${APP_AI_CHAT_GUEST_COOKIE_MAX_AGE:7d}
+            maintenance-delay: ${APP_AI_CHAT_MAINTENANCE_DELAY:1m}
+            summary-batch-size: ${APP_AI_CHAT_SUMMARY_BATCH_SIZE:10}
+            summary-claim-timeout: ${APP_AI_CHAT_SUMMARY_CLAIM_TIMEOUT:2m}
+            summary-max-attempts: ${APP_AI_CHAT_SUMMARY_MAX_ATTEMPTS:3}
+            guest-cookie-name: ${APP_AI_CHAT_GUEST_COOKIE_NAME:chat_guest}
+            guest-cookie-path: ${APP_AI_CHAT_GUEST_COOKIE_PATH:/api/chatbot}
+            guest-cookie-secure: ${APP_AI_CHAT_GUEST_COOKIE_SECURE:true}
+            guest-cookie-http-only: ${APP_AI_CHAT_GUEST_COOKIE_HTTP_ONLY:true}
+            guest-cookie-same-site: ${APP_AI_CHAT_GUEST_COOKIE_SAME_SITE:None}
         provider:
             timeout: ${APP_AI_PROVIDER_TIMEOUT:25s}
             google-http-timeout-enabled: ${APP_AI_PROVIDER_GOOGLE_HTTP_TIMEOUT_ENABLED:true}
