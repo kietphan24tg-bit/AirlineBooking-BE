@@ -1,6 +1,11 @@
 package com.example.moduleai.confirmation;
 
 import com.example.moduleai.config.AiAgentProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -9,6 +14,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Comparator;
+import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,9 +25,11 @@ import org.springframework.stereotype.Component;
 public class ToolProposalSigner {
 
   private final AiAgentProperties properties;
+  private final ObjectMapper objectMapper;
 
-  public ToolProposalSigner(AiAgentProperties properties) {
+  public ToolProposalSigner(AiAgentProperties properties, ObjectMapper objectMapper) {
     this.properties = properties;
+    this.objectMapper = objectMapper;
   }
 
   public String sign(
@@ -43,7 +52,7 @@ public class ToolProposalSigner {
             + "|"
             + operation
             + "|"
-            + canonicalArguments
+            + canonicalizeArguments(canonicalArguments)
             + "|"
             + normalizeTimestamp(expiresAt).toInstant());
   }
@@ -67,6 +76,32 @@ public class ToolProposalSigner {
   OffsetDateTime normalizeTimestamp(OffsetDateTime timestamp) {
     Instant roundedToMicros = timestamp.toInstant().plusNanos(500).truncatedTo(ChronoUnit.MICROS);
     return OffsetDateTime.ofInstant(roundedToMicros, ZoneOffset.UTC);
+  }
+
+  private String canonicalizeArguments(String arguments) {
+    try {
+      return canonicalize(objectMapper.readTree(arguments)).toString();
+    } catch (JsonProcessingException exception) {
+      // The typed tool validation reports malformed input later. Preserve the exact bytes for HMAC
+      // generation so the signer remains deterministic for rejected proposals too.
+      return arguments;
+    }
+  }
+
+  private JsonNode canonicalize(JsonNode node) {
+    if (node.isObject()) {
+      ObjectNode canonical = objectMapper.createObjectNode();
+      node.properties().stream()
+          .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
+          .forEach(entry -> canonical.set(entry.getKey(), canonicalize(entry.getValue())));
+      return canonical;
+    }
+    if (node.isArray()) {
+      ArrayNode canonical = objectMapper.createArrayNode();
+      node.forEach(element -> canonical.add(canonicalize(element)));
+      return canonical;
+    }
+    return node;
   }
 
   private String hmac(String payload) {

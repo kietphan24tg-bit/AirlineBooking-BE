@@ -24,6 +24,7 @@ import com.example.moduleai.tool.core.ToolOperation;
 import com.example.moduleai.tool.core.ToolPolicy;
 import com.example.moduleai.tool.core.ToolResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -130,6 +131,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
   @Autowired private ToolConfirmationService service;
   @Autowired private ToolProposalRepository proposalRepository;
   @Autowired private ToolProposalSigner signer;
+  @Autowired private EntityManager entityManager;
 
   @MockitoBean private ToolCatalog toolCatalog;
   @MockitoBean private ToolExecutionGuard toolExecutionGuard;
@@ -218,6 +220,40 @@ class ToolConfirmationServicePostgresIntegrationTest {
     assertThat(invocations.get()).isEqualTo(1);
 
     assertThat(saved.getStatus()).isEqualTo(ToolProposalStatus.EXECUTED);
+  }
+
+  @Test
+  void signerMatchesCanonicalArgumentsAfterJsonbRoundTrip() {
+    UUID proposalId = UUID.randomUUID();
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(5);
+    String createdArguments = "{\"firstName\":\"Agent\",\"lastName\":null,\"dob\":null}";
+    ToolProposalEntity proposal = savePendingProposal(proposalId, expiresAt);
+    proposal.setCanonicalArguments(createdArguments);
+    proposal.setConfirmationHmac(
+        signer.sign(
+            null,
+            proposalId,
+            USER_ID,
+            proposal.getToolName(),
+            proposal.getOperation().name(),
+            createdArguments,
+            expiresAt));
+    proposalRepository.saveAndFlush(proposal);
+    entityManager.clear();
+
+    ToolProposalEntity persisted = proposalRepository.findById(proposalId).orElseThrow();
+
+    assertThat(
+            signer.matches(
+                persisted.getConfirmationHmac(),
+                persisted.getConversationId(),
+                persisted.getId(),
+                persisted.getUserId(),
+                persisted.getToolName(),
+                persisted.getOperation().name(),
+                persisted.getCanonicalArguments(),
+                persisted.getExpiresAt()))
+        .isTrue();
   }
 
   @Test
@@ -375,8 +411,8 @@ class ToolConfirmationServicePostgresIntegrationTest {
     }
 
     @Bean
-    ToolProposalSigner toolProposalSigner(AiAgentProperties properties) {
-      return new ToolProposalSigner(properties);
+    ToolProposalSigner toolProposalSigner(AiAgentProperties properties, ObjectMapper objectMapper) {
+      return new ToolProposalSigner(properties, objectMapper);
     }
 
     @Bean

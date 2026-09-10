@@ -93,7 +93,7 @@ class ToolConfirmationServiceTest {
     rolloutProperties = new AgentRolloutProperties();
     rolloutProperties.setMode(AgentRolloutMode.LIVE);
 
-    signer = new ToolProposalSigner(properties);
+    signer = new ToolProposalSigner(properties, objectMapper);
     payloadSanitizer = new AgentPayloadSanitizer(objectMapper, new AiAgentGuardrailProperties());
     lenient()
         .when(confirmationRegistry.present(any(), any(), any()))
@@ -379,6 +379,29 @@ class ToolConfirmationServiceTest {
                 "{\"evil\":true}",
                 expiresAt))
         .isFalse();
+  }
+
+  @Test
+  void signer_matchesJsonbNormalizedArgumentOrder() {
+    UUID id = UUID.randomUUID();
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(5);
+    String createdArguments = "{\"firstName\":\"Agent\",\"lastName\":null,\"dob\":null}";
+    String jsonbArguments = "{\"dob\":null,\"firstName\":\"Agent\",\"lastName\":null}";
+    String hmac =
+        signer.sign(
+            null, id, USER_ID, "update_current_profile", "WRITE", createdArguments, expiresAt);
+
+    assertThat(
+            signer.matches(
+                hmac,
+                null,
+                id,
+                USER_ID,
+                "update_current_profile",
+                "WRITE",
+                jsonbArguments,
+                expiresAt))
+        .isTrue();
   }
 
   @Test
