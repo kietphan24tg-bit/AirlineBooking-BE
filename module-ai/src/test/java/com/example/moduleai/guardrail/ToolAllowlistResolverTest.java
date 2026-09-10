@@ -192,7 +192,6 @@ class ToolAllowlistResolverTest {
     ToolDescriptor read = descriptor("get_current_profile", ToolOperation.READ);
     ToolDescriptor update = descriptor("update_current_profile", ToolOperation.WRITE);
     when(catalog.descriptor("get_current_profile")).thenReturn(read);
-    when(catalog.descriptor("get_account_overview")).thenReturn(null);
     when(catalog.descriptor("update_current_profile")).thenReturn(update);
     when(confirmationRegistry.hasCompleteHandler("update_current_profile")).thenReturn(true);
 
