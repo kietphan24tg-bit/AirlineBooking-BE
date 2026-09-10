@@ -73,6 +73,12 @@ public class ToolProposalSigner {
         actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
   }
 
+  boolean argumentsMatch(String expectedArguments, String actualArguments) {
+    return MessageDigest.isEqual(
+        canonicalizeArguments(expectedArguments).getBytes(StandardCharsets.UTF_8),
+        canonicalizeArguments(actualArguments).getBytes(StandardCharsets.UTF_8));
+  }
+
   OffsetDateTime normalizeTimestamp(OffsetDateTime timestamp) {
     Instant roundedToMicros = timestamp.toInstant().plusNanos(500).truncatedTo(ChronoUnit.MICROS);
     return OffsetDateTime.ofInstant(roundedToMicros, ZoneOffset.UTC);

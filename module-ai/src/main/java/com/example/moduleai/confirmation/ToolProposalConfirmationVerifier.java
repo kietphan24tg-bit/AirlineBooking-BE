@@ -48,7 +48,7 @@ public class ToolProposalConfirmationVerifier implements ToolConfirmationVerifie
       return ToolError.forbidden("PROPOSAL_TOOL_MISMATCH", "Proposal tool does not match");
     }
     String canonicalArguments = serialize(input);
-    if (!canonicalArguments.equals(proposal.getCanonicalArguments())) {
+    if (!signer.argumentsMatch(canonicalArguments, proposal.getCanonicalArguments())) {
       return ToolError.forbidden("PROPOSAL_ARGUMENT_MISMATCH", "Proposal arguments do not match");
     }
     boolean valid =

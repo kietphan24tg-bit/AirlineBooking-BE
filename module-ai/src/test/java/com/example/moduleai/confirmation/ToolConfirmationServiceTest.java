@@ -402,6 +402,7 @@ class ToolConfirmationServiceTest {
                 jsonbArguments,
                 expiresAt))
         .isTrue();
+    assertThat(signer.argumentsMatch(createdArguments, jsonbArguments)).isTrue();
   }
 
   @Test
