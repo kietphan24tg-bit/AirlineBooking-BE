@@ -18,6 +18,7 @@ import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.guardrail.GuardrailDecision;
 import com.example.moduleai.guardrail.ToolAllowlistResolver;
 import com.example.moduleai.observability.AiObservability;
+import com.example.moduleai.resilience.AiProviderGuard;
 import com.example.moduleai.tool.catalog.ToolCatalog;
 import com.example.moduleai.tool.core.AgentToolContext;
 import com.example.moduleai.tool.core.AgentToolPolicy;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -289,6 +291,14 @@ class AgentToolLiveValidationTest {
     }
 
     @Bean
+    AiProviderGuard aiProviderGuard() {
+      AiProviderGuard guard = mock(AiProviderGuard.class);
+      when(guard.execute(any()))
+          .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
+      return guard;
+    }
+
+    @Bean
     AgentToolOrchestrator agentToolOrchestrator(
         AgentInputGuard inputGuard,
         AgentRequestContextFactory contextFactory,
@@ -298,6 +308,7 @@ class AgentToolLiveValidationTest {
         ObjectMapper objectMapper,
         AgentExecutionBudget executionBudget,
         AiObservability observability,
+        AiProviderGuard providerGuard,
         AgentPayloadSanitizer payloadSanitizer,
         AgentTrustedContextResolver trustedContextResolver,
         AiAgentGuardrailProperties guardrailProperties,
@@ -312,6 +323,7 @@ class AgentToolLiveValidationTest {
           objectMapper,
           executionBudget,
           observability,
+          providerGuard,
           payloadSanitizer,
           trustedContextResolver,
           guardrailProperties,

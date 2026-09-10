@@ -24,6 +24,9 @@ import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.guardrail.GuardrailDecision;
 import com.example.moduleai.guardrail.ToolAllowlistResolver;
 import com.example.moduleai.observability.AiObservability;
+import com.example.moduleai.resilience.AiProviderException;
+import com.example.moduleai.resilience.AiProviderFailure;
+import com.example.moduleai.resilience.AiProviderGuard;
 import com.example.moduleai.tool.catalog.ToolDescriptor;
 import com.example.moduleai.tool.core.AgentToolContext;
 import com.example.moduleai.tool.core.ToolAccess;
@@ -36,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -56,6 +60,7 @@ class AgentToolOrchestratorTest {
   private final ToolAllowlistResolver allowlistResolver = mock(ToolAllowlistResolver.class);
   private final ToolConfirmationService confirmationService = mock(ToolConfirmationService.class);
   private final AiObservability observability = mock(AiObservability.class);
+  private final AiProviderGuard providerGuard = mock(AiProviderGuard.class);
   private final AgentPayloadSanitizer payloadSanitizer = mock(AgentPayloadSanitizer.class);
   private final AgentTrustedContextResolver trustedContextResolver =
       mock(AgentTrustedContextResolver.class);
@@ -72,6 +77,8 @@ class AgentToolOrchestratorTest {
   void setUp() {
     when(inputGuard.assess(any())).thenReturn(GuardrailDecision.allow());
     when(contextFactory.from(authentication)).thenReturn(context);
+    when(providerGuard.execute(any()))
+        .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
     orchestrator =
         new AgentToolOrchestrator(
             inputGuard,
@@ -82,11 +89,33 @@ class AgentToolOrchestratorTest {
             objectMapper,
             new AgentExecutionBudget(properties),
             observability,
+            providerGuard,
             payloadSanitizer,
             trustedContextResolver,
             properties,
             chatModel,
             new StandardEnvironment());
+  }
+
+  @Test
+  void providerFailureReturnsControlledFallback() {
+    ToolDescriptor descriptor = descriptor("read_tool", ToolOperation.READ);
+    when(allowlistResolver.resolve(any(), any())).thenReturn(Set.of(descriptor));
+    when(providerGuard.execute(any()))
+        .thenThrow(
+            new AiProviderException(
+                AiProviderFailure.UNAVAILABLE, new RuntimeException("provider unavailable")));
+
+    var response =
+        orchestrator.handle(
+            new ChatRequest("Check my booking"),
+            dynamicDecision("booking_lookup"),
+            authentication);
+
+    assertThat(response.answerType()).isEqualTo(AnswerType.FALLBACK);
+    assertThat(response.fallbackReason()).isEqualTo("AI_PROVIDER_UNAVAILABLE");
+    verify(descriptor, never()).invoke(any(), any(), any());
+    verify(confirmationService, never()).createProposal(any(), any(), any());
   }
 
   @Test
@@ -327,6 +356,7 @@ class AgentToolOrchestratorTest {
             objectMapper,
             customBudget,
             observability,
+            providerGuard,
             payloadSanitizer,
             trustedContextResolver,
             properties,

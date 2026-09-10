@@ -20,6 +20,7 @@ import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.guardrail.GuardrailDecision;
 import com.example.moduleai.guardrail.ToolAllowlistResolver;
 import com.example.moduleai.observability.AiObservability;
+import com.example.moduleai.resilience.AiProviderGuard;
 import com.example.moduleai.tool.BookingTools;
 import com.example.moduleai.tool.CancellationTools;
 import com.example.moduleai.tool.CheckInTools;
@@ -48,6 +49,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -528,6 +530,14 @@ class AgentPipelineIntegrationTest {
     }
 
     @Bean
+    AiProviderGuard aiProviderGuard() {
+      AiProviderGuard guard = mock(AiProviderGuard.class);
+      when(guard.execute(any()))
+          .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
+      return guard;
+    }
+
+    @Bean
     IntentRouter intentRouter() {
       return new IntentRouter();
     }
@@ -542,6 +552,7 @@ class AgentPipelineIntegrationTest {
         ObjectMapper objectMapper,
         AgentExecutionBudget executionBudget,
         AiObservability observability,
+        AiProviderGuard providerGuard,
         AgentPayloadSanitizer payloadSanitizer,
         AgentTrustedContextResolver trustedContextResolver,
         AiAgentGuardrailProperties guardrailProperties,
@@ -556,6 +567,7 @@ class AgentPipelineIntegrationTest {
           objectMapper,
           executionBudget,
           observability,
+          providerGuard,
           payloadSanitizer,
           trustedContextResolver,
           guardrailProperties,

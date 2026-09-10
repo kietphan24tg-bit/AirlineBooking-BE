@@ -15,6 +15,8 @@ import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.guardrail.GuardrailDecision;
 import com.example.moduleai.guardrail.ToolAllowlistResolver;
 import com.example.moduleai.observability.AiObservability;
+import com.example.moduleai.resilience.AiProviderException;
+import com.example.moduleai.resilience.AiProviderGuard;
 import com.example.moduleai.tool.catalog.ToolDescriptor;
 import com.example.moduleai.tool.core.AgentToolContext;
 import com.example.moduleai.tool.core.ToolOperation;
@@ -71,6 +73,7 @@ public class AgentToolOrchestrator {
   private final ObjectMapper objectMapper;
   private final AgentExecutionBudget executionBudget;
   private final AiObservability observability;
+  private final AiProviderGuard providerGuard;
   private final AgentPayloadSanitizer payloadSanitizer;
   private final AgentTrustedContextResolver trustedContextResolver;
   private final AiAgentGuardrailProperties guardrailProperties;
@@ -86,6 +89,7 @@ public class AgentToolOrchestrator {
       ObjectMapper objectMapper,
       AgentExecutionBudget executionBudget,
       AiObservability observability,
+      AiProviderGuard providerGuard,
       AgentPayloadSanitizer payloadSanitizer,
       AgentTrustedContextResolver trustedContextResolver,
       AiAgentGuardrailProperties guardrailProperties,
@@ -99,6 +103,7 @@ public class AgentToolOrchestrator {
     this.objectMapper = objectMapper;
     this.executionBudget = executionBudget;
     this.observability = observability;
+    this.providerGuard = providerGuard;
     this.payloadSanitizer = payloadSanitizer;
     this.trustedContextResolver = trustedContextResolver;
     this.guardrailProperties = guardrailProperties;
@@ -156,7 +161,14 @@ public class AgentToolOrchestrator {
     for (int i = 0; i < guardrailProperties.getMaxModelRoundsPerTurn(); i++) {
       Prompt prompt = new Prompt(history, toolOptions(toolCallbacks));
 
-      ChatResponse response = chatModel.call(prompt);
+      ChatResponse response;
+      try {
+        response = providerGuard.execute(() -> chatModel.call(prompt));
+      } catch (AiProviderException exception) {
+        return chatResponseMapper.fallback(
+            "Agent model tam thoi khong kha dung. Vui long thu lai sau.",
+            exception.failure().fallbackReason());
+      }
       AssistantMessage assistantMessage = response.getResult().getOutput();
       history.add(assistantMessage);
 
