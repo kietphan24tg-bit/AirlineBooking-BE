@@ -168,15 +168,20 @@ public class BookingCancellationService {
     bookingCancellationRepository.save(cancellation);
 
     try {
-      paymentRefundService.preparePaymentForRefund(payment);
-      paymentRepository.save(payment);
-      PaymentRefundResult refundResult =
-          paymentRefundService.refund(
-              cancellation.getId(),
-              cancellation.getIdempotencyKey(),
-              payment,
-              prepared.preview().summary().netRefund(),
-              normalizedReason);
+      PaymentRefundResult refundResult;
+      if (prepared.preview().summary().netRefund().compareTo(ZERO) == 0) {
+        refundResult = new PaymentRefundResult(null, "NOT_REQUIRED");
+      } else {
+        paymentRefundService.preparePaymentForRefund(payment);
+        paymentRepository.save(payment);
+        refundResult =
+            paymentRefundService.refund(
+                cancellation.getId(),
+                cancellation.getIdempotencyKey(),
+                payment,
+                prepared.preview().summary().netRefund(),
+                normalizedReason);
+      }
 
       applySuccessfulCancellation(prepared, cancellation, refundResult, now);
       registerSuccessNotification(cancellation.getId());
@@ -423,15 +428,21 @@ public class BookingCancellationService {
         ticketRepository.countByBookingIdAndStatusNot(prepared.booking().getId(), "CANCELLED");
     if (remainingActiveTickets == 0) {
       prepared.booking().setStatus(BOOKING_STATUS_CANCELLED);
-      prepared.payment().setPaymentStatus(PAYMENT_STATUS_REFUNDED);
     } else {
       prepared.booking().setStatus(BOOKING_STATUS_CONFIRMED);
-      prepared.payment().setPaymentStatus(PAYMENT_STATUS_PARTIALLY_REFUNDED);
+    }
+    if (prepared.preview().summary().netRefund().signum() > 0) {
+      prepared
+          .payment()
+          .setPaymentStatus(
+              remainingActiveTickets == 0
+                  ? PAYMENT_STATUS_REFUNDED
+                  : PAYMENT_STATUS_PARTIALLY_REFUNDED);
+      prepared.payment().setUpdatedAt(now);
+      paymentRepository.save(prepared.payment());
     }
     prepared.booking().setUpdatedAt(now);
-    prepared.payment().setUpdatedAt(now);
     bookingRepository.save(prepared.booking());
-    paymentRepository.save(prepared.payment());
 
     cancellation.setProviderRefundId(refundResult.providerRefundId());
     cancellation.setProviderStatus(refundResult.providerStatus());

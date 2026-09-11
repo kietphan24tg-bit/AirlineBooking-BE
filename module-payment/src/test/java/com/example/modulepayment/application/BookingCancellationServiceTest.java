@@ -296,6 +296,78 @@ class BookingCancellationServiceTest {
   }
 
   @Test
+  void cancelShouldSkipRefundGatewayWhenNetRefundIsZero() {
+    BookingEntity booking = booking("CONFIRMED");
+    PaymentEntity payment = payment(booking, "SUCCESS");
+    TicketEntity adultTicket =
+        ticket(
+            booking,
+            7001L,
+            1001L,
+            "An",
+            "Nguyen",
+            "ADULT",
+            "ISSUED",
+            501L,
+            true,
+            new BigDecimal("150000"));
+    PassengerSeatAssignmentEntity assignment =
+        assignment(booking, adultTicket.getPassenger(), 501L, "BOOKED", new BigDecimal("150000"));
+    TicketFinancialSnapshotEntity zeroRefundSnapshot =
+        snapshot(
+            booking,
+            adultTicket,
+            new BigDecimal("500000"),
+            ZERO,
+            new BigDecimal("500000"),
+            ZERO,
+            ZERO,
+            new BigDecimal("500000"),
+            true);
+
+    when(bookingCancellationRepository.findByBookingIdAndIdempotencyKeyWithItems(10L, "idem-zero"))
+        .thenReturn(Optional.empty());
+    when(bookingRepository.findByIdAndUserIdForUpdate(10L, 7L)).thenReturn(Optional.of(booking));
+    when(paymentRepository.findByBookingIdAndPaymentStatusInForUpdateOrderByLatest(
+            eq(10L), anyList()))
+        .thenReturn(List.of(payment));
+    when(ticketRepository.findByBookingIdAndTicketIdInWithDetailsForUpdate(10L, List.of(7001L)))
+        .thenReturn(List.of(adultTicket));
+    when(ticketFinancialSnapshotRepository.findByBookingIdWithDetails(10L))
+        .thenReturn(List.of(zeroRefundSnapshot));
+    when(paymentRefundService.providerOf(payment)).thenReturn("PAYOS");
+    when(passengerSeatAssignmentRepository.findByBookingIdAndPassengerIdInAndStatusIn(
+            anyLong(), anyCollection(), anyCollection()))
+        .thenReturn(List.of(assignment));
+    when(flightSeatRepository.releaseSelectedForBooking(10L, List.of(501L))).thenReturn(1);
+    when(ticketRepository.countByBookingIdAndStatusNot(10L, "CANCELLED")).thenReturn(0L);
+
+    BookingCancellationResultView result =
+        service.cancel(
+            7L,
+            10L,
+            List.of(7001L),
+            "Cancel zero refund",
+            "idem-zero",
+            ZERO,
+            new BigDecimal("500000"));
+
+    assertEquals("SUCCEEDED", result.refundStatus());
+    assertEquals(10L, result.bookingId());
+    assertEquals("PAYOS", result.provider());
+    assertEquals(null, result.providerRefundId());
+    assertEquals("CANCELLED", result.bookingStatus());
+    assertEquals("SUCCESS", payment.getPaymentStatus());
+    assertEquals("CANCELLED", adultTicket.getStatus());
+    assertEquals("RELEASED", assignment.getStatus());
+
+    verify(paymentRefundService, never()).preparePaymentForRefund(any());
+    verify(paymentRefundService, never()).refund(anyLong(), any(), any(), any(), any());
+    verify(paymentRepository, never()).save(payment);
+    verify(bookingCancellationNotifier).sendCancellationSucceeded(900L);
+  }
+
+  @Test
   void cancelShouldFullyRefundAndCancelBookingWhenNoTicketRemains() {
     BookingEntity booking = booking("CONFIRMED");
     PaymentEntity payment = payment(booking, "SUCCESS");

@@ -140,20 +140,18 @@ public class SeatChangeSettlementService {
 
     SeatChangePreviewView preview = prepared.preview();
     if (SETTLEMENT_NONE.equals(preview.settlementType())) {
-      return new SeatChangeConfirmView(
-          null,
-          preview.bookingId(),
-          preview.currency(),
-          preview.settlementType(),
-          STATUS_COMPLETED,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          List.of(),
-          toSummary(preview.summary()));
+      applySeatChanges(prepared.booking(), preview.items(), prepared.seatsById());
+      SeatChangeSettlementEntity settlement =
+          saveSettlement(
+              prepared.booking(),
+              preview,
+              normalizedIdempotencyKey,
+              SETTLEMENT_STATUS_COMPLETED,
+              null,
+              null,
+              null,
+              null);
+      return toConfirmView(settlement);
     }
 
     if (SETTLEMENT_COLLECT_PAYMENT.equals(preview.settlementType())) {
@@ -194,6 +192,7 @@ public class SeatChangeSettlementService {
             null,
             null,
             null);
+    applySeatChanges(prepared.booking(), preview.items(), prepared.seatsById());
     try {
       paymentRefundService.preparePaymentForRefund(payment);
       paymentRepository.save(payment);
@@ -227,7 +226,10 @@ public class SeatChangeSettlementService {
           List.of(),
           toSummary(preview.summary()));
     } catch (RuntimeException exception) {
-      settlement.setStatus(SETTLEMENT_STATUS_PAYMENT_FAILED);
+      rollbackSettlement(settlement);
+      if (!SETTLEMENT_STATUS_MANUAL_REVIEW_REQUIRED.equals(settlement.getStatus())) {
+        settlement.setStatus(SETTLEMENT_STATUS_PAYMENT_FAILED);
+      }
       settlement.setErrorCode(
           exception instanceof AppException appException
               ? appException.getCode()
@@ -304,6 +306,10 @@ public class SeatChangeSettlementService {
     }
     settlement =
         seatChangeSettlementRepository.findByIdWithItemsForUpdate(settlement.getId()).orElseThrow();
+    if (!SETTLEMENT_STATUS_PAYMENT_PENDING.equals(settlement.getStatus())) {
+      return;
+    }
+    applySeatChanges(settlement);
     settlement.setStatus(SETTLEMENT_STATUS_COMPLETED);
     if (providerPaymentReference != null && !providerPaymentReference.isBlank()) {
       payment.setProviderPaymentReference(providerPaymentReference);
@@ -320,7 +326,10 @@ public class SeatChangeSettlementService {
     }
     settlement =
         seatChangeSettlementRepository.findByIdWithItemsForUpdate(settlement.getId()).orElseThrow();
-    rollbackSettlement(settlement);
+    if (!SETTLEMENT_STATUS_PAYMENT_PENDING.equals(settlement.getStatus())
+        && !SETTLEMENT_STATUS_PAYMENT_REQUIRED.equals(settlement.getStatus())) {
+      return;
+    }
     settlement.setStatus(
         "EXPIRED".equalsIgnoreCase(status)
             ? SETTLEMENT_STATUS_EXPIRED
@@ -337,7 +346,10 @@ public class SeatChangeSettlementService {
     }
     settlement =
         seatChangeSettlementRepository.findByIdWithItemsForUpdate(settlement.getId()).orElseThrow();
-    rollbackSettlement(settlement);
+    if (!SETTLEMENT_STATUS_PAYMENT_PENDING.equals(settlement.getStatus())
+        && !SETTLEMENT_STATUS_PAYMENT_REQUIRED.equals(settlement.getStatus())) {
+      return;
+    }
     settlement.setStatus(SETTLEMENT_STATUS_CANCELLED);
     settlement.setUpdatedAt(java.time.OffsetDateTime.now());
     seatChangeSettlementRepository.save(settlement);
@@ -391,7 +403,7 @@ public class SeatChangeSettlementService {
           activeAssignments.get(assignmentKey(change.passengerId(), change.flightId()));
       Long currentSeatId =
           currentAssignment == null ? null : currentAssignment.getFlightSeat().getId();
-      if (!Objects.equals(currentSeatId, change.toSeatId())) {
+      if (!Objects.equals(currentSeatId, change.fromSeatId())) {
         throw new AppException(
             "SEAT_CHANGE_STALE",
             "One or more seat changes are no longer valid. Please review the updated seat map.",
@@ -461,7 +473,7 @@ public class SeatChangeSettlementService {
             settlementType,
             items,
             new SeatChangePreviewView.SummaryView(additionalAmount, refundAmount, netAmount));
-    return new PreparedSettlement(booking, preview);
+    return new PreparedSettlement(booking, preview, seatsById);
   }
 
   private String buildPassengerName(PassengerEntity passenger) {
@@ -727,6 +739,113 @@ public class SeatChangeSettlementService {
     return seatChangeSettlementRepository.save(settlement);
   }
 
+  private void applySeatChanges(SeatChangeSettlementEntity settlement) {
+    List<Long> seatIds =
+        settlement.getItems().stream()
+            .map(SeatChangeSettlementItemEntity::getToSeatId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    Map<Long, FlightSeatEntity> seatsById =
+        flightSeatRepository.findAllById(seatIds).stream()
+            .collect(Collectors.toMap(FlightSeatEntity::getId, seat -> seat));
+    List<ItemView> items =
+        settlement.getItems().stream()
+            .map(
+                item ->
+                    new ItemView(
+                        item.getPassengerId(),
+                        null,
+                        item.getFlightId(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        item.getFromSeatId(),
+                        item.getFromSeatNumber(),
+                        item.getToSeatId(),
+                        item.getToSeatNumber(),
+                        item.getOldAmount(),
+                        item.getNewAmount(),
+                        item.getDeltaAmount(),
+                        "VALID",
+                        null))
+            .toList();
+    applySeatChanges(settlement.getBooking(), items, seatsById);
+  }
+
+  private void applySeatChanges(
+      BookingEntity booking, List<ItemView> items, Map<Long, FlightSeatEntity> seatsById) {
+    var now = java.time.OffsetDateTime.now();
+    List<PassengerSeatAssignmentEntity> activeAssignments =
+        passengerSeatAssignmentRepository.findByBookingIdAndStatusIn(
+            booking.getId(), ACTIVE_ASSIGNMENT_STATUSES);
+    Map<String, PassengerSeatAssignmentEntity> activeByPassengerFlight =
+        activeAssignments.stream()
+            .collect(
+                Collectors.toMap(
+                    assignment ->
+                        assignmentKey(
+                            assignment.getPassenger().getId(),
+                            assignment.getFlightSeat().getFlight().getId()),
+                    assignment -> assignment,
+                    (left, right) -> left,
+                    LinkedHashMap::new));
+
+    for (ItemView item : items) {
+      String key = assignmentKey(item.passengerId(), item.flightId());
+      PassengerSeatAssignmentEntity current = activeByPassengerFlight.get(key);
+      if (current != null && item.fromSeatId() != null) {
+        current.setStatus("RELEASED");
+        current.setUpdatedAt(now);
+        passengerSeatAssignmentRepository.save(current);
+        int released =
+            flightSeatRepository.releaseSelectedForBooking(
+                booking.getId(), List.of(item.fromSeatId()));
+        if (released != 1) {
+          throw new AppException(
+              "SEAT_RELEASE_FAILED", "Could not release seat during seat change", 409);
+        }
+      }
+      if (item.toSeatId() == null) {
+        continue;
+      }
+      FlightSeatEntity newSeat = seatsById.get(item.toSeatId());
+      if (newSeat == null) {
+        newSeat =
+            flightSeatRepository
+                .findById(item.toSeatId())
+                .orElseThrow(() -> new AppException("SEAT_NOT_FOUND", "Seat not found", 404));
+      }
+      String assignmentStatus =
+          "CONFIRMED".equalsIgnoreCase(booking.getStatus()) ? "BOOKED" : "RESERVED";
+      int updated =
+          "BOOKED".equals(assignmentStatus)
+              ? flightSeatRepository.bookSelectedForBooking(
+                  booking.getId(), List.of(item.toSeatId()))
+              : flightSeatRepository.reserveSelectedForBooking(
+                  booking.getId(), List.of(item.toSeatId()), booking.getPnrExpiresAt());
+      if (updated != 1) {
+        throw new AppException("SEAT_UNAVAILABLE", "Seat is no longer available", 409);
+      }
+      PassengerEntity passenger =
+          passengerRepository
+              .findByIdAndBookingId(item.passengerId(), booking.getId())
+              .orElseThrow(
+                  () -> new AppException("PASSENGER_NOT_FOUND", "Passenger not found", 404));
+      PassengerSeatAssignmentEntity newAssignment = new PassengerSeatAssignmentEntity();
+      newAssignment.setBooking(booking);
+      newAssignment.setPassenger(passenger);
+      newAssignment.setFlightSeat(newSeat);
+      newAssignment.setStatus(assignmentStatus);
+      newAssignment.setSurchargeAmount(item.newAmount());
+      newAssignment.setCurrency(booking.getCurrency());
+      newAssignment.setCreatedAt(now);
+      newAssignment.setUpdatedAt(now);
+      passengerSeatAssignmentRepository.save(newAssignment);
+    }
+  }
+
   private List<SeatChangeConfirmView.PaymentMethodItemView> supportedPaymentMethods(
       String currency) {
     String normalizedCurrency = currency == null ? "" : currency.trim().toUpperCase(Locale.ROOT);
@@ -919,5 +1038,8 @@ public class SeatChangeSettlementService {
 
   public record ChangeCommand(Long passengerId, Long flightId, Long fromSeatId, Long toSeatId) {}
 
-  private record PreparedSettlement(BookingEntity booking, SeatChangePreviewView preview) {}
+  private record PreparedSettlement(
+      BookingEntity booking,
+      SeatChangePreviewView preview,
+      Map<Long, FlightSeatEntity> seatsById) {}
 }
