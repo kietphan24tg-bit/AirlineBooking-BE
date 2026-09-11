@@ -60,7 +60,13 @@ For each of the five flows (check-in, cancellation, seat change, service change,
 
 ## Exact Command to Run
 
-To execute the opt-in staging mutation E2E harness, export the required environment variable names with your secret staging environment values:
+Preferred: run the manual GitHub Actions workflow `Agent Staging Mutation E2E` and enter
+`RUN_STAGING_MUTATIONS` in its confirmation input. The workflow reads the staging datasource
+configuration from Coolify at runtime, masks every sensitive value, and never writes those values to
+the repository.
+
+For a trusted operator machine, export the required environment variable names with your secret
+staging environment values:
 
 ```bash
 AGENT_STAGING_MUTATION_ENABLED=true \

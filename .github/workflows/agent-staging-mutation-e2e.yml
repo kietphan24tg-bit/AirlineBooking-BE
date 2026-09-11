@@ -1,0 +1,92 @@
+name: Agent Staging Mutation E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RUN_STAGING_MUTATIONS to confirm fixture-owned staging mutations
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-staging-mutation-e2e
+  cancel-in-progress: false
+
+jobs:
+  mutation-e2e:
+    name: Validate Agent Mutations
+    if: inputs.confirmation == 'RUN_STAGING_MUTATIONS'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Validate staging readiness
+        env:
+          STAGING_BASE_URL: http://20.196.153.39:8080
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 15 "$STAGING_BASE_URL/actuator/health/readiness" \
+            | jq -e '.status == "UP"' > /dev/null
+
+      - name: Run fixture-owned mutation acceptance suite
+        env:
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          STAGING_BASE_URL: http://20.196.153.39:8080
+        run: |
+          set -euo pipefail
+          test -n "$COOLIFY_DEPLOY_WEBHOOK"
+          test -n "$COOLIFY_API_TOKEN"
+
+          coolify_base=${COOLIFY_DEPLOY_WEBHOOK%%/api/v1/*}
+          resource_uuid=$(sed -nE 's/.*[?&]uuid=([^&]+).*/\1/p' <<< "$COOLIFY_DEPLOY_WEBHOOK")
+          test -n "$resource_uuid"
+
+          envs=$(curl -fsS -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$coolify_base/api/v1/applications/$resource_uuid/envs")
+          staging_db_url=$(jq -r '.[] | select(.key == "SPRING_DATASOURCE_URL" and .is_preview == false) | .value' <<< "$envs" | tail -n 1)
+          staging_db_user=$(jq -r '.[] | select(.key == "SPRING_DATASOURCE_USERNAME" and .is_preview == false) | .value' <<< "$envs" | tail -n 1)
+          staging_db_password=$(jq -r '.[] | select(.key == "SPRING_DATASOURCE_PASSWORD" and .is_preview == false) | .value' <<< "$envs" | tail -n 1)
+
+          test -n "$staging_db_url"
+          test -n "$staging_db_user"
+          test -n "$staging_db_password"
+          echo "::add-mask::$staging_db_url"
+          echo "::add-mask::$staging_db_user"
+          echo "::add-mask::$staging_db_password"
+
+          AGENT_STAGING_MUTATION_ENABLED=true \
+          STAGING_BASE_URL="$STAGING_BASE_URL" \
+          STAGING_DB_URL="$staging_db_url" \
+          STAGING_DB_USER="$staging_db_user" \
+          STAGING_DB_PASSWORD="$staging_db_password" \
+            ./gradlew --no-daemon :module-ai:agentStagingMutationE2E
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-staging-mutation-e2e-report
+          path: |
+            module-ai/build/reports/tests/agentStagingMutationE2E/**
+            module-ai/build/test-results/agentStagingMutationE2E/**
