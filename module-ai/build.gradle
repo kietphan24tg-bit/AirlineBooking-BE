@@ -152,6 +152,7 @@ tasks.register('postgresIntegrationTest', Test) {
     }
     filter {
         includeTestsMatching 'com.example.moduleai.confirmation.ToolConfirmationServicePostgresIntegrationTest'
+        includeTestsMatching 'com.example.moduleai.conversation.ChatConversationPostgresIntegrationTest'
     }
 
     def envFile = rootProject.file('.env')

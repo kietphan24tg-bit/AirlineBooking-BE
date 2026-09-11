@@ -48,7 +48,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run verification suite
-        run: ./gradlew --no-daemon clean qualityGate :app-bootstrap:bootJar
+        run: ./gradlew --no-daemon clean qualityGate :module-ai:postgresIntegrationTest :app-bootstrap:bootJar
 
       - name: Validate Docker Hub configuration
         env:

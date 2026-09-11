@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface ChatConversationRepository extends JpaRepository<ChatConversationEntity, UUID> {
 
@@ -49,6 +50,7 @@ public interface ChatConversationRepository extends JpaRepository<ChatConversati
       ChatConversationStatus status, OffsetDateTime before);
 
   @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
   @Query(
       """
       update ChatConversationEntity conversation
