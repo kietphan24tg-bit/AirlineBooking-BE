@@ -42,6 +42,17 @@ tasks.named('test') {
         excludeTags 'rag-live'
         excludeTags 'agent-live'
         excludeTags 'postgres-integration'
+        excludeTags 'staging-mutation-e2e'
+    }
+}
+
+tasks.register('agentStagingMutationE2E', Test) {
+    group = 'verification'
+    description = 'Runs the opt-in staging Agent mutation E2E validation harness.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'staging-mutation-e2e'
     }
 }
 
