@@ -14,11 +14,24 @@ This runbook defines the exact commands, required environment variables, API val
 | `APP_AI_AGENT_ACTIONS_ENABLED` | Global kill switch for Agent actions | `true` |
 | `APP_AI_AGENT_CONFIRMATION_HMAC_SECRET` | HMAC signature secret (min 32 chars) | `<secure-32-byte-secret>` |
 | `APP_AI_AGENT_ROLLOUT_MODE` | Rollout mode (`OFF`, `SHADOW`, `LIVE`) | `SHADOW`, then `LIVE` with a canary allowlist |
-| `APP_AI_AGENT_ROLLOUT_CANARY_USER_IDS` | Authenticated users allowed during canary | Comma-separated staging user IDs |
-| `APP_AI_AGENT_ROLLOUT_ENABLED_TOOLS` | Mutation tools allowed during rollout | Start with one low-risk tool |
+| `APP_AI_AGENT_CANARY_USER_IDS` | Authenticated users allowed during canary | Comma-separated staging user IDs |
+| `APP_AI_AGENT_ENABLED_TOOLS` | Mutation tools allowed during rollout | Start with one low-risk tool |
 | `SPRING_DATASOURCE_URL` | PostgreSQL connection URL | `jdbc:postgresql://<staging-db-host>:5432/airline_booking` |
 | `SPRING_DATASOURCE_USERNAME` | Database username | `airline_user` |
 | `SPRING_DATASOURCE_PASSWORD` | Database password | `<staging-db-password>` |
+
+The current runtime has complete presenter and revalidation handlers for these mutation tools:
+
+```text
+update_current_profile,confirm_check_in,confirm_cancellation,confirm_seat_change,
+confirm_service_change,create_booking_payment,create_seat_change_payment,
+create_service_change_payment,create_flight_change_payment,cancel_payment
+```
+
+Do not add `create_booking`, `replace_booking_services`, `replace_seat_assignments`,
+`remove_seat_assignment`, `patch_seat_assignment`, or `confirm_flight_change` to the rollout
+allowlist until each tool has a complete confirmation handler and staging E2E fixture. The runtime
+also rejects incomplete mutation tools even if their names are configured.
 
 ## Exact Local & Staging Validation Commands
 
