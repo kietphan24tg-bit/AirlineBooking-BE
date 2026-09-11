@@ -924,13 +924,32 @@ class AgentStagingMutationE2ETest {
       proposalNode = json.at("/proposal");
     }
 
-    if (!proposalNode.isMissingNode() && proposalNode.has("id")) {
-      assertThat(proposalNode.path("tool").asText())
-          .as("LLM must select the expected mutation tool")
-          .isEqualTo(expectedTool);
-      return UUID.fromString(proposalNode.get("id").asText());
+    assertThat(!proposalNode.isMissingNode() && !proposalNode.isNull() && proposalNode.has("id"))
+        .as(
+            "Expected proposal for tool %s; response summary: %s",
+            expectedTool, summarizeChatResponse(json))
+        .isTrue();
+    assertThat(proposalNode.path("tool").asText())
+        .as("LLM must select the expected mutation tool")
+        .isEqualTo(expectedTool);
+    return UUID.fromString(proposalNode.get("id").asText());
+  }
+
+  private String summarizeChatResponse(JsonNode json) {
+    JsonNode payload = json.has("data") ? json.path("data") : json;
+    return "answerType="
+        + payload.path("answerType").asText("<missing>")
+        + ", fallbackReason="
+        + payload.path("fallbackReason").asText("<none>")
+        + ", answer="
+        + truncate(payload.path("answer").asText("<missing>"), 500);
+  }
+
+  private String truncate(String value, int maxLength) {
+    if (value == null || value.length() <= maxLength) {
+      return value;
     }
-    return null;
+    return value.substring(0, maxLength) + "...";
   }
 
   private record ConfirmationRaceResult(
