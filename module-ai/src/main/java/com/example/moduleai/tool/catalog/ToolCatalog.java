@@ -32,6 +32,7 @@ public class ToolCatalog implements SmartInitializingSingleton {
 
   private static final Set<String> DISABLED_LLM_TOOLS =
       Set.of(
+          "create_booking",
           "replace_seat_assignments",
           "remove_seat_assignment",
           "patch_seat_assignment",

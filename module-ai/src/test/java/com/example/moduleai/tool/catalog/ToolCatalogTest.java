@@ -159,7 +159,16 @@ class ToolCatalogTest {
       assertThat(toolCatalog.descriptor("list_my_trips").exposedToLlm()).isTrue();
       assertThat(toolCatalog.descriptor("get_trip_detail").exposedToLlm()).isTrue();
       assertThat(toolCatalog.descriptor("get_manage_options").exposedToLlm()).isTrue();
-      assertThat(toolCatalog.descriptor("quote_flight_change").exposedToLlm()).isFalse();
+      assertThat(
+              java.util.List.of(
+                  "create_booking",
+                  "replace_seat_assignments",
+                  "remove_seat_assignment",
+                  "patch_seat_assignment",
+                  "replace_booking_services",
+                  "quote_flight_change",
+                  "confirm_flight_change"))
+          .allSatisfy(tool -> assertThat(toolCatalog.descriptor(tool).exposedToLlm()).isFalse());
     }
   }
 }
