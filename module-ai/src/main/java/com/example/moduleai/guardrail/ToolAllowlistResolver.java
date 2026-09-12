@@ -38,16 +38,38 @@ public class ToolAllowlistResolver implements SmartInitializingSingleton {
           Map.entry("flight_calendar_search", Set.of("search_flight_calendar", "search_flights")),
           Map.entry("fare_revalidate", Set.of("revalidate_fare")),
           Map.entry("manage_options", Set.of("get_manage_options")),
-          Map.entry("checkin_continue", Set.of("continue_check_in", "confirm_check_in")),
-          Map.entry("cancellation_preview", Set.of("preview_cancellation", "confirm_cancellation")),
+          Map.entry(
+              "checkin_continue",
+              Set.of("lookup_booking", "continue_check_in", "confirm_check_in")),
+          Map.entry(
+              "cancellation_preview",
+              Set.of(
+                  "lookup_booking",
+                  "get_booking_tickets",
+                  "preview_cancellation",
+                  "confirm_cancellation")),
           Map.entry("flight_change_quote", Set.of("quote_flight_change", "confirm_flight_change")),
           Map.entry("booking_tickets", Set.of("get_booking_tickets", "lookup_booking")),
           Map.entry(
               "seat_change_preview",
-              Set.of("preview_seat_change", "get_seat_map", "confirm_seat_change")),
+              Set.of(
+                  "lookup_booking",
+                  "get_manage_options",
+                  "get_seat_map",
+                  "preview_seat_change",
+                  "confirm_seat_change")),
           Map.entry("seat_change_confirm", Set.of("confirm_seat_change")),
           Map.entry(
-              "service_change_preview", Set.of("preview_service_change", "confirm_service_change")),
+              "service_change_preview",
+              Set.of(
+                  "lookup_booking",
+                  "get_manage_options",
+                  "list_services",
+                  "preview_service_change",
+                  "confirm_service_change")),
+          Map.entry(
+              "booking_payment_create",
+              Set.of("lookup_booking", "list_payment_methods", "create_booking_payment")),
           Map.entry("my_trips", Set.of("list_my_trips", "get_trip_detail")),
           Map.entry("trip_detail", Set.of("get_trip_detail")),
           Map.entry("account_profile", Set.of("get_current_profile")),

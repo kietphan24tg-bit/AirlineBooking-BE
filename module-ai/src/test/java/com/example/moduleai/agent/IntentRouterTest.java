@@ -79,6 +79,15 @@ class IntentRouterTest {
     assertThat(update.requiresConfirmation()).isTrue();
   }
 
+  @ParameterizedTest
+  @MethodSource("stagingMutationCases")
+  void routesConcreteStagingMutationsToAgent(String question, String expectedIntent) {
+    RoutingDecision decision = intentRouter.route(question);
+
+    assertThat(decision.category()).isEqualTo(RouteCategory.DYNAMIC_API_REQUIRED);
+    assertThat(decision.intent()).isEqualTo(expectedIntent);
+  }
+
   @Test
   void normalizesVietnameseDStrokeForDynamicIntentRules() {
     assertThat(intentRouter.route("Tôi check-in được chưa?").category())
@@ -103,6 +112,15 @@ class IntentRouterTest {
 
     assertThat(decision.category()).isEqualTo(RouteCategory.STATIC_POLICY_RAG);
     assertThat(decision.intent()).isEqualTo("static_policy_rag");
+  }
+
+  @Test
+  void recognizesCurrentProductionPnrLength() {
+    RoutingDecision decision =
+        intentRouter.route("I want to cancel my booking PNR PNR1234ABCD");
+
+    assertThat(decision.category()).isEqualTo(RouteCategory.DYNAMIC_API_REQUIRED);
+    assertThat(decision.missingRequiredContext()).isFalse();
   }
 
   @Test
@@ -296,5 +314,24 @@ class IntentRouterTest {
         Arguments.of("Update my account profile and change my first name to AgentE2EConfirmed."),
         Arguments.of("Change my account profile: update my last name to Nguyen."),
         Arguments.of("Cap nhat ho so tai khoan cua toi, doi ten thanh An."));
+  }
+
+  private static Stream<Arguments> stagingMutationCases() {
+    return Stream.of(
+        Arguments.of(
+            "Toi muon lam thu tuc chuyen bay cho hanh khach Staging User1 ma dat cho E2E12345",
+            "checkin_continue"),
+        Arguments.of(
+            "I want to cancel my ticket for passenger Staging User1 under booking PNR E2E12345",
+            "cancellation_preview"),
+        Arguments.of(
+            "Toi muon doi ghe cho hanh khach Staging User1 sang ghe 14C trong booking E2E12345",
+            "seat_change_preview"),
+        Arguments.of(
+            "I want to replace service option Meal A with Meal B in booking PNR E2E12345",
+            "service_change_preview"),
+        Arguments.of(
+            "Toi muon thanh toan cho ma dat cho E2E12345 bang phuong thuc PAYOS",
+            "booking_payment_create"));
   }
 }

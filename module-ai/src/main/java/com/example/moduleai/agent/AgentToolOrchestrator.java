@@ -177,7 +177,7 @@ public class AgentToolOrchestrator {
         if (!budget.tryConsumeToolCalls(toolCalls.size())) {
           observability.recordAgentGuardrailBlock("TOOL_CALL_BUDGET_EXCEEDED");
           return chatResponseMapper.fallback(
-              "Mot yeu cau chi duoc phep thuc thi toi da mot tool trong mot luot.",
+              "Yeu cau vuot qua gioi han tool an toan trong mot luot.",
               "TOOL_CALL_BUDGET_EXCEEDED");
         }
 
@@ -331,9 +331,10 @@ public class AgentToolOrchestrator {
     policy.append("\n\nApproved tools for this request: ").append(toolNames).append('.');
     if (allowlist.stream().anyMatch(this::isMutation)) {
       policy.append(
-          " This request permits a write action only through the approved tool. When the user"
-              + " supplies a matching update value, make exactly one tool call. Do not claim that"
-              + " the update tool is unavailable and do not claim that the update is complete.");
+          " This request permits a write action only through the approved tools. Use the read and"
+              + " preview tools needed to resolve authoritative IDs and settlement values, then"
+              + " make exactly one mutation tool call. Never make multiple mutation calls. Do not"
+              + " claim that the mutation is unavailable or complete without a backend result.");
     }
     if (memory == null) {
       return policy.toString();

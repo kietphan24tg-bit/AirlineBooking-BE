@@ -180,7 +180,9 @@ class AgentStagingMutationE2ETest {
             + fixture.passengerFirstName
             + " "
             + fixture.passengerLastName
-            + " m\u00E3 \u0111\u1EB7t ch\u1ED7 "
+            + "; passenger last name "
+            + fixture.passengerLastName
+            + "; PNR "
             + fixture.pnrCode;
     UUID proposalId = executePromptAndExtractProposalId(chatPrompt, "confirm_check_in");
     assertThat(proposalId).as("Proposal ID should be created for check-in prompt").isNotNull();
@@ -223,7 +225,9 @@ class AgentStagingMutationE2ETest {
             + fixture.passengerFirstName
             + " "
             + fixture.passengerLastName
-            + " under booking PNR "
+            + "; passenger last name "
+            + fixture.passengerLastName
+            + "; booking PNR "
             + fixture.pnrCode;
     UUID proposalId = executePromptAndExtractProposalId(chatPrompt, "confirm_cancellation");
     assertThat(proposalId).as("Proposal ID should be created for cancellation prompt").isNotNull();
@@ -281,7 +285,9 @@ class AgentStagingMutationE2ETest {
             + fixture.passengerLastName
             + " sang gh\u1EBF "
             + ref.targetSeatNumber
-            + " trong booking "
+            + "; passenger last name "
+            + fixture.passengerLastName
+            + "; booking PNR "
             + fixture.pnrCode;
     UUID proposalId = executePromptAndExtractProposalId(chatPrompt, "confirm_seat_change");
     assertThat(proposalId).as("Proposal ID should be created for seat change prompt").isNotNull();
@@ -364,7 +370,9 @@ class AgentStagingMutationE2ETest {
             + fixture.passengerFirstName
             + " "
             + fixture.passengerLastName
-            + " in booking PNR "
+            + "; passenger last name "
+            + fixture.passengerLastName
+            + "; booking PNR "
             + fixture.pnrCode;
     UUID proposalId = executePromptAndExtractProposalId(chatPrompt, "confirm_service_change");
     assertThat(proposalId)
@@ -420,7 +428,9 @@ class AgentStagingMutationE2ETest {
     assertThat(initialPaymentCount).as("Initial payment count must be 0").isEqualTo(0L);
 
     String chatPrompt =
-        "T\u00F4i mu\u1ED1n thanh to\u00E1n cho m\u00E3 \u0111\u1EB7t ch\u1ED7 "
+        "T\u00F4i mu\u1ED1n thanh to\u00E1n; passenger last name "
+            + fixture.passengerLastName
+            + "; PNR "
             + fixture.pnrCode
             + " b\u1EB1ng ph\u01B0\u01A1ng th\u1EE9c PAYOS";
     UUID proposalId = executePromptAndExtractProposalId(chatPrompt, "create_booking_payment");

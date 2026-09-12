@@ -56,6 +56,14 @@ public class IntentRouter {
     if (containsAll(normalized, "booking", "con han")) {
       return bookingScoped(rawMessage, "booking_lookup", "POST /api/bookings/lookup", true, false);
     }
+    if (hasPnr(rawMessage) && isBookingPaymentRequest(normalized)) {
+      return bookingScoped(
+          rawMessage,
+          "booking_payment_create",
+          "POST /api/payments",
+          true,
+          false);
+    }
     if (containsAll(normalized, "qr", "con bao lau")) {
       return bookingOrPaymentScoped(
           rawMessage, "payment_detail", "GET /api/payments/{paymentId}", false);
@@ -123,7 +131,19 @@ public class IntentRouter {
       return bookingScoped(
           rawMessage, "checkin_continue", "POST /api/check-in/continue", true, true);
     }
+    if (hasPnr(rawMessage) && isCheckInActionRequest(normalized)) {
+      return bookingScoped(
+          rawMessage, "checkin_continue", "POST /api/check-in/continue", true, true);
+    }
     if (containsAny(normalized, "hoan duoc bao nhieu tien", "huy duoc khong")) {
+      return bookingScoped(
+          rawMessage,
+          "cancellation_preview",
+          "POST /api/bookings/{bookingId}/cancellations/preview",
+          true,
+          true);
+    }
+    if (hasPnr(rawMessage) && isCancellationActionRequest(normalized)) {
       return bookingScoped(
           rawMessage,
           "cancellation_preview",
@@ -161,6 +181,14 @@ public class IntentRouter {
           true,
           true);
     }
+    if (hasPnr(rawMessage) && isSeatChangeActionRequest(normalized)) {
+      return bookingScoped(
+          rawMessage,
+          "seat_change_preview",
+          "POST /api/bookings/{bookingId}/seat-changes/preview",
+          true,
+          true);
+    }
     if (containsAll(normalized, "xac nhan", "doi ghe")) {
       return bookingScoped(
           rawMessage,
@@ -170,6 +198,14 @@ public class IntentRouter {
           true);
     }
     if (containsAny(normalized, "doi suat an", "doi dich vu")) {
+      return bookingScoped(
+          rawMessage,
+          "service_change_preview",
+          "POST /api/bookings/{bookingId}/service-changes/preview",
+          true,
+          true);
+    }
+    if (hasPnr(rawMessage) && isServiceChangeActionRequest(normalized)) {
       return bookingScoped(
           rawMessage,
           "service_change_preview",
@@ -197,6 +233,48 @@ public class IntentRouter {
       return bookingScoped(rawMessage, "booking_lookup", "POST /api/bookings/lookup", true, false);
     }
     return null;
+  }
+
+  private boolean isBookingPaymentRequest(String normalized) {
+    return containsAny(
+            normalized, "muon thanh toan", "pay for", "create payment", "payment link")
+        && !containsAny(normalized, "thanh toan chua", "payment status", "trang thai");
+  }
+
+  private boolean isCheckInActionRequest(String normalized) {
+    return containsAny(
+        normalized,
+        "lam thu tuc chuyen bay",
+        "lam thu tuc check in",
+        "lam thu tuc checkin",
+        "check in passenger",
+        "check-in passenger",
+        "check in for",
+        "check-in for");
+  }
+
+  private boolean isCancellationActionRequest(String normalized) {
+    return containsAny(
+        normalized,
+        "muon huy",
+        "huy ve",
+        "huy booking",
+        "cancel my ticket",
+        "cancel my booking");
+  }
+
+  private boolean isSeatChangeActionRequest(String normalized) {
+    return containsAny(normalized, "muon doi ghe", "change my seat", "move my seat")
+        && containsAny(normalized, "sang ghe", "to seat");
+  }
+
+  private boolean isServiceChangeActionRequest(String normalized) {
+    return containsAny(
+        normalized,
+        "muon doi dich vu",
+        "muon doi suat an",
+        "replace service option",
+        "change service option");
   }
 
   private boolean isProfileUpdateRequest(String normalized) {
@@ -289,7 +367,13 @@ public class IntentRouter {
     String[] tokens =
         rawMessage.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9 ]+", " ").split("\\s+");
     for (String token : tokens) {
-      if (token.length() == 6 && token.matches("[A-Z0-9]{6}") && token.matches(".*\\d.*")) {
+      boolean supportedLength = token.length() >= 6 && token.length() <= 20;
+      boolean knownFormat =
+          token.startsWith("PNR") || token.startsWith("E2E") || token.length() == 6;
+      if (supportedLength
+          && knownFormat
+          && token.matches("[A-Z0-9]+")
+          && token.matches(".*\\d.*")) {
         return true;
       }
     }
