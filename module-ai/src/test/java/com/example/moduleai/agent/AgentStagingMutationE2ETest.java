@@ -733,21 +733,26 @@ class AgentStagingMutationE2ETest {
     OffsetDateTime now = OffsetDateTime.now();
     String firstName = "Staging";
     String lastName = "User" + runId;
+    BigDecimal bookingTotal = BigDecimal.valueOf(1_000_000L);
+    if (Boolean.TRUE.equals(withService) && ref.sourceServiceTotal != null) {
+      bookingTotal = bookingTotal.add(ref.sourceServiceTotal);
+    }
 
     Long bookingId;
     String sqlBooking =
         "INSERT INTO bookings (user_id, pnr_code, contact_email, contact_phone, status,"
             + " total_amount, currency, pnr_expires_at, discount_amount, created_at, updated_at)"
-            + " VALUES (?, ?, ?, '+84900000000', ?, 1000000.00, 'VND', ?, 0.00, ?, ?)"
+            + " VALUES (?, ?, ?, '+84900000000', ?, ?, 'VND', ?, 0.00, ?, ?)"
             + " RETURNING id";
     try (PreparedStatement stmt = dbConnection.prepareStatement(sqlBooking)) {
       stmt.setObject(1, testUserId);
       stmt.setString(2, pnrCode);
       stmt.setString(3, testEmail);
       stmt.setString(4, bookingStatus);
-      stmt.setObject(5, now.plusMinutes(30));
-      stmt.setObject(6, now);
+      stmt.setBigDecimal(5, bookingTotal);
+      stmt.setObject(6, now.plusMinutes(30));
       stmt.setObject(7, now);
+      stmt.setObject(8, now);
       ResultSet rs = stmt.executeQuery();
       rs.next();
       bookingId = rs.getLong(1);
@@ -857,12 +862,13 @@ class AgentStagingMutationE2ETest {
     if (Boolean.TRUE.equals(withPayment)) {
       String sqlPayment =
           "INSERT INTO payments (booking_id, amount, currency, payment_method, payment_status,"
-              + " created_at, updated_at) VALUES (?, 1000000.00, 'VND', 'PAYOS', 'SUCCESS', ?, ?)"
+              + " created_at, updated_at) VALUES (?, ?, 'VND', 'PAYOS', 'SUCCESS', ?, ?)"
               + " RETURNING id";
       try (PreparedStatement stmt = dbConnection.prepareStatement(sqlPayment)) {
         stmt.setLong(1, bookingId);
-        stmt.setObject(2, now);
+        stmt.setBigDecimal(2, bookingTotal);
         stmt.setObject(3, now);
+        stmt.setObject(4, now);
         ResultSet rs = stmt.executeQuery();
         rs.next();
         addToLedger("payments", rs.getLong(1));
