@@ -1016,10 +1016,13 @@ class AgentStagingMutationE2ETest {
 
     assertThat(queryString("SELECT status FROM ai_tool_proposals WHERE id = ?", proposalId))
         .as(
-            "Proposal must reach the terminal executed state; HTTP statuses=%s/%s; safeError=%s",
+            "Proposal must reach the terminal executed state; HTTP statuses=%s/%s; safeError=%s;"
+                + " responses=%s/%s",
             res1.statusCode(),
             res2.statusCode(),
-            queryString("SELECT safe_error FROM ai_tool_proposals WHERE id = ?", proposalId))
+            queryString("SELECT safe_error FROM ai_tool_proposals WHERE id = ?", proposalId),
+            summarizeHttpResponse(res1),
+            summarizeHttpResponse(res2))
         .isEqualTo("EXECUTED");
     assertThat(
             queryCount(
@@ -1046,6 +1049,10 @@ class AgentStagingMutationE2ETest {
     } catch (Exception exception) {
       return false;
     }
+  }
+
+  private String summarizeHttpResponse(HttpResponse<String> response) {
+    return response.statusCode() + ":" + truncate(response.body(), 600);
   }
 
   private HttpResponse<String> sendConfirmRequest(UUID proposalId) throws Exception {

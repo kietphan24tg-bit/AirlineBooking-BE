@@ -7,6 +7,10 @@ on:
         description: Type RUN_STAGING_MUTATIONS to confirm fixture-owned staging mutations
         required: true
         type: string
+      test_filter:
+        description: Optional JUnit method name for focused diagnostics
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -87,13 +91,18 @@ jobs:
           echo "::add-mask::$staging_db_user"
           echo "::add-mask::$staging_db_password"
 
+          test_args=()
+          if [[ -n "${{ inputs.test_filter }}" ]]; then
+            test_args+=(--tests "com.example.moduleai.agent.AgentStagingMutationE2ETest.${{ inputs.test_filter }}")
+          fi
+
           AGENT_STAGING_MUTATION_ENABLED=true \
           AGENT_STAGING_MODEL_COOLDOWN_SECONDS=65 \
           STAGING_BASE_URL="$STAGING_BASE_URL" \
           STAGING_DB_URL="$staging_db_url" \
           STAGING_DB_USER="$staging_db_user" \
           STAGING_DB_PASSWORD="$staging_db_password" \
-            ./gradlew --no-daemon :module-ai:agentStagingMutationE2E
+            ./gradlew --no-daemon :module-ai:agentStagingMutationE2E "${test_args[@]}"
 
       - name: Upload test report on failure
         if: failure()
