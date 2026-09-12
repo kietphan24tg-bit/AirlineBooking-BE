@@ -120,9 +120,13 @@ public class ToolConfirmationService {
       if (error != null) {
         throw toAppException(error);
       }
-      String canonicalArguments = objectMapper.writeValueAsString(input);
+      Object canonicalInput = snapshotFactory.canonicalizeInput(toolName, input, proposalContext);
+      if (canonicalInput == null) {
+        canonicalInput = input;
+      }
+      String canonicalArguments = objectMapper.writeValueAsString(canonicalInput);
       Map<String, Object> snapshot =
-          snapshotFactory.createSnapshot(toolName, input, proposalContext);
+          snapshotFactory.createSnapshot(toolName, canonicalInput, proposalContext);
       ToolProposalEntity proposal = new ToolProposalEntity();
       proposal.setId(proposalId);
       proposal.setUserId(context.userId());

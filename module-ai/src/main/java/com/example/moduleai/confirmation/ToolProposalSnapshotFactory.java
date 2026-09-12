@@ -37,6 +37,11 @@ public class ToolProposalSnapshotFactory {
     return objectMapper.convertValue(payloadSanitizer.sanitize(raw), MAP_TYPE);
   }
 
+  public Object canonicalizeInput(String toolName, Object input, AgentToolContext context) {
+    Object presented = confirmationRegistry.present(toolName, input, context);
+    return confirmationRegistry.canonicalize(toolName, input, presented, context);
+  }
+
   public String summary(String toolName, Map<String, Object> snapshot) {
     Object explicitSummary = snapshot.get("summary");
     if (explicitSummary instanceof String summary && !summary.isBlank()) {

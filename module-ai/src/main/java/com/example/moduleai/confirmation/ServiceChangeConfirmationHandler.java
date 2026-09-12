@@ -51,7 +51,7 @@ class ServiceChangeConfirmationHandler
     Map<String, Object> snapshot = map(originalSnapshot);
     ServiceChangePreviewView original =
         objectMapper.convertValue(snapshot.get("preview"), ServiceChangePreviewView.class);
-    if (!Objects.equals(original.previewToken(), fresh.previewToken())
+    if (!Objects.equals(input.previewToken(), fresh.previewToken())
         || !sameSummary(original.summary(), fresh.summary())
         || !Objects.equals(original.settlementType(), fresh.settlementType())) {
       throw new AppException(
@@ -67,10 +67,14 @@ class ServiceChangeConfirmationHandler
       Object originalSnapshot,
       AgentToolContext context) {
     ServiceChangePreviewView preview = snapshotPreview(originalSnapshot);
+    if (preview.previewToken() == null || preview.previewToken().isBlank()) {
+      throw new AppException(
+          "SERVICE_CHANGE_PREVIEW_STALE", "Service change preview token is missing.", 409);
+    }
     return new AncillaryTools.ConfirmServiceChangeInput(
         input.bookingId(),
         input.passengers(),
-        preview.previewToken(),
+        "***".equals(preview.previewToken()) ? input.previewToken() : preview.previewToken(),
         preview.summary().additionalAmount(),
         preview.summary().refundAmount(),
         preview.summary().netAmount());

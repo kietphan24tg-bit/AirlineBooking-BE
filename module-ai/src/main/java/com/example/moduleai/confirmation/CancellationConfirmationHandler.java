@@ -51,7 +51,12 @@ class CancellationConfirmationHandler
     Map<String, Object> snapshot = map(originalSnapshot);
     BookingCancellationPreviewView original =
         objectMapper.convertValue(snapshot.get("preview"), BookingCancellationPreviewView.class);
-    if (!sameMoney(original.summary().netRefund(), fresh.summary().netRefund())
+    if (!sameMoney(original.summary().fareGross(), fresh.summary().fareGross())
+        || !sameMoney(original.summary().promoAllocated(), fresh.summary().promoAllocated())
+        || !sameMoney(original.summary().fareNet(), fresh.summary().fareNet())
+        || !sameMoney(original.summary().seatRefund(), fresh.summary().seatRefund())
+        || !sameMoney(original.summary().serviceRefund(), fresh.summary().serviceRefund())
+        || !sameMoney(original.summary().netRefund(), fresh.summary().netRefund())
         || !sameMoney(original.summary().refundFee(), fresh.summary().refundFee())) {
       throw new AppException(
           "CANCELLATION_PREVIEW_STALE",

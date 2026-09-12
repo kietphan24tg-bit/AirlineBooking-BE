@@ -2,8 +2,12 @@ package com.example.moduleai.confirmation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.example.common.exception.AppException;
+import com.example.moduleai.config.AiAgentGuardrailProperties;
+import com.example.moduleai.guardrail.AgentPayloadSanitizer;
 import com.example.moduleai.tool.AncillaryTools;
 import com.example.moduleai.tool.CancellationTools;
 import com.example.moduleai.tool.SeatTools;
@@ -119,21 +123,71 @@ class MutationConfirmationHandlerTest {
     AncillaryTools.ConfirmServiceChangeInput input =
         new AncillaryTools.ConfirmServiceChangeInput(
             11L, List.of(passenger), "model-token", money("999"), money("999"), money("999"));
-    Map<String, Object> snapshot = persistedSnapshot(preview);
-
-    assertThatCode(() -> handler.revalidate(input, snapshot, context)).doesNotThrowAnyException();
+    ToolConfirmationRegistry registry =
+        new ToolConfirmationRegistry(List.of(handler), List.of(handler));
+    ToolProposalSnapshotFactory factory =
+        new ToolProposalSnapshotFactory(
+            objectMapper,
+            new AgentPayloadSanitizer(objectMapper, new AiAgentGuardrailProperties()),
+            registry);
+    AncillaryTools.ConfirmServiceChangeInput signedInput =
+        (AncillaryTools.ConfirmServiceChangeInput)
+            factory.canonicalizeInput("confirm_service_change", input, context);
+    Map<String, Object> snapshot =
+        objectMapper.readValue(
+            objectMapper.writeValueAsString(
+                factory.createSnapshot("confirm_service_change", signedInput, context)),
+            MAP_TYPE);
+    assertThat(objectMapper.writeValueAsString(snapshot)).doesNotContain("server-token");
+    assertThatCode(() -> handler.revalidate(signedInput, snapshot, context))
+        .doesNotThrowAnyException();
     AncillaryTools.ConfirmServiceChangeInput canonical =
-        handler.canonicalize(input, snapshot, context);
+        handler.canonicalize(signedInput, snapshot, context);
 
     assertThat(canonical.previewToken()).isEqualTo("server-token");
     assertThat(canonical.expectedAdditionalAmount()).isEqualByComparingTo("0.00");
     assertThat(canonical.expectedRefundAmount()).isEqualByComparingTo("0.00");
     assertThat(canonical.expectedNetAmount()).isEqualByComparingTo("0.00");
+    assertThatThrownBy(() -> handler.revalidate(input, snapshot, context))
+        .isInstanceOf(AppException.class);
+    ServiceChangePreviewView changed =
+        new ServiceChangePreviewView(
+            11L,
+            "VND",
+            "server-token",
+            "NONE",
+            List.of(),
+            new ServiceChangePreviewView.SummaryView(money("1.00"), money("0.00"), money("1.00")));
+    when(service.preview(
+            7L,
+            11L,
+            List.of(
+                new ServiceChangeSettlementService.PassengerSelectionsCommand(
+                    21L, List.of(new ServiceChangeSettlementService.SelectionCommand(51L, 1))))))
+        .thenReturn(changed);
+    assertThatThrownBy(() -> handler.revalidate(signedInput, snapshot, context))
+        .isInstanceOf(AppException.class);
   }
 
   private Map<String, Object> persistedSnapshot(Object preview) throws Exception {
     Map<String, Object> snapshot = Map.of("preview", objectMapper.convertValue(preview, MAP_TYPE));
     return objectMapper.readValue(objectMapper.writeValueAsString(snapshot), MAP_TYPE);
+  }
+
+  @Test
+  void serviceCanonicalizationRejectsSnapshotWithoutToken() {
+    ServiceChangeConfirmationHandler handler =
+        new ServiceChangeConfirmationHandler(
+            Mockito.mock(ServiceChangeSettlementService.class), objectMapper);
+    AncillaryTools.ConfirmServiceChangeInput input =
+        new AncillaryTools.ConfirmServiceChangeInput(
+            11L, List.of(), "signed-token", money("0"), money("0"), money("0"));
+    Map<String, Object> snapshot =
+        Map.of(
+            "preview",
+            Map.of("summary", Map.of("additionalAmount", 0, "refundAmount", 0, "netAmount", 0)));
+    assertThatThrownBy(() -> handler.canonicalize(input, snapshot, context))
+        .isInstanceOf(AppException.class);
   }
 
   private BigDecimal money(String value) {
