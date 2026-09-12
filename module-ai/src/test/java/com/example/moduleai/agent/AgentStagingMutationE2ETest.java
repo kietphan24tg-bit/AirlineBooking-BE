@@ -361,24 +361,21 @@ class AgentStagingMutationE2ETest {
     BookingFixture fixture = createBookingFixture(ref, "CONFIRMED", true, false, true);
 
     String chatPrompt =
-        "I want to replace service option "
-            + ref.sourceServiceOptionName
-            + " (quantity "
+        "Create one confirm_service_change proposal for my bookingId "
+            + fixture.bookingId
+            + ", PNR "
+            + fixture.pnrCode
+            + ", passengerId "
+            + fixture.passengerId
+            + ". Replace service optionId "
+            + ref.sourceServiceOptionId
+            + " quantity "
             + ref.sourceServiceQuantity
-            + ")"
-            + " with "
-            + ref.targetServiceOptionName
-            + " (quantity "
+            + " with optionId "
+            + ref.targetServiceOptionId
+            + " quantity "
             + ref.targetServiceQuantity
-            + ")"
-            + " for passenger "
-            + fixture.passengerFirstName
-            + " "
-            + fixture.passengerLastName
-            + "; passenger last name "
-            + fixture.passengerLastName
-            + "; booking PNR "
-            + fixture.pnrCode;
+            + ". Do not call list_services; use the supplied IDs.";
     UUID proposalId = executePromptAndExtractProposalId(chatPrompt, "confirm_service_change");
     assertThat(proposalId)
         .as("Proposal ID should be created for service change prompt")
