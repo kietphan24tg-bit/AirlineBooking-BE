@@ -77,6 +77,7 @@ class ToolConfirmationServiceTest {
   private AiAgentProperties properties;
   private AgentRolloutProperties rolloutProperties;
   private ToolProposalSigner signer;
+  private ToolConfirmationPersistence confirmationPersistence;
   private ToolProposalSnapshotFactory snapshotFactory;
   private AgentPayloadSanitizer payloadSanitizer;
   private ObjectMapper objectMapper;
@@ -94,6 +95,8 @@ class ToolConfirmationServiceTest {
     rolloutProperties.setMode(AgentRolloutMode.LIVE);
 
     signer = new ToolProposalSigner(properties, objectMapper);
+    confirmationPersistence =
+        new ToolConfirmationPersistence(proposalRepository, auditEventRepository);
     payloadSanitizer = new AgentPayloadSanitizer(objectMapper, new AiAgentGuardrailProperties());
     lenient()
         .when(confirmationRegistry.present(any(), any(), any()))
@@ -107,6 +110,7 @@ class ToolConfirmationServiceTest {
             toolExecutionGuard,
             proposalRepository,
             auditEventRepository,
+            confirmationPersistence,
             signer,
             snapshotFactory,
             confirmationRegistry,
@@ -474,6 +478,7 @@ class ToolConfirmationServiceTest {
         toolExecutionGuard,
         proposalRepository,
         auditEventRepository,
+        confirmationPersistence,
         signer,
         snapshotFactory,
         confirmationRegistry,

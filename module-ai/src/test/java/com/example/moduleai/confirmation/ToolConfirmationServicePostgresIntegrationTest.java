@@ -57,6 +57,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @SpringBootTest(classes = ToolConfirmationServicePostgresIntegrationTest.JpaConfig.class)
@@ -132,6 +133,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
   @Autowired private ToolProposalRepository proposalRepository;
   @Autowired private ToolProposalSigner signer;
   @Autowired private EntityManager entityManager;
+  @Autowired private TransactionTemplate transactionTemplate;
 
   @MockitoBean private ToolCatalog toolCatalog;
   @MockitoBean private ToolExecutionGuard toolExecutionGuard;
@@ -347,6 +349,37 @@ class ToolConfirmationServicePostgresIntegrationTest {
     verify(descriptor, never()).invoke(any(), any(), any());
   }
 
+  @Test
+  void rolledBackDomainTransactionCannotRestoreProposalToPending() {
+    UUID proposalId = UUID.randomUUID();
+    savePendingProposal(proposalId, OffsetDateTime.now().plusMinutes(5));
+
+    ToolDescriptor descriptor = mock(ToolDescriptor.class);
+    when(descriptor.inputType()).thenReturn((Class) Map.class);
+    when(descriptor.policy())
+        .thenReturn(
+            new ToolPolicy(
+                "confirm_seat_change",
+                ToolOperation.FINANCIAL,
+                ToolAccess.AUTHENTICATED,
+                true,
+                true));
+    when(descriptor.invoke(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              transactionTemplate.executeWithoutResult(status -> status.setRollbackOnly());
+              return ToolResult.success("confirm_seat_change", Map.of("ok", true));
+            });
+    when(toolCatalog.descriptor("confirm_seat_change")).thenReturn(descriptor);
+
+    ToolProposalView view = service.confirm(proposalId, USER_ID);
+
+    assertThat(view.status()).isEqualTo("EXECUTED");
+    ToolProposalEntity saved =
+        proposalRepository.findByIdAndUserId(proposalId, USER_ID).orElseThrow();
+    assertThat(saved.getStatus()).isEqualTo(ToolProposalStatus.EXECUTED);
+  }
+
   private ToolProposalEntity savePendingProposal(UUID proposalId, OffsetDateTime expiresAt) {
     createdProposalIds.add(proposalId);
     OffsetDateTime now = OffsetDateTime.now();
@@ -429,11 +462,18 @@ class ToolConfirmationServicePostgresIntegrationTest {
     }
 
     @Bean
+    ToolConfirmationPersistence toolConfirmationPersistence(
+        ToolProposalRepository proposalRepository, ToolAuditEventRepository auditEventRepository) {
+      return new ToolConfirmationPersistence(proposalRepository, auditEventRepository);
+    }
+
+    @Bean
     ToolConfirmationService toolConfirmationService(
         ToolCatalog toolCatalog,
         ToolExecutionGuard toolExecutionGuard,
         ToolProposalRepository proposalRepository,
         ToolAuditEventRepository auditEventRepository,
+        ToolConfirmationPersistence confirmationPersistence,
         ToolProposalSigner signer,
         ToolProposalSnapshotFactory snapshotFactory,
         ToolConfirmationRegistry confirmationRegistry,
@@ -449,6 +489,7 @@ class ToolConfirmationServicePostgresIntegrationTest {
           toolExecutionGuard,
           proposalRepository,
           auditEventRepository,
+          confirmationPersistence,
           signer,
           snapshotFactory,
           confirmationRegistry,

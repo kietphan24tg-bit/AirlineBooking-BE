@@ -36,6 +36,7 @@ public class ToolConfirmationService {
   private final ToolExecutionGuard toolExecutionGuard;
   private final ToolProposalRepository proposalRepository;
   private final ToolAuditEventRepository auditEventRepository;
+  private final ToolConfirmationPersistence confirmationPersistence;
   private final ToolProposalSigner signer;
   private final ToolProposalSnapshotFactory snapshotFactory;
   private final ToolConfirmationRegistry confirmationRegistry;
@@ -52,6 +53,7 @@ public class ToolConfirmationService {
       ToolExecutionGuard toolExecutionGuard,
       ToolProposalRepository proposalRepository,
       ToolAuditEventRepository auditEventRepository,
+      ToolConfirmationPersistence confirmationPersistence,
       ToolProposalSigner signer,
       ToolProposalSnapshotFactory snapshotFactory,
       ToolConfirmationRegistry confirmationRegistry,
@@ -66,6 +68,7 @@ public class ToolConfirmationService {
     this.toolExecutionGuard = toolExecutionGuard;
     this.proposalRepository = proposalRepository;
     this.auditEventRepository = auditEventRepository;
+    this.confirmationPersistence = confirmationPersistence;
     this.signer = signer;
     this.snapshotFactory = snapshotFactory;
     this.confirmationRegistry = confirmationRegistry;
@@ -192,7 +195,6 @@ public class ToolConfirmationService {
     return toView(refreshed);
   }
 
-  @Transactional
   public ToolProposalView confirm(UUID proposalId, Long userId) {
     ensureActionsEnabled();
     if (rolloutProperties.getMode() == AgentRolloutMode.SHADOW) {
@@ -207,14 +209,13 @@ public class ToolConfirmationService {
     if (proposal.getExpiresAt().isBefore(now)) {
       throw new AppException("PROPOSAL_EXPIRED", "Proposal has expired", 410);
     }
-    int claimed =
-        proposalRepository.updateStatusForUser(
-            proposalId, userId, ToolProposalStatus.PENDING, ToolProposalStatus.EXECUTING, now);
-    if (claimed != 1) {
+    ToolProposalEntity executing;
+    try {
+      executing = confirmationPersistence.claim(proposalId, userId, now);
+    } catch (AppException exception) {
       observability.recordConfirmationReplay(proposal.getToolName());
-      throw new AppException("PROPOSAL_ALREADY_CLAIMED", "Proposal is no longer pending", 409);
+      throw exception;
     }
-    ToolProposalEntity executing = requireProposal(proposalId, userId);
     long startedAt = System.nanoTime();
     try {
       validateIntegrity(executing);
@@ -252,38 +253,36 @@ public class ToolConfirmationService {
       ToolResult<?> result =
           descriptor.invoke(objectMapper, executing.getCanonicalArguments(), executionContext);
       Duration duration = Duration.ofNanos(System.nanoTime() - startedAt);
-      observability.recordConfirmationDuration(duration);
-      executing.setCompletedAt(OffsetDateTime.now());
-      executing.setUpdatedAt(OffsetDateTime.now());
       if (result.status() == com.example.moduleai.tool.core.ToolResultStatus.SUCCESS) {
-        executing.setStatus(ToolProposalStatus.EXECUTED);
-        executing.setSafeResult(
-            objectMapper.writeValueAsString(payloadSanitizer.sanitize(result.data())));
-        audit(executing, "EXECUTED", null, duration);
-        observability.recordToolExecution(
-            executing.getToolName(), executing.getOperation().name(), "EXECUTED", duration);
+        return finalizeConfirmation(
+            executing,
+            ToolProposalStatus.EXECUTED,
+            objectMapper.writeValueAsString(payloadSanitizer.sanitize(result.data())),
+            null,
+            "EXECUTED",
+            null,
+            duration);
       } else if (result.error() != null && "unavailable".equals(result.error().type())) {
-        executing.setStatus(ToolProposalStatus.EXECUTION_UNKNOWN);
-        executing.setSafeError(
-            objectMapper.writeValueAsString(payloadSanitizer.sanitize(result.error())));
-        audit(executing, "EXECUTION_UNKNOWN", result.error().code(), duration);
-        observability.recordToolExecution(
-            executing.getToolName(),
-            executing.getOperation().name(),
+        return finalizeConfirmation(
+            executing,
+            ToolProposalStatus.EXECUTION_UNKNOWN,
+            null,
+            objectMapper.writeValueAsString(payloadSanitizer.sanitize(result.error())),
             "EXECUTION_UNKNOWN",
+            result.error().code(),
             duration);
       } else {
-        executing.setStatus(ToolProposalStatus.FAILED);
-        executing.setSafeError(
+        return finalizeConfirmation(
+            executing,
+            ToolProposalStatus.FAILED,
+            null,
             result.error() == null
                 ? null
-                : objectMapper.writeValueAsString(payloadSanitizer.sanitize(result.error())));
-        audit(executing, "FAILED", result.error() == null ? null : result.error().code(), duration);
-        observability.recordToolExecution(
-            executing.getToolName(), executing.getOperation().name(), "FAILED", duration);
+                : objectMapper.writeValueAsString(payloadSanitizer.sanitize(result.error())),
+            "FAILED",
+            result.error() == null ? null : result.error().code(),
+            duration);
       }
-      proposalRepository.save(executing);
-      return toView(executing);
     } catch (AppException exception) {
       boolean executionUnknown =
           "PAYMENT_EXECUTION_UNKNOWN".equals(exception.getCode())
@@ -459,23 +458,41 @@ public class ToolConfirmationService {
       String errorCode,
       String message,
       Duration duration) {
-    proposal.setStatus(status);
-    proposal.setUpdatedAt(OffsetDateTime.now());
-    proposal.setCompletedAt(OffsetDateTime.now());
+    String safeError;
     try {
-      Map<String, Object> safeError = new LinkedHashMap<>();
-      safeError.put("code", errorCode);
-      safeError.put("message", message == null ? "Unknown tool execution error" : message);
-      proposal.setSafeError(objectMapper.writeValueAsString(payloadSanitizer.sanitize(safeError)));
+      Map<String, Object> error = new LinkedHashMap<>();
+      error.put("code", errorCode);
+      error.put("message", message == null ? "Unknown tool execution error" : message);
+      safeError = objectMapper.writeValueAsString(payloadSanitizer.sanitize(error));
     } catch (JsonProcessingException ignored) {
-      proposal.setSafeError("{\"code\":\"" + errorCode + "\"}");
+      safeError = "{\"code\":\"" + errorCode + "\"}";
     }
-    audit(proposal, status.name(), errorCode, duration);
+    return finalizeConfirmation(
+        proposal, status, null, safeError, status.name(), errorCode, duration);
+  }
+
+  private ToolProposalView finalizeConfirmation(
+      ToolProposalEntity proposal,
+      ToolProposalStatus status,
+      String safeResult,
+      String safeError,
+      String eventType,
+      String errorCode,
+      Duration duration) {
+    ToolProposalEntity completed =
+        confirmationPersistence.complete(
+            proposal.getId(),
+            proposal.getUserId(),
+            status,
+            safeResult,
+            safeError,
+            eventType,
+            errorCode,
+            duration);
     observability.recordConfirmationDuration(duration);
     observability.recordToolExecution(
-        proposal.getToolName(), proposal.getOperation().name(), status.name(), duration);
-    proposalRepository.save(proposal);
-    return toView(proposal);
+        completed.getToolName(), completed.getOperation().name(), status.name(), duration);
+    return toView(completed);
   }
 
   private ToolProposalView toView(ToolProposalEntity proposal) {
