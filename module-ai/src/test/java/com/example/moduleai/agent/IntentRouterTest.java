@@ -116,8 +116,7 @@ class IntentRouterTest {
 
   @Test
   void recognizesCurrentProductionPnrLength() {
-    RoutingDecision decision =
-        intentRouter.route("I want to cancel my booking PNR PNR1234ABCD");
+    RoutingDecision decision = intentRouter.route("I want to cancel my booking PNR PNR1234ABCD");
 
     assertThat(decision.category()).isEqualTo(RouteCategory.DYNAMIC_API_REQUIRED);
     assertThat(decision.missingRequiredContext()).isFalse();

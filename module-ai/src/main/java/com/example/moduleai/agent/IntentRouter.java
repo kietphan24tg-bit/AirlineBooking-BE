@@ -57,12 +57,7 @@ public class IntentRouter {
       return bookingScoped(rawMessage, "booking_lookup", "POST /api/bookings/lookup", true, false);
     }
     if (hasPnr(rawMessage) && isBookingPaymentRequest(normalized)) {
-      return bookingScoped(
-          rawMessage,
-          "booking_payment_create",
-          "POST /api/payments",
-          true,
-          false);
+      return bookingScoped(rawMessage, "booking_payment_create", "POST /api/payments", true, false);
     }
     if (containsAll(normalized, "qr", "con bao lau")) {
       return bookingOrPaymentScoped(
@@ -236,8 +231,7 @@ public class IntentRouter {
   }
 
   private boolean isBookingPaymentRequest(String normalized) {
-    return containsAny(
-            normalized, "muon thanh toan", "pay for", "create payment", "payment link")
+    return containsAny(normalized, "muon thanh toan", "pay for", "create payment", "payment link")
         && !containsAny(normalized, "thanh toan chua", "payment status", "trang thai");
   }
 
@@ -255,12 +249,7 @@ public class IntentRouter {
 
   private boolean isCancellationActionRequest(String normalized) {
     return containsAny(
-        normalized,
-        "muon huy",
-        "huy ve",
-        "huy booking",
-        "cancel my ticket",
-        "cancel my booking");
+        normalized, "muon huy", "huy ve", "huy booking", "cancel my ticket", "cancel my booking");
   }
 
   private boolean isSeatChangeActionRequest(String normalized) {
