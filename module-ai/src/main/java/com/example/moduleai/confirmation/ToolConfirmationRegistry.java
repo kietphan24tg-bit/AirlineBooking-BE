@@ -55,4 +55,16 @@ public class ToolConfirmationRegistry {
       revalidator.revalidate(input, originalSnapshot, context);
     }
   }
+
+  @SuppressWarnings("unchecked")
+  public Object canonicalize(
+      String toolName, Object input, Object originalSnapshot, AgentToolContext context) {
+    ToolConfirmationRevalidator<Object> revalidator =
+        (ToolConfirmationRevalidator<Object>) revalidators.get(toolName);
+    if (revalidator instanceof ToolConfirmationCanonicalizer<?> canonicalizer) {
+      return ((ToolConfirmationCanonicalizer<Object>) canonicalizer)
+          .canonicalize(input, originalSnapshot, context);
+    }
+    return input;
+  }
 }

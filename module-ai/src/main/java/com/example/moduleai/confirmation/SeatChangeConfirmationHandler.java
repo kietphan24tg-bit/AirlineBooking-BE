@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 @Component
 class SeatChangeConfirmationHandler
     implements ToolConfirmationPresenter<SeatTools.ConfirmSeatChangeInput>,
-        ToolConfirmationRevalidator<SeatTools.ConfirmSeatChangeInput> {
+        ToolConfirmationRevalidator<SeatTools.ConfirmSeatChangeInput>,
+        ToolConfirmationCanonicalizer<SeatTools.ConfirmSeatChangeInput> {
 
   private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -46,16 +47,27 @@ class SeatChangeConfirmationHandler
       SeatTools.ConfirmSeatChangeInput input, Object originalSnapshot, AgentToolContext context) {
     SeatChangePreviewView fresh = preview(input, context);
     Map<String, Object> snapshot = map(originalSnapshot);
-    Map<String, Object> originalPreview = map(snapshot.get("preview"));
-    Map<String, Object> freshPreview = objectMapper.convertValue(fresh, MAP_TYPE);
-    if (!Objects.equals(originalPreview.get("summary"), freshPreview.get("summary"))
-        || !Objects.equals(
-            originalPreview.get("settlementType"), freshPreview.get("settlementType"))) {
+    SeatChangePreviewView original =
+        objectMapper.convertValue(snapshot.get("preview"), SeatChangePreviewView.class);
+    if (!sameSummary(original.summary(), fresh.summary())
+        || !Objects.equals(original.settlementType(), fresh.settlementType())) {
       throw new AppException(
           "SEAT_CHANGE_PREVIEW_STALE",
           "Seat change totals are out of date. Please review the latest preview.",
           409);
     }
+  }
+
+  @Override
+  public SeatTools.ConfirmSeatChangeInput canonicalize(
+      SeatTools.ConfirmSeatChangeInput input, Object originalSnapshot, AgentToolContext context) {
+    SeatChangePreviewView preview = snapshotPreview(originalSnapshot);
+    return new SeatTools.ConfirmSeatChangeInput(
+        input.bookingId(),
+        input.changes(),
+        preview.summary().additionalAmount(),
+        preview.summary().refundAmount(),
+        preview.summary().netAmount());
   }
 
   private SeatChangePreviewView preview(
@@ -76,5 +88,20 @@ class SeatChangeConfirmationHandler
 
   private Map<String, Object> map(Object value) {
     return objectMapper.convertValue(value, MAP_TYPE);
+  }
+
+  private SeatChangePreviewView snapshotPreview(Object snapshot) {
+    return objectMapper.convertValue(map(snapshot).get("preview"), SeatChangePreviewView.class);
+  }
+
+  private boolean sameSummary(
+      SeatChangePreviewView.SummaryView left, SeatChangePreviewView.SummaryView right) {
+    return sameMoney(left.additionalAmount(), right.additionalAmount())
+        && sameMoney(left.refundAmount(), right.refundAmount())
+        && sameMoney(left.netAmount(), right.netAmount());
+  }
+
+  private boolean sameMoney(java.math.BigDecimal left, java.math.BigDecimal right) {
+    return left != null && right != null && left.compareTo(right) == 0;
   }
 }

@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 @Component
 class ServiceChangeConfirmationHandler
     implements ToolConfirmationPresenter<AncillaryTools.ConfirmServiceChangeInput>,
-        ToolConfirmationRevalidator<AncillaryTools.ConfirmServiceChangeInput> {
+        ToolConfirmationRevalidator<AncillaryTools.ConfirmServiceChangeInput>,
+        ToolConfirmationCanonicalizer<AncillaryTools.ConfirmServiceChangeInput> {
 
   private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -48,17 +49,31 @@ class ServiceChangeConfirmationHandler
       AgentToolContext context) {
     ServiceChangePreviewView fresh = preview(input, context);
     Map<String, Object> snapshot = map(originalSnapshot);
-    Map<String, Object> originalPreview = map(snapshot.get("preview"));
-    Map<String, Object> freshPreview = objectMapper.convertValue(fresh, MAP_TYPE);
-    if (!Objects.equals(originalPreview.get("previewToken"), freshPreview.get("previewToken"))
-        || !Objects.equals(originalPreview.get("summary"), freshPreview.get("summary"))
-        || !Objects.equals(
-            originalPreview.get("settlementType"), freshPreview.get("settlementType"))) {
+    ServiceChangePreviewView original =
+        objectMapper.convertValue(snapshot.get("preview"), ServiceChangePreviewView.class);
+    if (!Objects.equals(original.previewToken(), fresh.previewToken())
+        || !sameSummary(original.summary(), fresh.summary())
+        || !Objects.equals(original.settlementType(), fresh.settlementType())) {
       throw new AppException(
           "SERVICE_CHANGE_PREVIEW_STALE",
           "Service change totals are out of date. Please review the latest preview.",
           409);
     }
+  }
+
+  @Override
+  public AncillaryTools.ConfirmServiceChangeInput canonicalize(
+      AncillaryTools.ConfirmServiceChangeInput input,
+      Object originalSnapshot,
+      AgentToolContext context) {
+    ServiceChangePreviewView preview = snapshotPreview(originalSnapshot);
+    return new AncillaryTools.ConfirmServiceChangeInput(
+        input.bookingId(),
+        input.passengers(),
+        preview.previewToken(),
+        preview.summary().additionalAmount(),
+        preview.summary().refundAmount(),
+        preview.summary().netAmount());
   }
 
   private ServiceChangePreviewView preview(
@@ -82,5 +97,20 @@ class ServiceChangeConfirmationHandler
 
   private Map<String, Object> map(Object value) {
     return objectMapper.convertValue(value, MAP_TYPE);
+  }
+
+  private ServiceChangePreviewView snapshotPreview(Object snapshot) {
+    return objectMapper.convertValue(map(snapshot).get("preview"), ServiceChangePreviewView.class);
+  }
+
+  private boolean sameSummary(
+      ServiceChangePreviewView.SummaryView left, ServiceChangePreviewView.SummaryView right) {
+    return sameMoney(left.additionalAmount(), right.additionalAmount())
+        && sameMoney(left.refundAmount(), right.refundAmount())
+        && sameMoney(left.netAmount(), right.netAmount());
+  }
+
+  private boolean sameMoney(java.math.BigDecimal left, java.math.BigDecimal right) {
+    return left != null && right != null && left.compareTo(right) == 0;
   }
 }
