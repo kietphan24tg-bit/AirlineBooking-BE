@@ -249,14 +249,8 @@ public class ToolConfirmationService {
               trustedContext);
       confirmationRegistry.revalidate(
           executing.getToolName(), typedInput, originalSnapshot, executionContext);
-      Object canonicalInput =
-          confirmationRegistry.canonicalize(
-              executing.getToolName(), typedInput, originalSnapshot, executionContext);
-      if (canonicalInput == null) {
-        canonicalInput = typedInput;
-      }
-      String executionArguments = objectMapper.writeValueAsString(canonicalInput);
-      ToolResult<?> result = descriptor.invoke(objectMapper, executionArguments, executionContext);
+      ToolResult<?> result =
+          descriptor.invoke(objectMapper, executing.getCanonicalArguments(), executionContext);
       Duration duration = Duration.ofNanos(System.nanoTime() - startedAt);
       observability.recordConfirmationDuration(duration);
       executing.setCompletedAt(OffsetDateTime.now());

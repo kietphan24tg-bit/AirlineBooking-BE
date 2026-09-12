@@ -235,6 +235,8 @@ class ToolConfirmationServiceTest {
     ToolProposalView view = service.confirm(PROPOSAL_ID, USER_ID);
 
     assertThat(view.status()).isEqualTo("EXECUTED");
+    verify(confirmationRegistry, org.mockito.Mockito.never())
+        .canonicalize(any(), any(), any(), any());
     verify(observability).recordConfirmationDuration(any());
     verify(observability)
         .recordToolExecution(eq("seat_change_confirm"), eq("WRITE"), eq("EXECUTED"), any());

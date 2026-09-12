@@ -334,7 +334,10 @@ public class AgentToolOrchestrator {
           " This request permits a write action only through the approved tools. Use the read and"
               + " preview tools needed to resolve authoritative IDs and settlement values, then"
               + " make exactly one mutation tool call. Never make multiple mutation calls. Do not"
-              + " claim that the mutation is unavailable or complete without a backend result.");
+              + " claim that the mutation is unavailable or complete without a backend result."
+              + " Preview tokens are redacted and optional expected monetary fields are bound"
+              + " by the backend when it creates the proposal. Omit redacted tokens and optional"
+              + " expected fields rather than inventing them or repeating previews to obtain them.");
     }
     if (memory == null) {
       return policy.toString();
