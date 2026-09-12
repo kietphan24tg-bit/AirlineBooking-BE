@@ -919,45 +919,61 @@ class AgentStagingMutationE2ETest {
 
   private UUID executePromptAndExtractProposalId(String prompt, String expectedTool)
       throws Exception {
-    String cooldown = System.getenv("AGENT_STAGING_MODEL_COOLDOWN_SECONDS");
-    if (cooldown != null) {
-      TimeUnit.SECONDS.sleep(Long.parseLong(cooldown));
+    JsonNode lastResponse = null;
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      String cooldown = System.getenv("AGENT_STAGING_MODEL_COOLDOWN_SECONDS");
+      if (cooldown != null) {
+        TimeUnit.SECONDS.sleep(Long.parseLong(cooldown));
+      }
+      String body =
+          objectMapper.writeValueAsString(
+              Map.of("message", prompt, "clientMessageId", UUID.randomUUID().toString()));
+
+      HttpRequest.Builder builder =
+          HttpRequest.newBuilder()
+              .uri(URI.create(baseUrl + "/api/chatbot/messages"))
+              .timeout(Duration.ofSeconds(90))
+              .header("Content-Type", "application/json")
+              .POST(HttpRequest.BodyPublishers.ofString(body));
+
+      if (authToken != null) {
+        builder.header("Authorization", "Bearer " + authToken);
+      }
+
+      HttpResponse<String> response =
+          httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+      assertThat(response.statusCode()).isEqualTo(200);
+
+      JsonNode json = objectMapper.readTree(response.body());
+      lastResponse = json;
+      JsonNode proposalNode = json.at("/data/proposal");
+      if (proposalNode.isMissingNode() || proposalNode.isNull()) {
+        proposalNode = json.at("/proposal");
+      }
+      if (!proposalNode.isMissingNode() && !proposalNode.isNull() && proposalNode.has("id")) {
+        assertThat(proposalNode.path("tool").asText())
+            .as("LLM must select the expected mutation tool")
+            .isEqualTo(expectedTool);
+        return UUID.fromString(proposalNode.get("id").asText());
+      }
+      if (attempt == 2 || !isRetryableModelFallback(json)) {
+        break;
+      }
     }
-    String clientMessageId = UUID.randomUUID().toString();
-    String body =
-        objectMapper.writeValueAsString(
-            Map.of("message", prompt, "clientMessageId", clientMessageId));
 
-    HttpRequest.Builder builder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/chatbot/messages"))
-            .timeout(Duration.ofSeconds(90))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body));
-
-    if (authToken != null) {
-      builder.header("Authorization", "Bearer " + authToken);
-    }
-
-    HttpResponse<String> response =
-        httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-    assertThat(response.statusCode()).isEqualTo(200);
-
-    JsonNode json = objectMapper.readTree(response.body());
-    JsonNode proposalNode = json.at("/data/proposal");
-    if (proposalNode.isMissingNode() || proposalNode.isNull()) {
-      proposalNode = json.at("/proposal");
-    }
-
-    assertThat(!proposalNode.isMissingNode() && !proposalNode.isNull() && proposalNode.has("id"))
+    assertThat(false)
         .as(
             "Expected proposal for tool %s; response summary: %s",
-            expectedTool, summarizeChatResponse(json))
+            expectedTool, summarizeChatResponse(lastResponse))
         .isTrue();
-    assertThat(proposalNode.path("tool").asText())
-        .as("LLM must select the expected mutation tool")
-        .isEqualTo(expectedTool);
-    return UUID.fromString(proposalNode.get("id").asText());
+    throw new IllegalStateException("Unreachable proposal assertion");
+  }
+
+  private boolean isRetryableModelFallback(JsonNode json) {
+    JsonNode payload = json.has("data") ? json.path("data") : json;
+    return Set.of(
+            "TOOL_CALL_BUDGET_EXCEEDED", "AI_PROVIDER_RATE_LIMITED", "AI_PROVIDER_UNAVAILABLE")
+        .contains(payload.path("fallbackReason").asText());
   }
 
   private String summarizeChatResponse(JsonNode json) {
