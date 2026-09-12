@@ -45,8 +45,18 @@ jobs:
           STAGING_BASE_URL: http://20.196.153.39:8080
         run: |
           set -euo pipefail
-          curl -fsS --max-time 15 "$STAGING_BASE_URL/actuator/health/readiness" \
-            | jq -e '.status == "UP"' > /dev/null
+          for attempt in $(seq 1 12); do
+            if curl -fsS --connect-timeout 5 --max-time 15 \
+              "$STAGING_BASE_URL/actuator/health/readiness" \
+              | jq -e '.status == "UP"' > /dev/null; then
+              echo "Staging readiness passed on attempt $attempt."
+              exit 0
+            fi
+            echo "Staging is not ready (attempt $attempt/12)."
+            sleep 5
+          done
+          echo "Staging readiness did not become UP." >&2
+          exit 1
 
       - name: Run fixture-owned mutation acceptance suite
         env:
@@ -62,7 +72,9 @@ jobs:
           resource_uuid=$(sed -nE 's/.*[?&]uuid=([^&]+).*/\1/p' <<< "$COOLIFY_DEPLOY_WEBHOOK")
           test -n "$resource_uuid"
 
-          envs=$(curl -fsS -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+          envs=$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 10 --max-time 60 \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "$coolify_base/api/v1/applications/$resource_uuid/envs")
           staging_db_url=$(jq -r '.[] | select(.key == "SPRING_DATASOURCE_URL" and .is_preview == false) | .value' <<< "$envs" | tail -n 1)
           staging_db_user=$(jq -r '.[] | select(.key == "SPRING_DATASOURCE_USERNAME" and .is_preview == false) | .value' <<< "$envs" | tail -n 1)
