@@ -209,11 +209,52 @@ class AgentToolOrchestratorTest {
     verify(chatModel).call(promptCaptor.capture());
     assertThat(promptCaptor.getValue().getInstructions().get(0).getText())
         .contains("Approved tools for this request: write_tool.")
-        .contains("make exactly one tool call");
+        .contains("make exactly one mutation tool call");
+  }
+
+  @Test
+  void prerequisiteReadCanBeFollowedByOneMutationProposal() {
+    ToolDescriptor read = descriptor("read_tool", ToolOperation.READ);
+    ToolDescriptor mutation = descriptor("write_tool", ToolOperation.WRITE);
+    when(allowlistResolver.resolve(any(), any())).thenReturn(Set.of(read, mutation));
+    when(trustedContextResolver.resolve(any(), any(), any())).thenReturn(context);
+    doReturn(ToolResult.success("read_tool", Map.of("bookingId", 100)))
+        .when(read)
+        .invoke(any(), any(), any());
+    when(payloadSanitizer.sanitize(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    ToolProposalView proposal =
+        new ToolProposalView(
+            UUID.randomUUID(),
+            "write_tool",
+            ToolOperation.WRITE,
+            "PENDING",
+            "Confirm write",
+            Map.of(),
+            OffsetDateTime.now().plusMinutes(5),
+            "/confirm",
+            "/reject");
+    when(confirmationService.createProposal("write_tool", Map.of(), context)).thenReturn(proposal);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCallResponse("read_tool", "{}"))
+        .thenReturn(toolCallResponse("write_tool", "{}"));
+
+    var response =
+        orchestrator.handle(
+            new ChatRequest("Change my booking"),
+            dynamicDecision("booking_lookup"),
+            authentication);
+
+    assertThat(response.answerType()).isEqualTo(AnswerType.CONFIRMATION_REQUIRED);
+    assertThat(response.proposal()).isEqualTo(proposal);
+    verify(read).invoke(any(), any(), any());
+    verify(mutation, never()).invoke(any(), any(), any());
+    verify(confirmationService).createProposal("write_tool", Map.of(), context);
+    verify(chatModel, org.mockito.Mockito.times(2)).call(any(Prompt.class));
   }
 
   @Test
   void rejectsMultipleReadCallsWhenBudgetIsOne() {
+    properties.setMaxToolCallsPerTurn(1);
     ToolDescriptor first = descriptor("first_tool", ToolOperation.READ);
     ToolDescriptor second = descriptor("second_tool", ToolOperation.READ);
     when(allowlistResolver.resolve(any(), any())).thenReturn(Set.of(first, second));
