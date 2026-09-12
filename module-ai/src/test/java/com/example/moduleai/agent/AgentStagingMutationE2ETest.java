@@ -206,8 +206,13 @@ class AgentStagingMutationE2ETest {
             fixture.bookingId);
     assertThat(checkedInCount).as("Reconciliation: Boarding pass count must be 1").isEqualTo(1L);
     assertThat(queryString("SELECT status FROM tickets WHERE id = ?", fixture.ticketId))
-        .as("Reconciliation: Ticket must be checked in")
-        .isEqualTo("CHECKED_IN");
+        .as("Reconciliation: Check-in preserves the issued ticket lifecycle")
+        .isEqualTo("ISSUED");
+    assertThat(
+            queryCount(
+                "SELECT count(*) FROM boarding_passes WHERE ticket_id = ?", fixture.ticketId))
+        .as("Reconciliation: Exactly one boarding pass must belong to the selected ticket")
+        .isEqualTo(1L);
   }
 
   @Test
@@ -908,6 +913,10 @@ class AgentStagingMutationE2ETest {
 
   private UUID executePromptAndExtractProposalId(String prompt, String expectedTool)
       throws Exception {
+    String cooldown = System.getenv("AGENT_STAGING_MODEL_COOLDOWN_SECONDS");
+    if (cooldown != null) {
+      TimeUnit.SECONDS.sleep(Long.parseLong(cooldown));
+    }
     String clientMessageId = UUID.randomUUID().toString();
     String body =
         objectMapper.writeValueAsString(
@@ -1006,7 +1015,11 @@ class AgentStagingMutationE2ETest {
     }
 
     assertThat(queryString("SELECT status FROM ai_tool_proposals WHERE id = ?", proposalId))
-        .as("Proposal must reach the terminal executed state")
+        .as(
+            "Proposal must reach the terminal executed state; HTTP statuses=%s/%s; safeError=%s",
+            res1.statusCode(),
+            res2.statusCode(),
+            queryString("SELECT safe_error FROM ai_tool_proposals WHERE id = ?", proposalId))
         .isEqualTo("EXECUTED");
     assertThat(
             queryCount(

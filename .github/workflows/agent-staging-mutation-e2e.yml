@@ -88,6 +88,7 @@ jobs:
           echo "::add-mask::$staging_db_password"
 
           AGENT_STAGING_MUTATION_ENABLED=true \
+          AGENT_STAGING_MODEL_COOLDOWN_SECONDS=65 \
           STAGING_BASE_URL="$STAGING_BASE_URL" \
           STAGING_DB_URL="$staging_db_url" \
           STAGING_DB_USER="$staging_db_user" \
