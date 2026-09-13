@@ -20,6 +20,7 @@ public class AiAgentProperties {
   private boolean queryRateLimitFailOpen = true;
   private Duration concurrencySlotTtl = Duration.ofMinutes(2);
   private boolean concurrencyFailOpen = false;
+  private int maxConcurrentChatTurns = 3;
 
   public boolean isActionsEnabled() {
     return actionsEnabled;
@@ -131,5 +132,13 @@ public class AiAgentProperties {
 
   public void setConcurrencyFailOpen(boolean concurrencyFailOpen) {
     this.concurrencyFailOpen = concurrencyFailOpen;
+  }
+
+  public int getMaxConcurrentChatTurns() {
+    return Math.max(1, maxConcurrentChatTurns);
+  }
+
+  public void setMaxConcurrentChatTurns(int maxConcurrentChatTurns) {
+    this.maxConcurrentChatTurns = maxConcurrentChatTurns;
   }
 }
