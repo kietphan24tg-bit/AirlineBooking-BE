@@ -109,7 +109,8 @@ app:
             query-rate-limit-fail-open: ${APP_AI_AGENT_QUERY_RATE_LIMIT_FAIL_OPEN:true}
             concurrency-slot-ttl: ${APP_AI_AGENT_CONCURRENCY_SLOT_TTL:2m}
             concurrency-fail-open: ${APP_AI_AGENT_CONCURRENCY_FAIL_OPEN:false}
-            max-concurrent-chat-turns: ${APP_AI_AGENT_MAX_CONCURRENT_CHAT_TURNS:3}
+            # Local/staging DB pool defaults to 3; reserve one connection for health and maintenance.
+            max-concurrent-chat-turns: ${APP_AI_AGENT_MAX_CONCURRENT_CHAT_TURNS:2}
             rollout:
                 mode: ${APP_AI_AGENT_ROLLOUT_MODE:OFF}
                 enabled-tools: ${APP_AI_AGENT_ENABLED_TOOLS:}

@@ -27,7 +27,9 @@ class AgentConcurrencyLimiterTest {
 
   @BeforeEach
   void setUp() {
-    limiter = new AgentConcurrencyLimiter(rateLimitStore, new AiAgentProperties(), observability);
+    AiAgentProperties properties = new AiAgentProperties();
+    properties.setMaxConcurrentChatTurns(3);
+    limiter = new AgentConcurrencyLimiter(rateLimitStore, properties, observability);
   }
 
   @Test
