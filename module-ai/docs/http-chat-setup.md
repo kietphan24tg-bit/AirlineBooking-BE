@@ -183,3 +183,15 @@ Positive option IDs and quantities are also validated before invocation, matchin
 existing settlement validation. The live scenario now checks canonical proposal
 arguments against its fixture's exact booking, passenger, target option and
 quantity before checking confirmation denial and expiry.
+
+After clarifying final-selection semantics and validating positive IDs and
+quantities, revision `d2b30ff` passed the full verification and staging deploy
+workflow
+([34762425430](https://github.com/kietphan24tg-bit/AirlineBooking-BE/actions/runs/34762425430)).
+The focused natural service-change acceptance then passed all three independent
+repetitions
+([34767727191](https://github.com/kietphan24tg-bit/AirlineBooking-BE/actions/runs/34767727191)).
+Each repetition verified the canonical proposal's exact fixture booking,
+passenger, target option and requested quantity; no settlement existed before
+confirmation, a foreign guest could not confirm, and an expired owned proposal
+returned `410 PROPOSAL_EXPIRED` without creating a settlement.

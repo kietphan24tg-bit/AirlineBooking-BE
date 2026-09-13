@@ -43,7 +43,9 @@ six capacity rejections, with no HTTP 500 or transport timeout). Detailed scope
 and cleanup evidence are recorded in [http-chat-setup.md](http-chat-setup.md).
 The earlier cookie failure below applies to a public non-localhost HTTP browser
 origin; it does not describe the verified localhost Vite proxy setup. Natural
-service-change routing and proposal-expiry acceptance are being checked separately.
+service-change routing and proposal-expiry acceptance later passed three independent
+fixture runs, including exact canonical option and quantity checks. See the linked
+setup report for workflow evidence.
 
 An opt-in `deployedChatE2E` Gradle task now checks guest identity transport,
 refresh, duplicate-turn history count, foreign guest read/delete denial, and
