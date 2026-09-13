@@ -43,7 +43,16 @@ tasks.named('test') {
         excludeTags 'agent-live'
         excludeTags 'postgres-integration'
         excludeTags 'staging-mutation-e2e'
+        excludeTags 'deployed-chat-e2e'
     }
+}
+
+tasks.register('deployedChatE2E', Test) {
+    group = 'verification'
+    description = 'Runs opt-in deployed guest chat lifecycle and ownership acceptance.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'deployed-chat-e2e' }
 }
 
 tasks.register('agentStagingMutationE2E', Test) {

@@ -1,0 +1,13 @@
+# Opt-in HTTP deployment: activate after the base environment, e.g. staging,http.
+# The browser must access frontend and API on the same site.
+app:
+  ai:
+    chat:
+      guest-cookie-secure: ${APP_AI_CHAT_GUEST_COOKIE_SECURE:false}
+      guest-cookie-same-site: ${APP_AI_CHAT_GUEST_COOKIE_SAME_SITE:Lax}
+      guest-cookie-http-only: true
+  auth:
+    refresh-cookie:
+      secure: ${APP_AUTH_REFRESH_COOKIE_SECURE:false}
+      same-site: ${APP_AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
+      http-only: true
