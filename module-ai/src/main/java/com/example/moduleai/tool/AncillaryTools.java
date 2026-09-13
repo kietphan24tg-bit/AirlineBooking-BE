@@ -43,7 +43,9 @@ public class AncillaryTools extends AbstractAgentTool {
 
   @Tool(
       description =
-          "List selectable ancillary services. Supply both flightId and fareId from get_manage_options for a fare-specific catalog, or omit both for the generic catalog. Never supply only one.")
+          "List selectable ancillary services. Supply both flightId and fareId from"
+              + " get_manage_options for a fare-specific catalog, or omit both for the generic"
+              + " catalog. Never supply only one.")
   @AgentToolPolicy(
       tool = "list_services",
       operation = ToolOperation.READ,
