@@ -98,4 +98,56 @@ values. No server settings are changed just by adding the profile file.
 
 Local browser lifecycle acceptance passed as described above. Browser acceptance
 for a frontend hosted on a non-localhost HTTP origin remains separate and has
-not been verified. The `http` profile below is optional for those deployments.
+not been verified. The `http` profile described above is optional for those deployments.
+
+## Deployed chat acceptance
+
+Backend revision `b879071` passed the staging verification suite, PostgreSQL
+integration tests, image publication and deploy workflow
+([run 34744559278](https://github.com/kietphan24tg-bit/AirlineBooking-BE/actions/runs/34744559278)).
+
+Semantic memory acceptance recalled the child's age and destination after a
+refresh. A prompt injection returned `FALLBACK/PROMPT_INJECTION_ATTEMPT` before
+routing; the legitimate memory remained intact. The captured test conversation
+was deleted.
+
+The initial eight-guest burst exposed HTTP 500 responses near the database
+connection wait timeout. Admission control now bounds chat turns per instance
+before conversation persistence. The default is two concurrent turns, reserving
+capacity in the three-connection local/staging pool. Configure
+`APP_AI_AGENT_MAX_CONCURRENT_CHAT_TURNS` when changing deployment capacity.
+This is a per-instance bound, alongside the existing distributed owner lock.
+
+The final eight-guest burst returned two normal answers and six controlled HTTP
+503 `AGENT_CHAT_CAPACITY_EXCEEDED` responses: zero server errors, zero transport
+timeouts, median 1.641 seconds and maximum 4.640 seconds. Both captured test
+conversations were deleted. This verifies overload handling, not sustained
+throughput or capacity for all eight guests to receive answers simultaneously.
+
+Natural service-change acceptance initially failed three times because the
+router recognized `replace service option` but missed `replace 1 of the service
+option named ...`. Such requests reached RAG without Agent tools. The router now
+recognizes the action and named service option independently, with a regression
+case containing a quantity. Revision `65b4731` passed the full staging
+verification and deploy workflow
+([run 34745812494](https://github.com/kietphan24tg-bit/AirlineBooking-BE/actions/runs/34745812494)).
+
+The service-change workflow legitimately needs five distinct tool operations
+and may need additional reads to resolve names. The original five-call budget
+blocked this allowed flow before its single mutation. The default tool-call
+budget is now eight; the existing rule that permits at most one mutation per
+turn remains enforced.
+
+Revision `6d3b316` also raises the model-round budget to eight. The focused
+natural service-change run
+([34751042858](https://github.com/kietphan24tg-bit/AirlineBooking-BE/actions/runs/34751042858))
+passed one of three repetitions; two returned `MODEL_BUDGET_EXCEEDED`. This
+workflow is not yet accepted as reliable. A successful repetition verified
+proposal preparation, foreign confirmation denial, expiry rejection, and no
+settlement before confirmation. Further diagnosis must identify the repeated
+tool step instead of simply raising execution budgets again.
+
+Agent read-tool diagnostics log only round, allowlisted tool name, and bounded
+outcome code. The staging mutation workflow extracts only those fields from
+Coolify logs on failure, without exporting arguments, booking data, credentials,
+or raw application logs.

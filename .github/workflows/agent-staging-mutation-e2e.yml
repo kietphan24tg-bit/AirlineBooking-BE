@@ -104,6 +104,26 @@ jobs:
           STAGING_DB_PASSWORD="$staging_db_password" \
             ./gradlew --no-daemon :module-ai:agentStagingMutationE2E "${test_args[@]}"
 
+      - name: Capture safe tool-step diagnostics on failure
+        if: failure()
+        continue-on-error: true
+        env:
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          coolify_base=${COOLIFY_DEPLOY_WEBHOOK%%/api/v1/*}
+          resource_uuid=$(sed -nE 's/.*[?&]uuid=([^&]+).*/\1/p' <<< "$COOLIFY_DEPLOY_WEBHOOK")
+          test -n "$resource_uuid"
+          mkdir -p module-ai/build/diagnostics
+          curl -fsS --connect-timeout 10 --max-time 60 \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$coolify_base/api/v1/applications/$resource_uuid/logs?lines=5000" \
+            | jq -r '.logs // ""' \
+            | python3 -c 'import re,sys; print("\n".join(re.findall(r"AGENT_TOOL_STEP round=[0-9]+ tool=[a-z0-9_]+ outcome=[A-Z0-9_]+", sys.stdin.read())))' \
+            > module-ai/build/diagnostics/tool-steps.txt
+          cat module-ai/build/diagnostics/tool-steps.txt
+
       - name: Upload test report on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -112,3 +132,4 @@ jobs:
           path: |
             module-ai/build/reports/tests/agentStagingMutationE2E/**
             module-ai/build/test-results/agentStagingMutationE2E/**
+            module-ai/build/diagnostics/tool-steps.txt

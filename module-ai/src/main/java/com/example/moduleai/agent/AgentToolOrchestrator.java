@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -45,6 +47,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AgentToolOrchestrator {
+
+  private static final Logger log = LoggerFactory.getLogger(AgentToolOrchestrator.class);
 
   private static final String AGENT_SYSTEM_POLICY =
       "You are the AirlineBooking operational assistant. Use only the tools supplied for this "
@@ -268,6 +272,11 @@ public class AgentToolOrchestrator {
                   trustedContextResolver.resolve(descriptor, input, context);
               ToolResult<?> result =
                   descriptor.invoke(objectMapper, call.arguments(), executionContext);
+              log.info(
+                  "AGENT_TOOL_STEP round={} tool={} outcome={}",
+                  i + 1,
+                  descriptor.name(),
+                  result.error() == null ? "SUCCESS" : safeDiagnosticCode(result.error().code()));
               Object sanitizedPayload =
                   result.error() == null
                       ? payloadSanitizer.sanitize(result.data())
@@ -276,12 +285,21 @@ public class AgentToolOrchestrator {
                   new ToolResponseMessage.ToolResponse(
                       call.id(), call.name(), stringify(sanitizedPayload)));
             } catch (AppException exception) {
+              log.info(
+                  "AGENT_TOOL_STEP round={} tool={} outcome={}",
+                  i + 1,
+                  descriptor.name(),
+                  safeDiagnosticCode(exception.getCode()));
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
                       call.id(),
                       call.name(),
                       "{\"error\": \"" + safeUserMessage(exception) + "\"}"));
             } catch (Exception e) {
+              log.info(
+                  "AGENT_TOOL_STEP round={} tool={} outcome=TOOL_PROCESSING_FAILED",
+                  i + 1,
+                  descriptor.name());
               observability.recordAgentGuardrailBlock("TOOL_PROCESSING_FAILED");
               toolResponses.add(
                   new ToolResponseMessage.ToolResponse(
@@ -394,6 +412,10 @@ public class AgentToolOrchestrator {
       return exception.getMessage();
     }
     return "Agent tool tam thoi khong kha dung. Vui long thu lai sau.";
+  }
+
+  private String safeDiagnosticCode(String code) {
+    return code != null && code.matches("[A-Z0-9_]{1,80}") ? code : "TOOL_FAILED";
   }
 
   private boolean hasUntrustedContextKeys(com.fasterxml.jackson.databind.JsonNode rootNode) {
