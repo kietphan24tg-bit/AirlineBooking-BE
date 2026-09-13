@@ -8,6 +8,15 @@ import org.junit.jupiter.api.Test;
 class AgentExecutionBudgetTest {
 
   @Test
+  void defaultBudgetSupportsMultiStepMutationPreparation() {
+    AgentExecutionBudget.TurnBudget budget =
+        new AgentExecutionBudget(new AiAgentGuardrailProperties()).newTurnBudget();
+
+    assertThat(budget.tryConsumeToolCalls(8)).isTrue();
+    assertThat(budget.tryConsumeToolCall()).isFalse();
+  }
+
+  @Test
   void rejectsBatchThatWouldExceedConfiguredToolCallLimit() {
     AiAgentGuardrailProperties properties = new AiAgentGuardrailProperties();
     properties.setMaxToolCallsPerTurn(1);

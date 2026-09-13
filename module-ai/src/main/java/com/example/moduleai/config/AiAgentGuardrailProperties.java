@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AiAgentGuardrailProperties {
 
   private int maxMessageLength = 4000;
-  private int maxToolCallsPerTurn = 5;
+  private int maxToolCallsPerTurn = 8;
   private int maxModelRoundsPerTurn = 6;
   private int maxStructuredFieldLength = 256;
   private int maxOutputStringLength = 1024;

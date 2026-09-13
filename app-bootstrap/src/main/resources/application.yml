@@ -117,7 +117,7 @@ app:
                 canary-user-ids: ${APP_AI_AGENT_CANARY_USER_IDS:}
             guardrail:
                 max-message-length: ${APP_AI_AGENT_GUARDRAIL_MAX_MESSAGE_LENGTH:4000}
-                max-tool-calls-per-turn: ${APP_AI_AGENT_GUARDRAIL_MAX_TOOL_CALLS_PER_TURN:5}
+                max-tool-calls-per-turn: ${APP_AI_AGENT_GUARDRAIL_MAX_TOOL_CALLS_PER_TURN:8}
                 max-model-rounds-per-turn: ${APP_AI_AGENT_GUARDRAIL_MAX_MODEL_ROUNDS_PER_TURN:6}
                 max-structured-field-length: ${APP_AI_AGENT_GUARDRAIL_MAX_STRUCTURED_FIELD_LENGTH:256}
                 max-output-string-length: ${APP_AI_AGENT_GUARDRAIL_MAX_OUTPUT_STRING_LENGTH:1024}
