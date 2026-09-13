@@ -358,9 +358,9 @@ class AgentStagingMutationE2ETest {
     String prompt =
         "For my booking PNR "
             + fixture.pnrCode
-            + ", passenger "
+            + ", passenger first name "
             + fixture.passengerFirstName
-            + " "
+            + ", last name "
             + fixture.passengerLastName
             + ", replace "
             + ref.sourceServiceQuantity
