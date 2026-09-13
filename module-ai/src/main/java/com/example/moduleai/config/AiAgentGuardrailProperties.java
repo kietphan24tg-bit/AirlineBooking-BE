@@ -7,7 +7,7 @@ public class AiAgentGuardrailProperties {
 
   private int maxMessageLength = 4000;
   private int maxToolCallsPerTurn = 8;
-  private int maxModelRoundsPerTurn = 6;
+  private int maxModelRoundsPerTurn = 8;
   private int maxStructuredFieldLength = 256;
   private int maxOutputStringLength = 1024;
   private int maxOutputCollectionItems = 20;
