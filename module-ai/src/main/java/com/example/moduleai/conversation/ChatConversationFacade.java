@@ -14,6 +14,8 @@ import com.example.moduleai.dto.ChatConversationRef;
 import com.example.moduleai.dto.ChatRequest;
 import com.example.moduleai.dto.RagChatResponse;
 import com.example.moduleai.guardrail.AgentConcurrencyLimiter;
+import com.example.moduleai.guardrail.AgentInputGuard;
+import com.example.moduleai.guardrail.GuardrailDecision;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,6 +51,7 @@ public class ChatConversationFacade {
   private final ChatResponseMapper responseMapper;
   private final ToolConfirmationService toolConfirmationService;
   private final AgentConcurrencyLimiter concurrencyLimiter;
+  private final AgentInputGuard inputGuard;
   private final AiChatProperties properties;
   private final ObjectMapper objectMapper;
   private final Clock clock;
@@ -70,6 +73,7 @@ public class ChatConversationFacade {
       ChatResponseMapper responseMapper,
       ToolConfirmationService toolConfirmationService,
       AgentConcurrencyLimiter concurrencyLimiter,
+      AgentInputGuard inputGuard,
       AiChatProperties properties,
       ObjectMapper objectMapper,
       Clock clock,
@@ -89,6 +93,7 @@ public class ChatConversationFacade {
     this.responseMapper = responseMapper;
     this.toolConfirmationService = toolConfirmationService;
     this.concurrencyLimiter = concurrencyLimiter;
+    this.inputGuard = inputGuard;
     this.properties = properties;
     this.objectMapper = objectMapper;
     this.clock = clock;
@@ -100,6 +105,10 @@ public class ChatConversationFacade {
       Authentication authentication,
       HttpServletRequest servletRequest,
       HttpServletResponse servletResponse) {
+    GuardrailDecision input = inputGuard.assess(request);
+    if (input.blocked()) {
+      return responseMapper.fallback(input.userMessage(), input.reasonCode());
+    }
     if (!properties.isPersistenceEnabled()) {
       return chatWithoutPersistence(request, authentication, servletRequest, servletResponse);
     }

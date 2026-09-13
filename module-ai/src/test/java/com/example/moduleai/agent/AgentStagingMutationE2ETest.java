@@ -32,6 +32,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -345,6 +346,61 @@ class AgentStagingMutationE2ETest {
                 ref.targetSeatId))
         .as("Reconciliation: Exactly one active assignment must own the target seat")
         .isEqualTo(1L);
+  }
+
+  @RepeatedTest(3)
+  void validateNaturalServiceChangeAndExpiredProposal() throws Exception {
+    ReferenceData ref = discoverFutureReferenceData();
+    assertThat(ref).isNotNull();
+    assertThat(ref.sourceServiceOptionName).isNotBlank();
+    assertThat(ref.targetServiceOptionName).isNotBlank();
+    BookingFixture fixture = createBookingFixture(ref, "CONFIRMED", true, false, true);
+    String prompt =
+        "For my booking PNR "
+            + fixture.pnrCode
+            + ", passenger "
+            + fixture.passengerFirstName
+            + " "
+            + fixture.passengerLastName
+            + ", replace "
+            + ref.sourceServiceQuantity
+            + " of the service option named \""
+            + ref.sourceServiceOptionName
+            + "\" with "
+            + ref.targetServiceQuantity
+            + " of the option named \""
+            + ref.targetServiceOptionName
+            + "\". Please prepare the change for my confirmation.";
+    UUID proposalId = executePromptAndExtractProposalId(prompt, "confirm_service_change");
+    assertThat(
+            queryCount(
+                "SELECT count(*) FROM service_change_settlements WHERE booking_id = ?",
+                fixture.bookingId))
+        .isZero();
+    HttpRequest foreign =
+        HttpRequest.newBuilder(
+                URI.create(baseUrl + "/api/chatbot/proposals/" + proposalId + "/confirm"))
+            .timeout(Duration.ofSeconds(30))
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    assertThat(httpClient.send(foreign, HttpResponse.BodyHandlers.ofString()).statusCode())
+        .isIn(401, 403);
+    try (PreparedStatement statement =
+        dbConnection.prepareStatement(
+            "UPDATE ai_tool_proposals SET expires_at = ? WHERE id = ? AND user_id = ?")) {
+      statement.setObject(1, OffsetDateTime.now().minusMinutes(1));
+      statement.setObject(2, proposalId);
+      statement.setLong(3, testUserId);
+      assertThat(statement.executeUpdate()).isEqualTo(1);
+    }
+    HttpResponse<String> expired = sendConfirmRequest(proposalId);
+    assertThat(expired.statusCode()).isEqualTo(410);
+    assertThat(expired.body()).contains("PROPOSAL_EXPIRED");
+    assertThat(
+            queryCount(
+                "SELECT count(*) FROM service_change_settlements WHERE booking_id = ?",
+                fixture.bookingId))
+        .isZero();
   }
 
   @Test

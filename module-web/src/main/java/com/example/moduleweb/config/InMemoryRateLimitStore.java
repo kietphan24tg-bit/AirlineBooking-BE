@@ -1,5 +1,6 @@
 package com.example.moduleweb.config;
 
+import com.example.common.exception.AppException;
 import com.example.moduleidentity.port.RateLimitStore;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,18 +10,36 @@ final class InMemoryRateLimitStore implements RateLimitStore {
 
   private final ConcurrentHashMap<String, Counter> counters = new ConcurrentHashMap<>();
   private final LongSupplier nanoTime;
+  private final int maxEntries;
 
   InMemoryRateLimitStore() {
     this(System::nanoTime);
   }
 
   InMemoryRateLimitStore(LongSupplier nanoTime) {
+    this(nanoTime, 10_000);
+  }
+
+  InMemoryRateLimitStore(LongSupplier nanoTime, int maxEntries) {
+    if (maxEntries < 1) {
+      throw new IllegalArgumentException("maxEntries must be positive");
+    }
     this.nanoTime = nanoTime;
+    this.maxEntries = maxEntries;
   }
 
   @Override
-  public long increment(String key, Duration window) {
+  public synchronized long increment(String key, Duration window) {
     long now = nanoTime.getAsLong();
+    if (!counters.containsKey(key) && counters.size() >= maxEntries) {
+      counters.entrySet().removeIf(entry -> entry.getValue().expiresAtNanos() <= now);
+      if (counters.size() >= maxEntries) {
+        throw new AppException(
+            "RATE_LIMIT_CAPACITY_EXCEEDED",
+            "Rate limiter is at capacity. Please try again later.",
+            429);
+      }
+    }
     long expiresAt = expiresAt(now, window);
     Counter counter =
         counters.compute(
