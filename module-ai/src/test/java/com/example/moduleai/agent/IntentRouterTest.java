@@ -330,6 +330,9 @@ class IntentRouterTest {
             "I want to replace service option Meal A with Meal B in booking PNR E2E12345",
             "service_change_preview"),
         Arguments.of(
+            "For my booking PNR E2E12345, passenger Staging User, replace 1 of the service option named Meal A with 2 of the option named Meal B. Please prepare the change for my confirmation.",
+            "service_change_preview"),
+        Arguments.of(
             "Toi muon thanh toan cho ma dat cho E2E12345 bang phuong thuc PAYOS",
             "booking_payment_create"));
   }

@@ -258,12 +258,16 @@ public class IntentRouter {
   }
 
   private boolean isServiceChangeActionRequest(String normalized) {
-    return containsAny(
-        normalized,
-        "muon doi dich vu",
-        "muon doi suat an",
-        "replace service option",
-        "change service option");
+    boolean changesNamedOption =
+        containsAny(normalized, "replace", "change", "swap")
+            && containsAny(normalized, "service option", "meal option");
+    return changesNamedOption
+        || containsAny(
+            normalized,
+            "muon doi dich vu",
+            "muon doi suat an",
+            "replace service option",
+            "change service option");
   }
 
   private boolean isProfileUpdateRequest(String normalized) {
