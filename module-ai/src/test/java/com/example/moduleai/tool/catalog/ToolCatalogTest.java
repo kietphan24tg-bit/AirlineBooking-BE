@@ -50,6 +50,37 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 class ToolCatalogTest {
 
   @Test
+  void serviceConfirmationSchemaAllowsBackendBoundPreviewFieldsToBeOmitted() throws Exception {
+    AncillaryTools tools =
+        new AncillaryTools(
+            Mockito.mock(ToolExecutionGuard.class),
+            Mockito.mock(AncillaryCatalogToolService.class),
+            Mockito.mock(BookingAncillarySelectionService.class),
+            Mockito.mock(ServiceChangeSettlementService.class));
+    var callbacks =
+        org.springframework.ai.tool.method.MethodToolCallbackProvider.builder()
+            .toolObjects(tools)
+            .build()
+            .getToolCallbacks();
+    var callback =
+        java.util.Arrays.stream(callbacks)
+            .filter(tool -> tool.getToolDefinition().name().equals("confirm_service_change"))
+            .findFirst()
+            .orElseThrow();
+    String schema = SchemaNormalizingToolCallback.from(callback).getToolDefinition().inputSchema();
+    var input =
+        new com.fasterxml.jackson.databind.ObjectMapper()
+            .readTree(schema)
+            .path("properties")
+            .path("input");
+    var required = new java.util.ArrayList<String>();
+    input.path("required").forEach(field -> required.add(field.asText()));
+    assertThat(required).containsExactlyInAnyOrder("bookingId", "passengers");
+    assertThat(input.path("properties").has("previewToken")).isTrue();
+    assertThat(input.path("properties").has("expectedNetAmount")).isTrue();
+  }
+
+  @Test
   void discoversAllAgentToolsWithPoliciesAndDescriptions() {
     try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
       context.registerBean(

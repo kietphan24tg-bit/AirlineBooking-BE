@@ -357,6 +357,16 @@ public class AgentToolOrchestrator {
               + " by the backend when it creates the proposal. Omit redacted tokens and optional"
               + " expected fields rather than inventing them or repeating previews to obtain them.");
     }
+    if (allowlist.stream().anyMatch(tool -> "confirm_service_change".equals(tool.name()))) {
+      policy.append(
+          " For a service change, lookup the supplied PNR and passenger last name, then use"
+              + " get_manage_options to resolve passenger IDs, current selections, and itinerary"
+              + " flightId/fareId. Use both IDs from the same itinerary when calling list_services;"
+              + " omit both only for the generic catalog. Match requested option names to catalog"
+              + " IDs. Prepare the full desired selection list, preserving unrelated selections."
+              + " After one successful preview_service_change, call confirm_service_change with"
+              + " the same booking, passengers and selections to prepare the confirmation proposal.");
+    }
     if (memory == null) {
       return policy.toString();
     }

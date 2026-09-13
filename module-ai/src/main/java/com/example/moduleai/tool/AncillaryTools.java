@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -40,7 +41,9 @@ public class AncillaryTools extends AbstractAgentTool {
     this.serviceChangeSettlementService = serviceChangeSettlementService;
   }
 
-  @Tool(description = "List selectable ancillary services for a fare or for the generic catalog.")
+  @Tool(
+      description =
+          "List selectable ancillary services. Supply both flightId and fareId from get_manage_options for a fare-specific catalog, or omit both for the generic catalog. Never supply only one.")
   @AgentToolPolicy(
       tool = "list_services",
       operation = ToolOperation.READ,
@@ -174,7 +177,8 @@ public class AncillaryTools extends AbstractAgentTool {
                 input.expectedNetAmount()));
   }
 
-  public record ListServicesInput(Long flightId, Long fareId) {}
+  public record ListServicesInput(
+      @ToolParam(required = false) Long flightId, @ToolParam(required = false) Long fareId) {}
 
   public record ReplaceBookingServicesInput(
       @NotNull Long bookingId, @NotEmpty List<@Valid PassengerSelectionsInput> passengers) {}
@@ -185,10 +189,13 @@ public class AncillaryTools extends AbstractAgentTool {
   public record ConfirmServiceChangeInput(
       @NotNull Long bookingId,
       @NotEmpty List<@Valid PassengerSelectionsInput> passengers,
-      String previewToken,
-      BigDecimal expectedAdditionalAmount,
-      BigDecimal expectedRefundAmount,
-      BigDecimal expectedNetAmount) {}
+      @ToolParam(
+              required = false,
+              description = "Omit; the backend binds the authoritative preview token.")
+          String previewToken,
+      @ToolParam(required = false) BigDecimal expectedAdditionalAmount,
+      @ToolParam(required = false) BigDecimal expectedRefundAmount,
+      @ToolParam(required = false) BigDecimal expectedNetAmount) {}
 
   public record PassengerSelectionsInput(
       @NotNull Long passengerId, @NotEmpty List<@Valid SelectionInput> selections) {}

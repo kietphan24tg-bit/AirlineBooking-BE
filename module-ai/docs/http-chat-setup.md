@@ -151,3 +151,18 @@ Agent read-tool diagnostics log only round, allowlisted tool name, and bounded
 outcome code. The staging mutation workflow extracts only those fields from
 Coolify logs on failure, without exporting arguments, booking data, credentials,
 or raw application logs.
+
+A schema regression reproduced that all four backend-bound confirmation fields
+were incorrectly required: `previewToken`, `expectedAdditionalAmount`,
+`expectedRefundAmount`, and `expectedNetAmount`. They now use
+`@ToolParam(required = false)`; `bookingId` and `passengers` remain required.
+The regression passed after the fix. Service catalog inputs are also optional
+as a pair. Tool descriptions and the service-change policy direct the model to
+obtain the matching `flightId`/`fareId` from `get_manage_options` and reuse a
+successful preview when preparing the proposal. Backend fare validation,
+token redaction, and confirmation checks remain enforced.
+
+Antigravity reviewed this flow read-only using Gemini 3.6 Flash (High), conversation
+`02c7669f-cc52-44f3-ae29-49aeb11966ec`. Its missing-fare-ID observation was
+checked against the code. Its proposed sequence of failing live tool calls was
+an inference, not a captured trace; tool-step diagnostics will verify it.
