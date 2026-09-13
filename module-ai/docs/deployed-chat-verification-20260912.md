@@ -36,6 +36,15 @@ This HTTP override does not solve cross-site frontend cookie delivery.
 
 ## Acceptance Still Required
 
+Update on 2026-09-13: the localhost frontend browser lifecycle, semantic
+follow-up memory after refresh, and prompt-injection exclusion have since passed.
+An eight-guest burst also passed controlled overload handling (two answers and
+six capacity rejections, with no HTTP 500 or transport timeout). Detailed scope
+and cleanup evidence are recorded in [http-chat-setup.md](http-chat-setup.md).
+The earlier cookie failure below applies to a public non-localhost HTTP browser
+origin; it does not describe the verified localhost Vite proxy setup. Natural
+service-change routing and proposal-expiry acceptance are being checked separately.
+
 An opt-in `deployedChatE2E` Gradle task now checks guest identity transport,
 refresh, duplicate-turn history count, foreign guest read/delete denial, and
 New Chat isolation. On this HTTP target, its first cookie gate failed before

@@ -372,6 +372,21 @@ class AgentStagingMutationE2ETest {
             + ref.targetServiceOptionName
             + "\". Please prepare the change for my confirmation.";
     UUID proposalId = executePromptAndExtractProposalId(prompt, "confirm_service_change");
+    JsonNode arguments =
+        objectMapper.readTree(
+            queryString(
+                "SELECT canonical_arguments::text FROM ai_tool_proposals WHERE id = ?"
+                    + " AND user_id = ?",
+                proposalId,
+                testUserId));
+    assertThat(arguments.path("bookingId").asLong()).isEqualTo(fixture.bookingId);
+    assertThat(arguments.path("passengers").size()).isEqualTo(1);
+    JsonNode passenger = arguments.path("passengers").get(0);
+    assertThat(passenger.path("passengerId").asLong()).isEqualTo(fixture.passengerId);
+    assertThat(passenger.path("selections").size()).isEqualTo(1);
+    JsonNode selection = passenger.path("selections").get(0);
+    assertThat(selection.path("optionId").asLong()).isEqualTo(ref.targetServiceOptionId);
+    assertThat(selection.path("quantity").asInt()).isEqualTo(ref.targetServiceQuantity);
     assertThat(
             queryCount(
                 "SELECT count(*) FROM service_change_settlements WHERE booking_id = ?",

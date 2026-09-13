@@ -364,6 +364,10 @@ public class AgentToolOrchestrator {
               + " flightId/fareId. Use both IDs from the same itinerary when calling list_services;"
               + " omit both only for the generic catalog. Match requested option names to catalog"
               + " IDs. Prepare the full desired selection list, preserving unrelated selections."
+              + " Quantities must be final positive quantities, never change deltas. Subtract the"
+              + " requested source quantity from its current quantity and omit that source option"
+              + " entirely when none remains; do not include zero or negative quantity entries."
+              + " Follow the catalog selectionMode: SINGLE permits one option per service group."
               + " After one successful preview_service_change, call confirm_service_change with"
               + " the same booking, passengers and selections to prepare the confirmation proposal.");
     }

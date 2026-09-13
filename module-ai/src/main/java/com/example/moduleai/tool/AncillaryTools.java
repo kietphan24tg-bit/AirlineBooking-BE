@@ -16,6 +16,7 @@ import com.example.modulepayment.application.ServiceChangeSettlementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.ai.chat.model.ToolContext;
@@ -103,7 +104,11 @@ public class AncillaryTools extends AbstractAgentTool {
                         .toList())));
   }
 
-  @Tool(description = "Preview ancillary service changes and their settlement.")
+  @Tool(
+      description =
+          "Preview ancillary service changes and settlement using the full desired selections."
+              + " Quantities are final positive quantities, not deltas. Omit removed options;"
+              + " never include zero or negative quantities. Preserve unrelated selections.")
   @AgentToolPolicy(
       tool = "preview_service_change",
       operation = ToolOperation.PREVIEW,
@@ -202,5 +207,10 @@ public class AncillaryTools extends AbstractAgentTool {
   public record PassengerSelectionsInput(
       @NotNull Long passengerId, @NotEmpty List<@Valid SelectionInput> selections) {}
 
-  public record SelectionInput(@NotNull Long optionId, @NotNull Integer quantity) {}
+  public record SelectionInput(
+      @NotNull @Positive Long optionId,
+      @ToolParam(
+              description =
+                  "Final positive quantity. Omit removed options instead of quantity zero.")
+          @NotNull @Positive Integer quantity) {}
 }

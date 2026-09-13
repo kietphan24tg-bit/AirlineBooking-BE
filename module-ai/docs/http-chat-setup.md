@@ -166,3 +166,20 @@ Antigravity reviewed this flow read-only using Gemini 3.6 Flash (High), conversa
 `02c7669f-cc52-44f3-ae29-49aeb11966ec`. Its missing-fare-ID observation was
 checked against the code. Its proposed sequence of failing live tool calls was
 an inference, not a captured trace; tool-step diagnostics will verify it.
+Its claim that catalog HTTP 400 errors necessarily become opaque was not
+supported: `ToolExecutionGuard` converts these to `ToolError.validation` with
+the original message before the orchestrator receives the result. No change
+was made to error disclosure or token masking based on that claim.
+
+The next focused run on `03e8111`
+([34761961867](https://github.com/kietphan24tg-bit/AirlineBooking-BE/actions/runs/34761961867))
+passed two of three repetitions. Captured tool steps showed successful lookup,
+manage-options and catalog calls, followed by preview validation failures.
+The remaining repetition failed with `VALIDATION_FAILED` during proposal
+preparation. This disproves catalog lookup failure as the remaining blocker.
+The tool contract now explicitly describes full final selections, positive
+quantities, omission of removed options, and catalog selection-mode rules.
+Positive option IDs and quantities are also validated before invocation, matching
+existing settlement validation. The live scenario now checks canonical proposal
+arguments against its fixture's exact booking, passenger, target option and
+quantity before checking confirmation denial and expiry.
