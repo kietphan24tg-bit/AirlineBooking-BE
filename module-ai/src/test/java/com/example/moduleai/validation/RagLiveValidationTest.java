@@ -208,7 +208,12 @@ class RagLiveValidationTest {
       assertThat(drafts).hasSize(executions.size());
       return;
     }
-    Map<String, JudgeDecision> decisions = judge.evaluate(judgeInputs(drafts));
+    List<JudgeInput> judgeInputs = judgeInputs(drafts);
+    if (!judgeInputs.isEmpty()) {
+      // Leave one provider window between answer generation and the independent judge call.
+      pauseBetweenCalls();
+    }
+    Map<String, JudgeDecision> decisions = judge.evaluate(judgeInputs);
     List<ValidationResult> results = finalizeResults(drafts, decisions);
 
     reportWriter.write(RagValidationRun.create(draft, results));
@@ -315,8 +320,7 @@ class RagLiveValidationTest {
 
   private List<JudgeInput> judgeInputs(List<DraftValidationResult> drafts) {
     return drafts.stream()
-        .filter(draft -> draft.executionError() == null)
-        .filter(draft -> !"CHAT_MODEL_ERROR".equals(draft.fallbackReason()))
+        .filter(RagLiveValidationTest::requiresJudge)
         .map(
             draft ->
                 new JudgeInput(
@@ -327,6 +331,20 @@ class RagLiveValidationTest {
                     draft.answer(),
                     draft.sources()))
         .toList();
+  }
+
+  static boolean requiresJudge(DraftValidationResult draft) {
+    return draft.executionError() == null && !isInfrastructureFallback(draft.fallbackReason());
+  }
+
+  private static boolean isInfrastructureFallback(String fallbackReason) {
+    if (fallbackReason == null || fallbackReason.isBlank()) {
+      return false;
+    }
+    return fallbackReason.startsWith("AI_PROVIDER_")
+        || "CHAT_MODEL_ERROR".equals(fallbackReason)
+        || "EMPTY_MODEL_RESPONSE".equals(fallbackReason)
+        || "RETRIEVAL_ERROR".equals(fallbackReason);
   }
 
   private List<ValidationResult> finalizeResults(
@@ -369,6 +387,10 @@ class RagLiveValidationTest {
         && !RouteCategory.DYNAMIC_API_REQUIRED.name().equals(draft.routeCategory())) {
       return new JudgeDecision(
           ValidationVerdict.FAIL, "Must-call-API question was not classified as dynamic.");
+    }
+    if (isInfrastructureFallback(draft.fallbackReason())) {
+      return new JudgeDecision(
+          ValidationVerdict.BLOCKED, "Answer generation failed due to provider infrastructure.");
     }
     return modelDecisions.getOrDefault(
         draft.executionId(),
