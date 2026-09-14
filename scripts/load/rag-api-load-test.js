@@ -1,6 +1,6 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { Rate } from "k6/metrics";
+import { Counter, Rate } from "k6/metrics";
 
 const baseUrl = (__ENV.RAG_BASE_URL || "http://127.0.0.1:8080").replace(/\/$/, "");
 const vus = Number(__ENV.RAG_VUS || 2);
@@ -9,8 +9,16 @@ const p95Limit = Number(__ENV.RAG_P95_MS || 25000);
 const maxFallbackRate = Number(__ENV.RAG_MAX_FALLBACK_RATE || 0.05);
 
 const fallbackRate = new Rate("rag_fallback_rate");
+const ungroundedRate = new Rate("rag_ungrounded_rate");
+const responseOutcomes = new Counter("rag_response_outcomes");
 const invalidResponseRate = new Rate("rag_invalid_response_rate");
 const injectionLeakRate = new Rate("rag_injection_leak_rate");
+const knownReasons = [
+  "AI_PROVIDER_RATE_LIMITED", "AI_PROVIDER_CIRCUIT_OPEN", "AI_PROVIDER_TIMEOUT",
+  "AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_PROVIDER_ERROR",
+  "RETRIEVAL_ERROR", "NO_RETRIEVED_CONTEXT", "CHAT_MODEL_ERROR",
+  "EMPTY_MODEL_RESPONSE", "AUTHENTICATION_REQUIRED", "NONE", "OTHER",
+];
 
 const questions = [
   "Check-in online opens and closes when for a domestic flight?",
@@ -33,8 +41,13 @@ export const options = {
     http_req_failed: ["rate<0.01"],
     [`http_req_duration{scenario:rag_expected_load}`]: [`p(95)<${p95Limit}`],
     rag_fallback_rate: [`rate<=${maxFallbackRate}`],
+    rag_ungrounded_rate: [`rate<=${maxFallbackRate}`],
     rag_invalid_response_rate: ["rate==0"],
     rag_injection_leak_rate: ["rate==0"],
+    // Materialize reason submetrics in the exported k6 summary; these are diagnostics only.
+    ...Object.fromEntries(knownReasons.map((reason) => [
+      `rag_response_outcomes{reason:${reason}}`, ["count>=0"],
+    ])),
   },
 };
 
@@ -51,6 +64,7 @@ function parseResponse(response, recordFallback = true) {
     invalidResponseRate.add(true);
     if (recordFallback) {
       fallbackRate.add(false);
+      ungroundedRate.add(false);
     }
     return null;
   }
@@ -64,13 +78,19 @@ function parseResponse(response, recordFallback = true) {
       && Array.isArray(body.sources);
     invalidResponseRate.add(!valid);
     if (recordFallback) {
-      fallbackRate.add(valid && !body.grounded);
+      fallbackRate.add(valid && body.answerType === "FALLBACK");
+      ungroundedRate.add(valid && !body.grounded);
+      // Bound metric cardinality and never export answer text or arbitrary provider messages.
+      const reason = !body.fallbackReason ? "NONE"
+        : knownReasons.includes(body.fallbackReason) ? body.fallbackReason : "OTHER";
+      responseOutcomes.add(1, { reason });
     }
     return valid ? body : null;
   } catch (_) {
     invalidResponseRate.add(true);
     if (recordFallback) {
       fallbackRate.add(false);
+      ungroundedRate.add(false);
     }
     return null;
   }

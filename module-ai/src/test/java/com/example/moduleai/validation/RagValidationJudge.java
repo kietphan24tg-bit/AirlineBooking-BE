@@ -1,5 +1,6 @@
 package com.example.moduleai.validation;
 
+import com.google.genai.errors.ApiException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -176,12 +177,22 @@ final class RagValidationJudge {
     }
   }
 
-  private String conciseMessage(RuntimeException ex) {
-    String message = ex.getMessage();
-    if (message == null || message.isBlank()) {
-      return ex.getClass().getSimpleName();
+  static String conciseMessage(RuntimeException ex) {
+    // Provider messages can contain request URLs, credentials, or submitted content.
+    // Preserve diagnostic types and numeric status only, including wrapped SDK failures.
+    StringBuilder diagnostic = new StringBuilder();
+    Throwable cause = ex;
+    for (int depth = 0; cause != null && depth < 8; depth++) {
+      if (depth > 0) {
+        diagnostic.append(" -> ");
+      }
+      diagnostic.append(cause.getClass().getSimpleName());
+      if (cause instanceof ApiException apiException) {
+        diagnostic.append("[HTTP ").append(apiException.code()).append(']');
+      }
+      cause = cause.getCause();
     }
-    return message.replaceAll("\\s+", " ").trim();
+    return diagnostic.toString();
   }
 
   record JudgeInput(
