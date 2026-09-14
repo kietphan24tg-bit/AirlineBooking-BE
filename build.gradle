@@ -42,6 +42,12 @@ subprojects {
             mavenBom 'org.springframework.ai:spring-ai-bom:2.0.1'
         }
         dependencies {
+            dependency 'org.postgresql:postgresql:42.7.12'
+            dependency 'org.apache.httpcomponents.client5:httpclient5:5.6.3'
+            dependencySet(group: 'org.apache.httpcomponents.core5', version: '5.4.3') {
+                entry 'httpcore5'
+                entry 'httpcore5-h2'
+            }
             dependencySet(group: 'org.apache.tomcat.embed', version: '11.0.25') {
                 entry 'tomcat-embed-core'
                 entry 'tomcat-embed-el'
