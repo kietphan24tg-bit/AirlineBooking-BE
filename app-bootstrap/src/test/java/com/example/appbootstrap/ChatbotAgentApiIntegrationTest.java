@@ -20,6 +20,7 @@ import com.example.moduleai.guardrail.AgentRequestLimiter;
 import com.example.moduleai.tool.core.ToolOperation;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
 import com.example.moduleidentity.entity.Role;
+import com.example.moduleidentity.port.ClientKeyResolver;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
 import java.time.OffsetDateTime;
@@ -44,9 +45,11 @@ class ChatbotAgentApiIntegrationTest {
   @MockitoBean private ToolConfirmationService confirmationService;
   @MockitoBean private AgentRequestLimiter requestLimiter;
   @MockitoBean private AgentConcurrencyLimiter concurrencyLimiter;
+  @MockitoBean private ClientKeyResolver clientKeyResolver;
 
   @Test
   void chatbotMessageRemainsPublicAndReturnsAgentEnvelope() throws Exception {
+    when(clientKeyResolver.resolveClientKey()).thenReturn("198.51.100.25");
     when(chatConversationFacade.chat(
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.isNull(),
@@ -73,7 +76,7 @@ class ChatbotAgentApiIntegrationTest {
         .andExpect(jsonPath("$.data.answer").value("Found flights"))
         .andExpect(jsonPath("$.data.answerType").value("TOOL_RESULT"));
 
-    verify(requestLimiter).checkQuery(null, null);
+    verify(requestLimiter).checkQuery(null, "198.51.100.25");
   }
 
   @Test
