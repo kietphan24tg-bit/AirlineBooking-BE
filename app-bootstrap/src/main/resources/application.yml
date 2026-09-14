@@ -165,7 +165,7 @@ app:
             ingest-batch-size: ${APP_AI_RAG_INGEST_BATCH_SIZE:80}
             ingest-batch-delay: ${APP_AI_RAG_INGEST_BATCH_DELAY:65s}
     cors:
-        allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.railway.app,https://*.vercel.app}
+        allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173}
     auth:
         refresh-cookie:
             name: ${APP_AUTH_REFRESH_COOKIE_NAME:refresh_token}

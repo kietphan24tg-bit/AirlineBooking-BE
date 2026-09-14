@@ -303,7 +303,7 @@ APP_MAIL_FROM=noreply@airline-booking.com
 # COOKIE / CORS
 APP_AUTH_REFRESH_COOKIE_NAME=refresh_token
 APP_AUTH_REFRESH_COOKIE_PATH=/api/auth
-APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:3000,http://localhost:5173,https://*.railway.app
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:3000,http://localhost:5173
 
 # RATE LIMIT
 APP_RATE_LIMIT_ENABLED=true

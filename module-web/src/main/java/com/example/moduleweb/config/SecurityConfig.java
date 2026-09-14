@@ -176,11 +176,7 @@ public class SecurityConfig {
     List<String> allowedOrigins = corsProperties.allowedOriginPatterns();
     if (allowedOrigins == null || allowedOrigins.isEmpty()) {
       allowedOrigins =
-          Arrays.asList(
-              "http://localhost:3000",
-              "http://localhost:5173",
-              "https://*.railway.app",
-              "https://*.vercel.app");
+          Arrays.asList("http://localhost:3000", "http://localhost:5173");
     }
     configuration.setAllowedOriginPatterns(allowedOrigins);
     configuration.setAllowedMethods(
