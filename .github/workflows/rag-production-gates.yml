@@ -57,6 +57,7 @@ jobs:
       - name: Run bounded staging load and prompt-injection smoke test
         run: >-
           docker run --rm
+          --user "$(id -u):$(id -g)"
           -e RAG_BASE_URL
           -e RAG_VUS
           -e RAG_DURATION

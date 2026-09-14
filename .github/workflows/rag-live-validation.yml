@@ -17,6 +17,21 @@ on:
         required: true
         type: boolean
         default: false
+      max_cases:
+        description: Maximum checklist cases for this quota-bounded run
+        required: true
+        default: '10'
+        type: string
+      case_ids:
+        description: Optional comma-separated checklist case IDs
+        required: false
+        default: ''
+        type: string
+      delay_millis:
+        description: Pause between provider calls in milliseconds
+        required: true
+        default: '15000'
+        type: string
 
 permissions:
   contents: read
@@ -88,6 +103,10 @@ jobs:
           -PragValidationVariants=${{ inputs.variants }}
           -PragValidationIngest=${{ inputs.ingest }}
           --console=plain
+        env:
+          ORG_GRADLE_PROJECT_ragValidationCaseIds: ${{ inputs.case_ids }}
+          ORG_GRADLE_PROJECT_ragValidationMaxCases: ${{ inputs.max_cases }}
+          ORG_GRADLE_PROJECT_ragValidationDelayMillis: ${{ inputs.delay_millis }}
 
       - name: Upload immutable validation evidence
         if: always()

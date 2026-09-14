@@ -1,6 +1,6 @@
 plugins {
     id 'com.diffplug.spotless' version '7.0.2'
-    id 'org.springframework.boot' version '4.0.5' apply false
+    id 'org.springframework.boot' version '4.0.8' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
@@ -38,8 +38,10 @@ subprojects {
 
     dependencyManagement {
         imports {
-            mavenBom 'org.springframework.boot:spring-boot-dependencies:4.0.5'
-            mavenBom 'org.springframework.ai:spring-ai-bom:2.0.0'
+            mavenBom('org.springframework.boot:spring-boot-dependencies:4.0.8') {
+                bomProperty 'tomcat.version', '11.0.25'
+            }
+            mavenBom 'org.springframework.ai:spring-ai-bom:2.0.1'
         }
     }
 
