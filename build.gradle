@@ -38,10 +38,15 @@ subprojects {
 
     dependencyManagement {
         imports {
-            mavenBom('org.springframework.boot:spring-boot-dependencies:4.0.8') {
-                bomProperty 'tomcat.version', '11.0.25'
-            }
+            mavenBom 'org.springframework.boot:spring-boot-dependencies:4.0.8'
             mavenBom 'org.springframework.ai:spring-ai-bom:2.0.1'
+        }
+        dependencies {
+            dependencySet(group: 'org.apache.tomcat.embed', version: '11.0.25') {
+                entry 'tomcat-embed-core'
+                entry 'tomcat-embed-el'
+                entry 'tomcat-embed-websocket'
+            }
         }
     }
 
