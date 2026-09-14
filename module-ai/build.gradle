@@ -34,7 +34,7 @@ dependencies {
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testImplementation 'org.testcontainers:junit-jupiter:1.21.3'
     testImplementation 'org.testcontainers:postgresql:1.21.3'
-    testRuntimeOnly 'org.postgresql:postgresql:42.7.7'
+    testRuntimeOnly 'org.postgresql:postgresql'
 }
 
 tasks.named('test') {
