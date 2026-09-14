@@ -175,8 +175,7 @@ public class SecurityConfig {
     CorsConfiguration configuration = new CorsConfiguration();
     List<String> allowedOrigins = corsProperties.allowedOriginPatterns();
     if (allowedOrigins == null || allowedOrigins.isEmpty()) {
-      allowedOrigins =
-          Arrays.asList("http://localhost:3000", "http://localhost:5173");
+      allowedOrigins = Arrays.asList("http://localhost:3000", "http://localhost:5173");
     }
     configuration.setAllowedOriginPatterns(allowedOrigins);
     configuration.setAllowedMethods(
