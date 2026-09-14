@@ -11,6 +11,7 @@ import com.example.moduleai.dto.RagChatResponse;
 import com.example.moduleai.guardrail.AgentConcurrencyLimiter;
 import com.example.moduleai.guardrail.AgentRequestLimiter;
 import com.example.moduleidentity.application.security.AppUserPrincipal;
+import com.example.moduleidentity.port.ClientKeyResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,7 +31,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,16 +45,19 @@ public class ChatbotController {
   private final ToolConfirmationService toolConfirmationService;
   private final AgentRequestLimiter agentRequestLimiter;
   private final AgentConcurrencyLimiter agentConcurrencyLimiter;
+  private final ClientKeyResolver clientKeyResolver;
 
   public ChatbotController(
       ChatConversationFacade chatConversationFacade,
       ToolConfirmationService toolConfirmationService,
       AgentRequestLimiter agentRequestLimiter,
-      AgentConcurrencyLimiter agentConcurrencyLimiter) {
+      AgentConcurrencyLimiter agentConcurrencyLimiter,
+      ClientKeyResolver clientKeyResolver) {
     this.chatConversationFacade = chatConversationFacade;
     this.toolConfirmationService = toolConfirmationService;
     this.agentRequestLimiter = agentRequestLimiter;
     this.agentConcurrencyLimiter = agentConcurrencyLimiter;
+    this.clientKeyResolver = clientKeyResolver;
   }
 
   @PostMapping("/messages")
@@ -73,11 +76,9 @@ public class ChatbotController {
       @Valid @RequestBody ChatRequest request,
       Authentication authentication,
       HttpServletRequest servletRequest,
-      HttpServletResponse servletResponse,
-      @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor,
-      @RequestHeader(value = "X-Real-IP", required = false) String realIp) {
+      HttpServletResponse servletResponse) {
     Long userId = currentUserId(authentication);
-    agentRequestLimiter.checkQuery(userId, clientIp(forwardedFor, realIp));
+    agentRequestLimiter.checkQuery(userId, clientKeyResolver.resolveClientKey());
     return chatConversationFacade.chat(request, authentication, servletRequest, servletResponse);
   }
 
@@ -170,12 +171,5 @@ public class ChatbotController {
       return null;
     }
     return user.getUserId();
-  }
-
-  private String clientIp(String forwardedFor, String realIp) {
-    if (forwardedFor != null && !forwardedFor.isBlank()) {
-      return forwardedFor.split(",", 2)[0].trim();
-    }
-    return realIp == null || realIp.isBlank() ? null : realIp.trim();
   }
 }

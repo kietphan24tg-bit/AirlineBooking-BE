@@ -35,6 +35,21 @@ class ClientKeyResolverIntegrationTest {
         .andExpect(jsonPath("$.data.clientKey").value("203.0.113.10"));
   }
 
+  @Test
+  void shouldIgnoreSpoofedForwardedHeaderWhenRemoteAddressIsNotTrustedProxy() throws Exception {
+    mockMvc
+        .perform(
+            get("/client-key/current")
+                .with(user("tester"))
+                .with(request -> {
+                  request.setRemoteAddr("198.51.100.25");
+                  return request;
+                })
+                .header("X-Forwarded-For", "203.0.113.10"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.clientKey").value("198.51.100.25"));
+  }
+
   @RestController
   @RequestMapping("/client-key")
   static class TestApiController {
