@@ -645,7 +645,7 @@ class AgentStagingMutationE2ETest {
     if (referenceData != null) {
       return referenceData;
     }
-    moveUnusedSyntheticFlight(OffsetDateTime.now().plusHours(12));
+    moveUnusedReferenceFlight(OffsetDateTime.now().plusHours(12));
     return executeReferenceQuery(sql);
   }
 
@@ -666,18 +666,17 @@ class AgentStagingMutationE2ETest {
     if (referenceData != null) {
       return referenceData;
     }
-    moveUnusedSyntheticFlight(OffsetDateTime.now().plusHours(72));
+    moveUnusedReferenceFlight(OffsetDateTime.now().plusHours(72));
     return executeReferenceQuery(sql);
   }
 
-  private void moveUnusedSyntheticFlight(OffsetDateTime fixtureDepartureTime) throws Exception {
+  private void moveUnusedReferenceFlight(OffsetDateTime fixtureDepartureTime) throws Exception {
     String sql =
         "WITH candidate AS ("
             + " SELECT f.id, f.departure_time, f.arrival_time, f.updated_at"
             + " FROM flights f"
             + " JOIN flight_fares ff ON ff.flight_id = f.id"
             + " WHERE f.status = 'SCHEDULED'"
-            + " AND f.flight_source IN ('MOCK', 'COVERAGE')"
             + " AND f.departure_time <= now()"
             + " AND 2 <= (SELECT count(*) FROM flight_seats fs"
             + " WHERE fs.flight_id = f.id AND fs.status = 'AVAILABLE'"
