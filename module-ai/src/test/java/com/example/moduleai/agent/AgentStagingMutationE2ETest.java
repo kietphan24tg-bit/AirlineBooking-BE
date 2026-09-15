@@ -92,6 +92,7 @@ class AgentStagingMutationE2ETest {
 
   private final List<LedgerEntry> ledger = new ArrayList<>();
   private final List<SeatStateBackup> seatBackups = new ArrayList<>();
+  private final List<FlightScheduleBackup> flightScheduleBackups = new ArrayList<>();
   private final Set<Long> fixtureBookingIds = new HashSet<>();
 
   private record LedgerEntry(String tableName, Object id) {}
@@ -101,6 +102,14 @@ class AgentStagingMutationE2ETest {
       String originalStatus,
       Long originalBookingId,
       OffsetDateTime originalReservedUntil) {}
+
+  private record FlightScheduleBackup(
+      Long flightId,
+      OffsetDateTime originalDepartureTime,
+      OffsetDateTime originalArrivalTime,
+      OffsetDateTime originalUpdatedAt,
+      OffsetDateTime fixtureDepartureTime,
+      OffsetDateTime fixtureArrivalTime) {}
 
   @BeforeEach
   void setUp() throws Exception {
@@ -626,7 +635,17 @@ class AgentStagingMutationE2ETest {
             + "WHERE f.status = 'SCHEDULED' "
             + "AND f.departure_time >= (now() + interval '2 hours') "
             + "AND f.departure_time <= (now() + interval '24 hours') "
+            + "AND 2 <= (SELECT count(*) FROM flight_seats fs "
+            + "WHERE fs.flight_id = f.id AND fs.status = 'AVAILABLE' "
+            + "AND EXISTS (SELECT 1 FROM fare_class_seat_classes allowed "
+            + "WHERE allowed.fare_class_id = ff.fare_class_id "
+            + "AND allowed.seat_class_id = fs.seat_class_id)) "
             + "ORDER BY f.departure_time ASC LIMIT 1";
+    ReferenceData referenceData = executeReferenceQuery(sql);
+    if (referenceData != null) {
+      return referenceData;
+    }
+    moveUnusedSyntheticFlight(OffsetDateTime.now().plusHours(12));
     return executeReferenceQuery(sql);
   }
 
@@ -637,8 +656,65 @@ class AgentStagingMutationE2ETest {
             + "JOIN flight_fares ff ON ff.flight_id = f.id "
             + "WHERE f.status = 'SCHEDULED' "
             + "AND f.departure_time > (now() + interval '24 hours') "
+            + "AND 2 <= (SELECT count(*) FROM flight_seats fs "
+            + "WHERE fs.flight_id = f.id AND fs.status = 'AVAILABLE' "
+            + "AND EXISTS (SELECT 1 FROM fare_class_seat_classes allowed "
+            + "WHERE allowed.fare_class_id = ff.fare_class_id "
+            + "AND allowed.seat_class_id = fs.seat_class_id)) "
             + "ORDER BY f.departure_time ASC LIMIT 1";
+    ReferenceData referenceData = executeReferenceQuery(sql);
+    if (referenceData != null) {
+      return referenceData;
+    }
+    moveUnusedSyntheticFlight(OffsetDateTime.now().plusHours(72));
     return executeReferenceQuery(sql);
+  }
+
+  private void moveUnusedSyntheticFlight(OffsetDateTime fixtureDepartureTime) throws Exception {
+    String sql =
+        "WITH candidate AS ("
+            + " SELECT f.id, f.departure_time, f.arrival_time, f.updated_at"
+            + " FROM flights f"
+            + " JOIN flight_fares ff ON ff.flight_id = f.id"
+            + " WHERE f.status = 'SCHEDULED'"
+            + " AND f.flight_source IN ('MOCK', 'COVERAGE')"
+            + " AND f.departure_time <= now()"
+            + " AND 2 <= (SELECT count(*) FROM flight_seats fs"
+            + " WHERE fs.flight_id = f.id AND fs.status = 'AVAILABLE'"
+            + " AND EXISTS (SELECT 1 FROM fare_class_seat_classes allowed"
+            + " WHERE allowed.fare_class_id = ff.fare_class_id"
+            + " AND allowed.seat_class_id = fs.seat_class_id))"
+            + " AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.flight_id = f.id)"
+            + " ORDER BY f.departure_time DESC LIMIT 1"
+            + "), updated AS ("
+            + " UPDATE flights f SET departure_time = ?,"
+            + " arrival_time = ? + (candidate.arrival_time - candidate.departure_time),"
+            + " updated_at = now() FROM candidate"
+            + " WHERE f.id = candidate.id"
+            + " AND f.departure_time = candidate.departure_time"
+            + " AND f.arrival_time = candidate.arrival_time"
+            + " AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.flight_id = f.id)"
+            + " RETURNING f.id, candidate.departure_time AS original_departure_time,"
+            + " candidate.arrival_time AS original_arrival_time,"
+            + " candidate.updated_at AS original_updated_at,"
+            + " f.departure_time AS fixture_departure_time,"
+            + " f.arrival_time AS fixture_arrival_time"
+            + ") SELECT * FROM updated";
+    try (PreparedStatement stmt = dbConnection.prepareStatement(sql)) {
+      stmt.setObject(1, fixtureDepartureTime);
+      stmt.setObject(2, fixtureDepartureTime);
+      ResultSet rs = stmt.executeQuery();
+      if (rs.next()) {
+        flightScheduleBackups.add(
+            new FlightScheduleBackup(
+                rs.getLong("id"),
+                rs.getObject("original_departure_time", OffsetDateTime.class),
+                rs.getObject("original_arrival_time", OffsetDateTime.class),
+                rs.getObject("original_updated_at", OffsetDateTime.class),
+                rs.getObject("fixture_departure_time", OffsetDateTime.class),
+                rs.getObject("fixture_arrival_time", OffsetDateTime.class)));
+      }
+    }
   }
 
   private ReferenceData executeReferenceQuery(String sqlFlight) throws Exception {
@@ -1317,6 +1393,37 @@ class AgentStagingMutationE2ETest {
                 + " ("
                 + entry.id()
                 + "): "
+                + sanitizeError(exception.getMessage()));
+      }
+    }
+
+    restoreFlightSchedules(errors);
+  }
+
+  private void restoreFlightSchedules(List<String> errors) {
+    for (FlightScheduleBackup backup : flightScheduleBackups) {
+      String sql =
+          "UPDATE flights SET departure_time = ?, arrival_time = ?, updated_at = ?"
+              + " WHERE id = ? AND departure_time = ? AND arrival_time = ?"
+              + " AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.flight_id = flights.id)";
+      try (PreparedStatement stmt = dbConnection.prepareStatement(sql)) {
+        stmt.setObject(1, backup.originalDepartureTime());
+        stmt.setObject(2, backup.originalArrivalTime());
+        stmt.setObject(3, backup.originalUpdatedAt());
+        stmt.setLong(4, backup.flightId());
+        stmt.setObject(5, backup.fixtureDepartureTime());
+        stmt.setObject(6, backup.fixtureArrivalTime());
+        if (stmt.executeUpdate() != 1) {
+          errors.add(
+              "Refused to restore flight "
+                  + backup.flightId()
+                  + " because its schedule or ticket ownership changed");
+        }
+      } catch (SQLException exception) {
+        errors.add(
+            "Failed to restore flight "
+                + backup.flightId()
+                + ": "
                 + sanitizeError(exception.getMessage()));
       }
     }
