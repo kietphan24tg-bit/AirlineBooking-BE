@@ -298,12 +298,25 @@ class AgentStagingMutationE2ETest {
     BookingFixture fixture = createBookingFixture(ref, "CONFIRMED", true, false, false);
 
     String chatPrompt =
-        "T\u00F4i mu\u1ED1n \u0111\u1ED5i gh\u1EBF cho h\u00E0nh kh\u00E1ch "
+        "T\u00F4i mu\u1ED1n \u0111\u1ED5i gh\u1EBF cho bookingId "
+            + fixture.bookingId
+            + ", passengerId "
+            + fixture.passengerId
+            + ", flightId "
+            + ref.flightId
+            + ", h\u00E0nh kh\u00E1ch "
             + fixture.passengerFirstName
             + " "
             + fixture.passengerLastName
-            + " sang gh\u1EBF "
+            + ", t\u1EEB gh\u1EBF hi\u1EC7n t\u1EA1i "
+            + ref.initialSeatNumber
+            + " (fromSeatId "
+            + ref.initialSeatId
+            + ") sang gh\u1EBF "
             + ref.targetSeatNumber
+            + " (toSeatId "
+            + ref.targetSeatId
+            + ")"
             + "; passenger last name "
             + fixture.passengerLastName
             + "; booking PNR "
