@@ -68,7 +68,10 @@ class AgentStagingMutationE2ETest {
           "bookings",
           "refresh_token_sessions",
           "password_reset_tokens",
-          "users");
+          "users",
+          "flight_seats",
+          "flight_fares",
+          "flights");
 
   static boolean isStagingMutationEnabled() {
     return "true".equalsIgnoreCase(System.getenv("AGENT_STAGING_MUTATION_ENABLED"))
@@ -706,7 +709,8 @@ class AgentStagingMutationE2ETest {
       stmt.setObject(2, fixtureDepartureTime);
       ResultSet rs = stmt.executeQuery();
       if (!rs.next()) {
-        throw new IllegalStateException(referenceFlightDiagnostics());
+        createFixtureReferenceFlight(fixtureDepartureTime);
+        return;
       }
       flightScheduleBackups.add(
           new FlightScheduleBackup(
@@ -717,6 +721,87 @@ class AgentStagingMutationE2ETest {
               rs.getObject("original_updated_at", OffsetDateTime.class),
               rs.getObject("fixture_departure_time", OffsetDateTime.class),
               rs.getObject("fixture_arrival_time", OffsetDateTime.class)));
+    }
+  }
+
+  private void createFixtureReferenceFlight(OffsetDateTime fixtureDepartureTime) throws Exception {
+    Long templateFlightId = findTemplateFlightId();
+    if (templateFlightId == null) {
+      throw new IllegalStateException(referenceFlightDiagnostics());
+    }
+
+    Long fixtureFlightId;
+    String sqlFlight =
+        "INSERT INTO flights (airline_id, flight_number, flight_date, aircraft_id,"
+            + " departure_airport_id, arrival_airport_id, departure_time, arrival_time,"
+            + " departure_terminal, departure_gate, arrival_terminal, arrival_gate, status,"
+            + " flight_source, created_at, updated_at) SELECT airline_id, ?, ?, aircraft_id,"
+            + " departure_airport_id, arrival_airport_id, ?, ? + (arrival_time - departure_time),"
+            + " departure_terminal, departure_gate, arrival_terminal, arrival_gate, 'SCHEDULED',"
+            + " 'MOCK', now(), now() FROM flights WHERE id = ? RETURNING id";
+    try (PreparedStatement stmt = dbConnection.prepareStatement(sqlFlight)) {
+      stmt.setString(1, "E2E" + runId.toUpperCase());
+      stmt.setObject(2, fixtureDepartureTime.toLocalDate());
+      stmt.setObject(3, fixtureDepartureTime);
+      stmt.setObject(4, fixtureDepartureTime);
+      stmt.setLong(5, templateFlightId);
+      ResultSet rs = stmt.executeQuery();
+      if (!rs.next()) {
+        throw new IllegalStateException("Failed to clone fixture-owned reference flight");
+      }
+      fixtureFlightId = rs.getLong("id");
+      addToLedger("flights", fixtureFlightId);
+    }
+
+    cloneFlightFares(templateFlightId, fixtureFlightId);
+    cloneFlightSeats(templateFlightId, fixtureFlightId);
+  }
+
+  private Long findTemplateFlightId() throws Exception {
+    String sql =
+        "SELECT f.id FROM flights f JOIN flight_fares ff ON ff.flight_id = f.id"
+            + " WHERE 2 <= (SELECT count(*) FROM flight_seats fs"
+            + " WHERE fs.flight_id = f.id AND fs.status = 'AVAILABLE'"
+            + " AND EXISTS (SELECT 1 FROM fare_class_seat_classes allowed"
+            + " WHERE allowed.fare_class_id = ff.fare_class_id"
+            + " AND allowed.seat_class_id = fs.seat_class_id))"
+            + " ORDER BY f.departure_time DESC LIMIT 1";
+    try (Statement stmt = dbConnection.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      return rs.next() ? rs.getLong("id") : null;
+    }
+  }
+
+  private void cloneFlightFares(Long templateFlightId, Long fixtureFlightId) throws Exception {
+    String sql =
+        "INSERT INTO flight_fares (flight_id, fare_class_id, base_price, tax_breakdown,"
+            + " total_tax_amount, total_price, status, updated_at)"
+            + " SELECT ?, fare_class_id, base_price, tax_breakdown, total_tax_amount, total_price,"
+            + " status, now() FROM flight_fares WHERE flight_id = ? RETURNING id";
+    try (PreparedStatement stmt = dbConnection.prepareStatement(sql)) {
+      stmt.setLong(1, fixtureFlightId);
+      stmt.setLong(2, templateFlightId);
+      ResultSet rs = stmt.executeQuery();
+      while (rs.next()) {
+        addToLedger("flight_fares", rs.getLong("id"));
+      }
+    }
+  }
+
+  private void cloneFlightSeats(Long templateFlightId, Long fixtureFlightId) throws Exception {
+    String sql =
+        "INSERT INTO flight_seats (flight_id, status, fare_class_id, booking_id, reserved_until,"
+            + " created_at, seat_number, seat_class_id, seat_type_id, seat_category_id)"
+            + " SELECT ?, 'AVAILABLE', fare_class_id, null, null, now(), seat_number,"
+            + " seat_class_id, seat_type_id, seat_category_id FROM flight_seats"
+            + " WHERE flight_id = ? RETURNING id";
+    try (PreparedStatement stmt = dbConnection.prepareStatement(sql)) {
+      stmt.setLong(1, fixtureFlightId);
+      stmt.setLong(2, templateFlightId);
+      ResultSet rs = stmt.executeQuery();
+      while (rs.next()) {
+        addToLedger("flight_seats", rs.getLong("id"));
+      }
     }
   }
 
@@ -1489,6 +1574,8 @@ class AgentStagingMutationE2ETest {
       case "bookings" -> 90;
       case "refresh_token_sessions", "password_reset_tokens" -> 100;
       case "users" -> 110;
+      case "flight_seats", "flight_fares" -> 120;
+      case "flights" -> 130;
       default -> Integer.MAX_VALUE;
     };
   }
