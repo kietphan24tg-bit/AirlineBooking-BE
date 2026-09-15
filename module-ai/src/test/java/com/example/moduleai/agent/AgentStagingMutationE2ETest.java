@@ -449,6 +449,8 @@ class AgentStagingMutationE2ETest {
             + fixture.bookingId
             + ", PNR "
             + fixture.pnrCode
+            + ", passenger last name "
+            + fixture.passengerLastName
             + ", passengerId "
             + fixture.passengerId
             + ". Replace service optionId "
