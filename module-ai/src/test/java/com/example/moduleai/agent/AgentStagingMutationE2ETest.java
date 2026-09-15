@@ -705,18 +705,53 @@ class AgentStagingMutationE2ETest {
       stmt.setObject(1, fixtureDepartureTime);
       stmt.setObject(2, fixtureDepartureTime);
       ResultSet rs = stmt.executeQuery();
-      if (rs.next()) {
-        flightScheduleBackups.add(
-            new FlightScheduleBackup(
-                rs.getLong("id"),
-                rs.getString("original_status"),
-                rs.getObject("original_departure_time", OffsetDateTime.class),
-                rs.getObject("original_arrival_time", OffsetDateTime.class),
-                rs.getObject("original_updated_at", OffsetDateTime.class),
-                rs.getObject("fixture_departure_time", OffsetDateTime.class),
-                rs.getObject("fixture_arrival_time", OffsetDateTime.class)));
+      if (!rs.next()) {
+        throw new IllegalStateException(referenceFlightDiagnostics());
       }
+      flightScheduleBackups.add(
+          new FlightScheduleBackup(
+              rs.getLong("id"),
+              rs.getString("original_status"),
+              rs.getObject("original_departure_time", OffsetDateTime.class),
+              rs.getObject("original_arrival_time", OffsetDateTime.class),
+              rs.getObject("original_updated_at", OffsetDateTime.class),
+              rs.getObject("fixture_departure_time", OffsetDateTime.class),
+              rs.getObject("fixture_arrival_time", OffsetDateTime.class)));
     }
+  }
+
+  private String referenceFlightDiagnostics() throws Exception {
+    long flights = queryCount("SELECT count(*) FROM flights");
+    long past =
+        queryCount(
+            "SELECT count(*) FROM flights f WHERE f.status IN ('SCHEDULED', 'COMPLETED')"
+                + " AND f.departure_time <= now()");
+    long withFare =
+        queryCount(
+            "SELECT count(DISTINCT f.id) FROM flights f JOIN flight_fares ff"
+                + " ON ff.flight_id = f.id WHERE f.status IN ('SCHEDULED', 'COMPLETED')"
+                + " AND f.departure_time <= now()");
+    long withAvailableSeats =
+        queryCount(
+            "SELECT count(*) FROM flights f WHERE f.status IN ('SCHEDULED', 'COMPLETED')"
+                + " AND f.departure_time <= now() AND 2 <= (SELECT count(*)"
+                + " FROM flight_seats fs WHERE fs.flight_id = f.id"
+                + " AND fs.status = 'AVAILABLE')");
+    long withoutTickets =
+        queryCount(
+            "SELECT count(*) FROM flights f WHERE f.status IN ('SCHEDULED', 'COMPLETED')"
+                + " AND f.departure_time <= now() AND NOT EXISTS"
+                + " (SELECT 1 FROM tickets t WHERE t.flight_id = f.id)");
+    return "No safe reference flight found: flights="
+        + flights
+        + ", past="
+        + past
+        + ", withFare="
+        + withFare
+        + ", withAvailableSeats="
+        + withAvailableSeats
+        + ", withoutTickets="
+        + withoutTickets;
   }
 
   private ReferenceData executeReferenceQuery(String sqlFlight) throws Exception {
