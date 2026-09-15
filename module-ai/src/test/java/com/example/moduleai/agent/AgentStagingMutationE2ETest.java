@@ -105,6 +105,7 @@ class AgentStagingMutationE2ETest {
 
   private record FlightScheduleBackup(
       Long flightId,
+      String originalStatus,
       OffsetDateTime originalDepartureTime,
       OffsetDateTime originalArrivalTime,
       OffsetDateTime originalUpdatedAt,
@@ -673,10 +674,10 @@ class AgentStagingMutationE2ETest {
   private void moveUnusedReferenceFlight(OffsetDateTime fixtureDepartureTime) throws Exception {
     String sql =
         "WITH candidate AS ("
-            + " SELECT f.id, f.departure_time, f.arrival_time, f.updated_at"
+            + " SELECT f.id, f.status, f.departure_time, f.arrival_time, f.updated_at"
             + " FROM flights f"
             + " JOIN flight_fares ff ON ff.flight_id = f.id"
-            + " WHERE f.status = 'SCHEDULED'"
+            + " WHERE f.status IN ('SCHEDULED', 'COMPLETED')"
             + " AND f.departure_time <= now()"
             + " AND 2 <= (SELECT count(*) FROM flight_seats fs"
             + " WHERE fs.flight_id = f.id AND fs.status = 'AVAILABLE'"
@@ -686,7 +687,7 @@ class AgentStagingMutationE2ETest {
             + " AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.flight_id = f.id)"
             + " ORDER BY f.departure_time DESC LIMIT 1"
             + "), updated AS ("
-            + " UPDATE flights f SET departure_time = ?,"
+            + " UPDATE flights f SET status = 'SCHEDULED', departure_time = ?,"
             + " arrival_time = ? + (candidate.arrival_time - candidate.departure_time),"
             + " updated_at = now() FROM candidate"
             + " WHERE f.id = candidate.id"
@@ -694,6 +695,7 @@ class AgentStagingMutationE2ETest {
             + " AND f.arrival_time = candidate.arrival_time"
             + " AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.flight_id = f.id)"
             + " RETURNING f.id, candidate.departure_time AS original_departure_time,"
+            + " candidate.status AS original_status,"
             + " candidate.arrival_time AS original_arrival_time,"
             + " candidate.updated_at AS original_updated_at,"
             + " f.departure_time AS fixture_departure_time,"
@@ -707,6 +709,7 @@ class AgentStagingMutationE2ETest {
         flightScheduleBackups.add(
             new FlightScheduleBackup(
                 rs.getLong("id"),
+                rs.getString("original_status"),
                 rs.getObject("original_departure_time", OffsetDateTime.class),
                 rs.getObject("original_arrival_time", OffsetDateTime.class),
                 rs.getObject("original_updated_at", OffsetDateTime.class),
@@ -1402,16 +1405,18 @@ class AgentStagingMutationE2ETest {
   private void restoreFlightSchedules(List<String> errors) {
     for (FlightScheduleBackup backup : flightScheduleBackups) {
       String sql =
-          "UPDATE flights SET departure_time = ?, arrival_time = ?, updated_at = ?"
-              + " WHERE id = ? AND departure_time = ? AND arrival_time = ?"
+          "UPDATE flights SET status = ?, departure_time = ?, arrival_time = ?, updated_at = ?"
+              + " WHERE id = ? AND status = 'SCHEDULED'"
+              + " AND departure_time = ? AND arrival_time = ?"
               + " AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.flight_id = flights.id)";
       try (PreparedStatement stmt = dbConnection.prepareStatement(sql)) {
-        stmt.setObject(1, backup.originalDepartureTime());
-        stmt.setObject(2, backup.originalArrivalTime());
-        stmt.setObject(3, backup.originalUpdatedAt());
-        stmt.setLong(4, backup.flightId());
-        stmt.setObject(5, backup.fixtureDepartureTime());
-        stmt.setObject(6, backup.fixtureArrivalTime());
+        stmt.setString(1, backup.originalStatus());
+        stmt.setObject(2, backup.originalDepartureTime());
+        stmt.setObject(3, backup.originalArrivalTime());
+        stmt.setObject(4, backup.originalUpdatedAt());
+        stmt.setLong(5, backup.flightId());
+        stmt.setObject(6, backup.fixtureDepartureTime());
+        stmt.setObject(7, backup.fixtureArrivalTime());
         if (stmt.executeUpdate() != 1) {
           errors.add(
               "Refused to restore flight "
