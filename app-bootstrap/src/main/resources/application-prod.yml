@@ -68,6 +68,10 @@ logging:
     org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
 
 app:
+  rate-limit:
+    # Authentication throttling must remain enforced if Redis is unavailable in production.
+    fail-open: ${APP_RATE_LIMIT_FAIL_OPEN:false}
+    redis-fallback-enabled: ${APP_RATE_LIMIT_REDIS_FALLBACK_ENABLED:false}
   logging:
     json-enabled: ${APP_LOG_JSON_ENABLED:true}
 

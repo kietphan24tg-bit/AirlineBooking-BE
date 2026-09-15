@@ -307,7 +307,8 @@ APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:3000,http://localhost:5173
 
 # RATE LIMIT
 APP_RATE_LIMIT_ENABLED=true
-APP_RATE_LIMIT_FAIL_OPEN=true
+# Keep false in production so a Redis outage cannot bypass authentication throttling.
+APP_RATE_LIMIT_FAIL_OPEN=false
 APP_RATE_LIMIT_LOGIN_WINDOW=10m
 APP_RATE_LIMIT_LOGIN_EMAIL_LIMIT=5
 APP_RATE_LIMIT_LOGIN_CLIENT_LIMIT=20

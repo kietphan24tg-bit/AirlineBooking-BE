@@ -52,6 +52,18 @@ class RedisFallbackRateLimitStoreTest {
   }
 
   @Test
+  void clearsStaleFallbackCounterAfterRedisRecovers() {
+    when(redisStore.increment("query", Duration.ofMinutes(1)))
+        .thenThrow(new IllegalStateException("Redis unavailable"))
+        .thenReturn(4L)
+        .thenThrow(new IllegalStateException("Redis unavailable again"));
+
+    assertEquals(1L, store.increment("query", Duration.ofMinutes(1)));
+    assertEquals(4L, store.increment("query", Duration.ofMinutes(1)));
+    assertEquals(1L, store.increment("query", Duration.ofMinutes(1)));
+  }
+
+  @Test
   void releaseAlwaysClearsMemoryWhenRedisFails() {
     fallbackStore.increment("slot", Duration.ofMinutes(1));
     doThrow(new IllegalStateException("Redis unavailable")).when(redisStore).delete("slot");
