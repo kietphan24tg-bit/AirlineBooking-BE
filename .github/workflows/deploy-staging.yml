@@ -155,7 +155,7 @@ jobs:
             deployment_status=$(jq -r '.status // "unknown"' <<< "$deployment")
             status=$(curl -sS -o /tmp/staging-readiness.json -w '%{http_code}' \
               --max-time 10 "$STAGING_READINESS_URL" || true)
-            if [ "$status" = "200" ]; then
+            if [ "$deployment_status" = "finished" ] && [ "$status" = "200" ]; then
               echo "Staging readiness passed on attempt $attempt."
               cat /tmp/staging-readiness.json
               exit 0
