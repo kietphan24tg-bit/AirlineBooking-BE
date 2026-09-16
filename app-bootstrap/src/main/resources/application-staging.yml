@@ -48,6 +48,10 @@ logging:
     org.flywaydb: ${LOGGING_LEVEL_FLYWAY:INFO}
 
 app:
+  ai:
+    # Keep the staging prompt compact while preserving the strongest retrieved evidence.
+    rag:
+      top-k: ${APP_AI_RAG_TOP_K:3}
   rate-limit:
     # Staging is single-replica and may continue with process-local limits during Redis outages.
     redis-fallback-enabled: ${APP_RATE_LIMIT_REDIS_FALLBACK_ENABLED:true}
