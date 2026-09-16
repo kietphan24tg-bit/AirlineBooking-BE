@@ -31,6 +31,12 @@ spring:
           starttls:
             enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:true}
 
+management:
+  health:
+    # Staging intentionally supports process-local rate-limit fallback when Redis is unavailable.
+    redis:
+      enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
+
 logging:
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
