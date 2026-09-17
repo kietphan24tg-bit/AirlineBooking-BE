@@ -24,7 +24,9 @@ spring:
                     options:
                         model: ${APP_AI_CHAT_MODEL:gemini-3.5-flash-lite}
                         temperature: 0.2
-                        max-output-tokens: 800
+                        # Reserve room for thinking and the complete visible answer.
+                        max-output-tokens: ${APP_AI_CHAT_MAX_OUTPUT_TOKENS:4096}
+                        thinking-level: ${APP_AI_CHAT_THINKING_LEVEL:LOW}
                 embedding:
                     api-key: ${GEMINI_KEY:}
                     text:

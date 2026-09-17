@@ -51,6 +51,8 @@ public final class ChatPromptTemplates {
         never tell the user to contact support instead of performing that lookup.
       - Keep the answer scoped to the exact question. Do not add adjacent restrictions, payment-flow
         limitations, or fee details unless they are necessary to answer what the user asked.
+      - Prefer a short direct answer with complete sentences. Include every fact needed to answer the
+        question before optional explanation; do not repeat the question or introduce the sources.
       - For check-in eligibility, state all authoritative prerequisites present in context. A
         PENDING_PAYMENT booking cannot check in; check-in requires booking CONFIRMED and ticket ISSUED.
       - Nếu câu hỏi thuộc visa, nhập cảnh, hộ chiếu, pháp lý hoặc policy chưa được chốt chính thức,

@@ -36,12 +36,16 @@ final class RagValidationJudge {
     try {
       response = judge(renderBatch(batch));
     } catch (RuntimeException ex) {
+      if (isProviderUnavailable(ex)) {
+        return blockedBatch(batch, "Judge model error: " + conciseMessage(ex));
+      }
       return retryBatchIndividually(batch);
     }
 
     Map<String, JudgeDecision> parsed = parse(response);
     for (JudgeInput input : batch) {
       if (!parsed.containsKey(input.executionId())) {
+        pauseBetweenBatches();
         parsed.putAll(retrySingle(input));
       }
       parsed.putIfAbsent(
@@ -65,10 +69,23 @@ final class RagValidationJudge {
 
   private Map<String, JudgeDecision> retryBatchIndividually(List<JudgeInput> batch) {
     Map<String, JudgeDecision> decisions = new LinkedHashMap<>();
-    for (JudgeInput input : batch) {
-      decisions.putAll(retrySingle(input));
+    for (int index = 0; index < batch.size(); index++) {
+      pauseBetweenBatches();
+      decisions.putAll(retrySingle(batch.get(index)));
     }
     return decisions;
+  }
+
+  static boolean isProviderUnavailable(RuntimeException exception) {
+    Throwable cause = exception;
+    for (int depth = 0; cause != null && depth < 8; depth++) {
+      if (cause instanceof ApiException apiException
+          && (apiException.code() == 429 || apiException.code() >= 500)) {
+        return true;
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   private String judge(String prompt) {

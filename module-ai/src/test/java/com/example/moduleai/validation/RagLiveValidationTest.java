@@ -140,7 +140,8 @@ class RagLiveValidationTest {
     registry.add("spring.ai.google.genai.api-key", () -> requiredEnvironment("GEMINI_KEY"));
     registry.add("spring.ai.google.genai.chat.options.model", () -> CHAT_MODEL);
     registry.add("spring.ai.google.genai.chat.options.temperature", () -> "0.0");
-    registry.add("spring.ai.google.genai.chat.options.max-output-tokens", () -> "800");
+    registry.add("spring.ai.google.genai.chat.options.max-output-tokens", () -> "4096");
+    registry.add("spring.ai.google.genai.chat.options.thinking-level", () -> "LOW");
     registry.add(
         "spring.ai.google.genai.embedding.api-key", () -> requiredEnvironment("GEMINI_KEY"));
     registry.add("spring.ai.google.genai.embedding.text.model", () -> "gemini-embedding-001");
