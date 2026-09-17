@@ -45,6 +45,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   validate:
@@ -84,7 +85,14 @@ jobs:
             --name "$artifact_name" --dir .rag-resume
           resume_path=$(find .rag-resume -type f -name draft.json -print -quit)
           test -n "$resume_path"
+          resume_path=$(realpath "$resume_path")
+          candidate_commit=$(jq -r '.metadata.commit' "$resume_path")
+          [[ "$candidate_commit" =~ ^[0-9a-f]{40}$ ]]
+          # Resume the exact candidate that produced the saved answers.
+          git fetch --no-tags origin "$candidate_commit"
+          git checkout --detach "$candidate_commit"
           echo "RAG_VALIDATION_RESUME_FROM=$resume_path" >> "$GITHUB_ENV"
+          echo "RAG_VALIDATION_CANDIDATE_COMMIT=$candidate_commit" >> "$GITHUB_ENV"
 
       - name: Resolve staging datasource from Coolify
         env:
@@ -123,7 +131,7 @@ jobs:
         run: >-
           ./gradlew --no-daemon :module-ai:ragLiveValidation
           -PragValidationRunId=gha-${{ github.run_id }}-${{ github.run_attempt }}
-          -PragValidationCommit=${{ github.sha }}
+          -PragValidationCommit=${RAG_VALIDATION_CANDIDATE_COMMIT:-${{ github.sha }}}
           -PragValidationRepeats=${{ inputs.repeats }}
           -PragValidationVariants=${{ inputs.variants }}
           -PragValidationIngest=${{ inputs.ingest }}
