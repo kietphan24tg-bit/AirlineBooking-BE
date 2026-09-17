@@ -187,14 +187,18 @@ class RagLiveValidationTest {
         !JUDGE_ONLY && INGEST_POLICIES
             ? ingestionService.ingestProductionPolicies()
             : new RagIngestionResult(0, 0, 768);
-    List<ExecutionCase> executions =
+    List<ExecutionCase> allExecutions =
         expandExecutions(checklistCases).stream()
             .filter(
                 execution -> CASE_IDS.contains("") || CASE_IDS.contains(execution.testCase().id()))
-            .limit(MAX_CASES)
             .toList();
+    List<ExecutionCase> executions =
+        resumedDraft == null ? allExecutions.stream().limit(MAX_CASES).toList() : allExecutions;
     List<DraftValidationResult> drafts =
-        mergeDrafts(executions, resumedDraft == null ? List.of() : resumedDraft.results());
+        mergeDrafts(
+            executions,
+            resumedDraft == null ? List.of() : resumedDraft.results(),
+            MAX_CASES);
     ValidationMetadata metadata = resumedDraft == null ? currentMetadata : resumedDraft.metadata();
     RagValidationDraft draft =
         new RagValidationDraft(
@@ -251,18 +255,33 @@ class RagLiveValidationTest {
   }
 
   private List<DraftValidationResult> mergeDrafts(
-      List<ExecutionCase> executions, List<DraftValidationResult> resumedResults) {
+      List<ExecutionCase> executions,
+      List<DraftValidationResult> resumedResults,
+      int maxNewCases) {
     Map<String, DraftValidationResult> byExecution = new LinkedHashMap<>();
-    resumedResults.forEach(result -> byExecution.put(result.executionId(), result));
+    resumedResults.forEach(
+        result -> {
+          if (!isRetryableInfrastructureResult(result)) {
+            byExecution.put(result.executionId(), result);
+          }
+        });
     List<ExecutionCase> missing =
         executions.stream()
             .filter(execution -> !byExecution.containsKey(execution.executionId()))
+            .limit(maxNewCases)
             .toList();
     if (JUDGE_ONLY && !missing.isEmpty()) {
       throw new IllegalStateException("Resume draft is missing " + missing.size() + " executions");
     }
     executeCases(missing).forEach(result -> byExecution.put(result.executionId(), result));
-    return executions.stream().map(execution -> byExecution.get(execution.executionId())).toList();
+    return executions.stream()
+        .map(execution -> byExecution.get(execution.executionId()))
+        .filter(result -> result != null)
+        .toList();
+  }
+
+  private static boolean isRetryableInfrastructureResult(DraftValidationResult result) {
+    return result.executionError() != null || isInfrastructureFallback(result.fallbackReason());
   }
 
   private List<DraftValidationResult> executeCases(List<ExecutionCase> executions) {

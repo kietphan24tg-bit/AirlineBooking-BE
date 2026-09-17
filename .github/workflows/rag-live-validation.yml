@@ -32,6 +32,16 @@ on:
         required: true
         default: '15000'
         type: string
+      resume_run_id:
+        description: Previous validation run ID whose checkpoint should be resumed
+        required: false
+        default: ''
+        type: string
+      resume_attempt:
+        description: Attempt number of the previous validation run
+        required: false
+        default: '1'
+        type: string
 
 permissions:
   contents: read
@@ -60,6 +70,21 @@ jobs:
 
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
+
+      - name: Download validation checkpoint
+        if: ${{ inputs.resume_run_id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+          RESUME_ATTEMPT: ${{ inputs.resume_attempt }}
+        run: |
+          set -euo pipefail
+          artifact_name="rag-validation-${RESUME_RUN_ID}-${RESUME_ATTEMPT}"
+          gh run download "$RESUME_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "$artifact_name" --dir .rag-resume
+          resume_path=$(find .rag-resume -type f -name draft.json -print -quit)
+          test -n "$resume_path"
+          echo "RAG_VALIDATION_RESUME_FROM=$resume_path" >> "$GITHUB_ENV"
 
       - name: Resolve staging datasource from Coolify
         env:
@@ -102,6 +127,7 @@ jobs:
           -PragValidationRepeats=${{ inputs.repeats }}
           -PragValidationVariants=${{ inputs.variants }}
           -PragValidationIngest=${{ inputs.ingest }}
+          ${{ inputs.resume_run_id != '' && '-PragValidationResumeFrom=$RAG_VALIDATION_RESUME_FROM' || '' }}
           --console=plain
         env:
           ORG_GRADLE_PROJECT_ragValidationCaseIds: ${{ inputs.case_ids }}
