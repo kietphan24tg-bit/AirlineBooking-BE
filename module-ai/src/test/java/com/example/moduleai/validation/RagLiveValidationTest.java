@@ -196,9 +196,7 @@ class RagLiveValidationTest {
         resumedDraft == null ? allExecutions.stream().limit(MAX_CASES).toList() : allExecutions;
     List<DraftValidationResult> drafts =
         mergeDrafts(
-            executions,
-            resumedDraft == null ? List.of() : resumedDraft.results(),
-            MAX_CASES);
+            executions, resumedDraft == null ? List.of() : resumedDraft.results(), MAX_CASES);
     ValidationMetadata metadata = resumedDraft == null ? currentMetadata : resumedDraft.metadata();
     RagValidationDraft draft =
         new RagValidationDraft(
@@ -255,9 +253,7 @@ class RagLiveValidationTest {
   }
 
   private List<DraftValidationResult> mergeDrafts(
-      List<ExecutionCase> executions,
-      List<DraftValidationResult> resumedResults,
-      int maxNewCases) {
+      List<ExecutionCase> executions, List<DraftValidationResult> resumedResults, int maxNewCases) {
     Map<String, DraftValidationResult> byExecution = new LinkedHashMap<>();
     resumedResults.forEach(
         result -> {
